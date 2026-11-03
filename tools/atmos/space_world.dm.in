@@ -1,0 +1,57 @@
+// Included only by the local audit build; all gas/space procedures are the actual game code.
+SUBSYSTEM_DEF(atmos_space_audit)
+	name = "Atmos space compatibility audit"
+	init_stage = INITSTAGE_LAST
+	ss_flags = SS_NO_FIRE
+	dependencies = list(/datum/controller/subsystem/ticker)
+
+/datum/controller/subsystem/atmos_space_audit/Initialize()
+	Master.sleep_offline_after_initializations = FALSE
+	SSair.can_fire = FALSE
+	SSticker.start_immediately = TRUE
+	SSticker.delay_end = TRUE
+	SSticker.OnRoundstart(CALLBACK(src, PROC_REF(capture)))
+	return SS_INIT_SUCCESS
+
+/datum/controller/subsystem/atmos_space_audit/proc/capture()
+	var/datum/gas_mixture/immutable/space/probe = new
+	var/list/output = list(
+		"byond" = "[world.byond_version].[world.byond_build]",
+		"space_heat_capacity" = probe.heat_capacity(),
+		"space_heat_capacity_archive" = probe.heat_capacity_archive(),
+	)
+	var/turf/open/floor = locate(20, 20, 1)
+	floor = floor.ChangeTurf(/turf/open/floor/iron)
+	var/turf/open/space/space = locate(21, 20, 1)
+	space = space.ChangeTurf(/turf/open/space)
+	for(var/turf/open/target as anything in list(floor, space))
+		for(var/atom/movable/thing in target)
+			qdel(thing)
+		SSair.remove_from_active(target)
+		target.thermal_conductivity = 0
+		target.archived_cycle = 0
+		target.current_cycle = 0
+	floor.air.moles.Cut()
+	floor.air.moles_archive.Cut()
+	floor.air.temperature = 800
+	floor.air.set_gas(/datum/gas/oxygen, 100)
+	floor.air.set_gas(/datum/gas/nitrogen, 300)
+	space.air.garbage_collect()
+	floor.atmos_adjacent_turfs = list(space)
+	space.atmos_adjacent_turfs = list(floor)
+	SSair.active_turfs = list()
+	SSair.excited_groups = list()
+	SSair.high_pressure_delta = list()
+	SSair.times_fired = 0
+	SSair.add_to_active(space)
+	SSair.add_to_active(floor)
+	var/list/states = list()
+	for(var/cycle in 1 to 2)
+		SSair.times_fired++
+		banda_atmos_world_air_step()
+		states += list(list("temperature" = floor.air.temperature, "moles" = floor.air.total_moles()))
+	output["breach_floor_runs_first"] = states
+	output["networks"] = banda_atmos_world_networks()
+	WRITE_FILE(file("space-output.json"), json_encode(output))
+	log_world("BANDA_ATMOS_SPACE_AUDIT_COMPLETE")
+	shutdown()

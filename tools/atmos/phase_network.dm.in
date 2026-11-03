@@ -1,0 +1,162 @@
+/// Complete graph snapshots through the actual DLL, including archives and phase lists.
+/datum/controller/subsystem/atmos_phase_test/proc/network_checks()
+	var/wet_processing = SSwet_floors.can_fire
+	SSwet_floors.can_fire = FALSE
+	var/list/output = list()
+	var/list/scenarios = json_decode(file2text("phase-network-cases.json"))
+	var/list/gases = banda_atmos_gases()
+	var/case_index = 0
+	for(var/list/scenario in scenarios)
+		case_index++
+		log_world("BANDA_ATMOS_GRAPH [scenario["label"]]")
+		var/datum/banda_atmos_phase/phase = new("bandastation_atmos.dll")
+		var/list/targets = list()
+		SSair.active_super_conductivity = list()
+		for(var/list/node in scenario["nodes"])
+			var/list/position = node["coordinates"]
+			var/turf/center = locate(60 + position[1], 60 + position[2], position[3])
+			for(var/direction in GLOB.cardinals)
+				var/turf/neighbor = get_step(center, direction)
+				neighbor.thermal_conductivity = 0
+		for(var/list/node in scenario["nodes"])
+			var/list/coordinates = node["coordinates"]
+			var/turf/target = locate(60 + coordinates[1], 60 + coordinates[2], coordinates[3])
+			var/turf_path = node["kind"] == 3 ? /turf/closed/wall : (node["kind"] == 1 ? /turf/open/space/banda_atmos_fixture : /turf/open/floor/iron/banda_atmos_fixture)
+			target = target.ChangeTurf(turf_path)
+			var/datum/component/wet_floor/previous_wetness = target.GetComponent(/datum/component/wet_floor)
+			if(previous_wetness)
+				qdel(previous_wetness)
+			for(var/atom/movable/thing in target)
+				qdel(thing)
+			target.banda_atmos_fixture_links = null
+			target.thermal_conductivity = 0
+			target.temperature = T20C
+			target.temperature_archived = TCMB
+			target.current_cycle = 0
+			target.archived_cycle = 0
+			var/list/terrain = node["terrain"]
+			if(terrain)
+				target.temperature = terrain["temperature"]
+				target.heat_capacity = terrain["capacity"]
+				target.thermal_conductivity = terrain["conductivity"]
+				target.atmos_supeconductivity = terrain["blocked"]
+			if(isopenturf(target))
+				var/turf/open/open = target
+				if(node["kind"] == 1)
+					open.air.garbage_collect()
+					open.air.last_share = 0
+				else
+					open.air = new /datum/gas_mixture/turf(CELL_VOLUME)
+					open.air.temperature = node["temperature"]
+					for(var/list/pair in node["gases"])
+						open.air.moles[gases[pair[1] + 1]] = pair[2]
+				var/list/planet = node["planetary"]
+				open.planetary_atmos = !!planet
+				open.run_later = node["kind"] == 1
+				open.excited = FALSE
+				open.significant_share_ticker = 0
+				open.pressure_difference = 0
+				open.pressure_direction = 0
+				if(planet)
+					open.initial_gas_mix = "native-audit:[length(targets)]"
+					var/datum/gas_mixture/immutable/planetary/atmosphere = new
+					atmosphere.initial_temperature = planet["temperature"]
+					for(var/list/pair in planet["gases"])
+						atmosphere.initial_gas[gases[pair[1] + 1]] = pair[2]
+					atmosphere.garbage_collect()
+					SSair.planetary[target.initial_gas_mix] = atmosphere
+			targets += target
+		for(var/turf/target as anything in targets)
+			target.atmos_adjacent_turfs = list()
+		for(var/index in scenario["conducting"])
+			SSair.active_super_conductivity += targets[index + 1]
+		for(var/index in 1 to length(targets))
+			var/turf/target = targets[index]
+			var/list/node = scenario["nodes"][index]
+			for(var/neighbor in node["neighbors"])
+				target.atmos_adjacent_turfs += targets[neighbor + 1]
+			target.banda_atmos_fixture_links = target.atmos_adjacent_turfs.Copy()
+			phase.bind(target, (index - 1) in scenario["active"])
+		var/list/active = list()
+		var/list/conducting = list()
+		// Initial topology must be in place before restoring the caller's active order.
+		for(var/datum/banda_atmos_cell/cell as anything in phase.cells)
+			cell.refresh_neighbors()
+		for(var/id in scenario["active"])
+			active += id + 1
+		for(var/id in scenario["conducting"])
+			conducting += id + 1
+		phase.native(18, active, conducting)
+		var/list/states = list()
+		for(var/tick in 1 to scenario["ticks"])
+			phase.run_tick(synchronous = (case_index % 2 == 0))
+			states += list(phase_network_state(phase, scenario["hotspots"], scenario["thermal"]))
+		output += list(list("label" = scenario["label"], "states" = states))
+		qdel(phase)
+	SSwet_floors.can_fire = wet_processing
+	return output
+
+/datum/controller/subsystem/atmos_phase_test/proc/phase_network_state(datum/banda_atmos_phase/phase, fire, thermal)
+	var/list/packet = list()
+	phase.native(17, packet)
+	var/index = 1
+	var/list/lists = list()
+	for(var/part in 1 to 3)
+		var/list/ids = list()
+		var/count = packet[index++]
+		for(var/i in 1 to count)
+			ids += packet[index++] - 1
+		lists += list(ids)
+	var/list/groups = list()
+	var/list/group_for_cell = list()
+	var/count = packet[index++]
+	for(var/i in 1 to count)
+		var/breakdown = packet[index++]
+		var/dismantle = packet[index++]
+		var/size = packet[index++]
+		var/list/members = list()
+		for(var/j in 1 to size)
+			var/id = packet[index++]
+			members += id - 1
+			group_for_cell["[id]"] = i
+		groups += list(list("members" = members, "breakdown" = breakdown, "dismantle" = dismantle))
+	var/list/cells = list()
+	var/list/gases = banda_atmos_gases()
+	for(var/datum/banda_atmos_cell/cell as anything in phase.cells)
+		var/datum/gas_mixture/air = cell.read_air()
+		var/list/metadata = cell.read_metadata()
+		var/list/amounts = list()
+		var/list/archives = list()
+		var/list/keys = list()
+		var/list/archive_keys = list()
+		var/list/results = list()
+		for(var/gas in gases)
+			amounts += num2text(air.moles[gas] || 0, 9)
+			archives += num2text(air.moles_archive[gas] || 0, 9)
+		for(var/gas in air.moles)
+			keys += gases.Find(gas) - 1
+		for(var/gas in air.moles_archive)
+			archive_keys += gases.Find(gas) - 1
+		for(var/reaction in banda_atmos_reactions())
+			var/value = air.reaction_results[reaction]
+			results += list(isnull(value) ? null : num2text(value, 9))
+		var/list/tile = list("temperature" = num2text(air.temperature, 9), "moles" = amounts, "keys" = keys, "results" = results,
+			"archived_temperature" = num2text(air.temperature_archived, 9), "archived_moles" = archives, "archived_keys" = archive_keys,
+			"archived_cycle" = metadata[3], "current_cycle" = metadata[4], "ticker" = metadata[5], "excited" = metadata[6],
+			"group" = group_for_cell["[cell.native_id]"] || 0, "last_share" = num2text(metadata[7], 9), "pressure" = num2text(metadata[8], 9), "direction" = metadata[9])
+		if(thermal)
+			tile["solid_temperature"] = num2text(metadata[1], 9)
+			tile["solid_archived"] = num2text(metadata[2], 9)
+		cells += list(tile)
+	var/list/state = list("active" = lists[1], "cells" = cells, "groups" = groups)
+	if(fire)
+		var/list/spots = list()
+		for(var/id in lists[2])
+			var/datum/banda_atmos_cell/cell = phase.cells[id + 1]
+			var/list/air = cell.read_packet()
+			var/list/metadata = cell.read_metadata()
+			spots += list(list(id, num2text(air[length(air) - 2], 9), num2text(air[length(air) - 1], 9), metadata[10], metadata[11], metadata[12]))
+		state["hotspots"] = spots
+	if(thermal)
+		state["conducting"] = lists[3]
+	return state

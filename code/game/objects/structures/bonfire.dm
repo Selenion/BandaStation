@@ -106,7 +106,7 @@
 /obj/structure/bonfire/proc/check_oxygen()
 	if(isopenturf(loc))
 		var/turf/open/bonfire_turf = loc
-		if(bonfire_turf.air?.moles[/datum/gas/oxygen] >= 5)
+		if(bonfire_turf.get_readonly_air()?.moles[/datum/gas/oxygen] >= 5) // BANDASTATION EDIT - Read native atmosphere through the API.
 			return TRUE
 	return FALSE
 

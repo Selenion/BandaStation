@@ -157,15 +157,16 @@
 	var/turf/open/open_loc = loc
 	if(!isopenturf(open_loc))
 		return
-	var/datum/gas_mixture/turf_gas = open_loc.air
+	var/datum/gas_mixture/turf_gas = open_loc.get_readonly_air() // BANDASTATION EDIT - Read native atmosphere through the API.
 	if(isnull(turf_gas))
 		return
 	check_atmos_process(open_loc, turf_gas, turf_gas.temperature)
 
 /turf/open/atmos_conditions_changed()
-	if(isnull(air))
+	var/datum/gas_mixture/current_air = get_readonly_air() // BANDASTATION ADDITION
+	if(isnull(current_air)) // BANDASTATION EDIT
 		return
-	check_atmos_process(src, air, air.temperature)
+	check_atmos_process(src, current_air, current_air.temperature) // BANDASTATION EDIT
 
 /**
  * Called by the machinery disconnect(), custom for each type

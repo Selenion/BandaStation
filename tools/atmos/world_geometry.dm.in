@@ -1,0 +1,56 @@
+/// Actual door density/caches exercise both directions of a changing native connection.
+/datum/controller/subsystem/atmos_world_test/proc/geometry_checks(list/checks)
+	for(var/turf/target as anything in block(locate(194, 189, 1), locate(198, 191, 1)))
+		for(var/atom/movable/occupant in target)
+			qdel(occupant)
+		target.ChangeTurf(/turf/closed/wall)
+	var/list/room = list()
+	for(var/x in 195 to 197)
+		var/turf/open/floor = locate(x, 190, 1)
+		floor = floor.ChangeTurf(/turf/open/floor/iron)
+		floor.thermal_conductivity = 0
+		set_air(floor, list(/datum/gas/nitrogen = (x == 195 ? 100 : 0)), T20C, TRUE)
+		SSair.add_to_active(floor)
+		room += floor
+	var/turf/open/left = room[1]
+	var/turf/open/middle = room[2]
+	var/turf/open/right = room[3]
+	var/obj/machinery/door/door = new(middle)
+	door.autoclose = FALSE
+	middle.air_update_turf(TRUE, TRUE)
+	tick()
+	checks["closed_door_blocks_native_exchange"] = left.get_readonly_air().moles[/datum/gas/nitrogen] == 100 && !right.get_readonly_air().moles[/datum/gas/nitrogen]
+	door.open()
+	tick()
+	tick()
+	checks["opening_door_updates_native_connections"] = right.get_readonly_air().moles[/datum/gas/nitrogen] > 0 && left.get_readonly_air().moles[/datum/gas/nitrogen] < 100
+	door.close()
+	var/before = right.get_readonly_air().moles[/datum/gas/nitrogen]
+	set_air(left, list(/datum/gas/nitrogen = 200))
+	left.air_update_turf(FALSE, FALSE)
+	tick()
+	checks["closing_door_removes_native_connections"] = right.get_readonly_air().moles[/datum/gas/nitrogen] == before
+	qdel(door)
+
+/mob/living/carbon/human/world_heat_probe
+	var/contact_fire_calls = 0
+
+/mob/living/carbon/human/world_heat_probe/fire_act(exposed_temperature, exposed_volume)
+	contact_fire_calls++
+	return ..()
+
+/datum/controller/subsystem/atmos_world_test/proc/contact_checks(list/checks, turf/open/fire_floor)
+	var/turf/open/safe = isolated_floor(200)
+	set_air(safe, list(/datum/gas/nitrogen = 100))
+	var/mob/living/carbon/human/world_heat_probe/person = new(safe)
+	var/before = person.contact_fire_calls
+	person.forceMove(fire_floor)
+	// Paired original DM fixture confirms both Entered and abstract-entered callbacks.
+	checks["entering_hot_native_fire_keeps_contact_burn"] = person.contact_fire_calls == before + 2
+	person.forceMove(safe)
+	if(fire_floor.active_hotspot)
+		fire_floor.active_hotspot.cold_fire = TRUE
+	before = person.contact_fire_calls
+	person.forceMove(fire_floor)
+	checks["entering_cold_native_fire_skips_contact_burn"] = person.contact_fire_calls == before
+	qdel(person)

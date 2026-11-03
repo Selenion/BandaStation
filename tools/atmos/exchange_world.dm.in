@@ -1,0 +1,319 @@
+/// Count boundary writes without replacing the real native implementation.
+/datum/banda_atmos_phase/world_adapter/exchange_probe
+	var/commits = 0
+
+/datum/banda_atmos_phase/world_adapter/exchange_probe/native(operation, ...)
+	if(operation == 3 || operation == 36)
+		commits++
+	return ..(arglist(args))
+
+/obj/machinery/banda_exchange_probe
+	var/turf/open/air_target
+	var/observed_moles
+	var/safe_access = FALSE
+	var/throw_after_write = FALSE
+
+/obj/machinery/banda_exchange_probe/process_atmos(seconds_per_tick)
+	safe_access = SSair.native_atmos?.in_safe_callback
+	observed_moles = air_target.get_readonly_air().moles[/datum/gas/nitrogen]
+	var/datum/gas_mixture/air = air_target.return_air()
+	air.moles[/datum/gas/nitrogen] += 1
+	if(throw_after_write)
+		throw EXCEPTION("BANDA_EXCHANGE_EXPECTED_EQUIPMENT_FAILURE")
+	return PROCESS_KILL
+
+/obj/machinery/banda_exchange_probe/Destroy()
+	air_target = null
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/exchange_modify(turf/open/target, mode)
+	var/datum/gas_mixture/air = target.return_air()
+	switch(mode)
+		if("temperature")
+			air.temperature = 333
+		if("moles")
+			air.moles[/datum/gas/nitrogen] += 2
+		if("archive")
+			air.temperature_archived = 280
+			air.moles_archive[/datum/gas/oxygen] = 4
+		if("zero_result")
+			air.reaction_results[/datum/gas_reaction/standard/plasmafire] = 0
+			air.reaction_results[/datum/gas/nitrogen] = 7
+			air.reaction_results[/datum/gas_reaction/standard/tritfire] = null
+	return air
+
+/datum/controller/subsystem/atmos_phase_test/proc/exchange_world_checks()
+	var/list/checks = list()
+	var/turf/open/target = floor_at(190, 180)
+	var/turf/open/passive = floor_at(191, 180)
+	target.air.set_gas(/datum/gas/nitrogen, 17)
+	target.air.temperature = 300
+	target.air.archive()
+	var/datum/banda_atmos_phase/world_adapter/exchange_probe/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target, passive))
+	phase.native(18, list(), list())
+	phase.native(30)
+	phase.initializing = FALSE
+	var/datum/gas_mixture/held = target.get_readonly_air()
+	var/datum/banda_atmos_cell/cell = target.banda_atmos_cell
+	var/datum/gas_mixture/working = phase.invoke(CALLBACK(src, PROC_REF(exchange_modify), target, "read"))
+	checks["unchanged_borrow_does_not_commit"] = !phase.commits && held != working && !length(phase.working_mixtures)
+	phase.invoke(CALLBACK(src, PROC_REF(exchange_modify), target, "temperature"))
+	checks["direct_temperature_commits_and_updates_held_readonly"] = phase.commits == 1 && cell.read_air().temperature == 333 && held.temperature == 333
+	phase.invoke(CALLBACK(src, PROC_REF(exchange_modify), target, "moles"))
+	checks["direct_mole_write_commits"] = phase.commits == 2 && cell.read_air().moles[/datum/gas/nitrogen] == 19
+	phase.invoke(CALLBACK(src, PROC_REF(exchange_modify), target, "archive"))
+	var/datum/gas_mixture/archived = cell.read_air()
+	checks["archive_only_write_commits"] = phase.commits == 3 && archived.temperature_archived == 280 && archived.moles_archive[/datum/gas/oxygen] == 4
+	phase.invoke(CALLBACK(src, PROC_REF(exchange_modify), target, "zero_result"))
+	var/datum/gas_mixture/with_results = cell.read_air()
+	checks["compact_results_keep_present_zero_and_ignore_foreign_null"] = phase.commits == 4 && (/datum/gas_reaction/standard/plasmafire in with_results.reaction_results) && with_results.reaction_results[/datum/gas_reaction/standard/plasmafire] == 0 && !(/datum/gas/nitrogen in with_results.reaction_results) && !(/datum/gas_reaction/standard/tritfire in with_results.reaction_results)
+	checks["zero_values_are_conservatively_written"] = !banda_atmos_same_gases(list("gas" = 0), list("gas" = 0))
+	checks["key_order_is_observable"] = !banda_atmos_same_gases(list("a" = 1, "b" = 2), list("b" = 2, "a" = 1))
+	var/list/presentation = list()
+	var/list/full = list()
+	phase.native(35, list(cell.native_id, FALSE), presentation)
+	phase.native(35, list(cell.native_id, TRUE), full)
+	checks["unborrowed_publication_omits_results_and_archive"] = length(presentation) < length(full) && presentation[8 + presentation[7]] == 12
+	checks["passive_cell_still_has_no_dm_mixture"] = !passive.air && !passive.banda_atmos_cell
+	// Return to a result-free mixture so a real unchanged borrow can be skipped.
+	var/datum/gas_mixture/turf/clean = new()
+	clean.set_gas(/datum/gas/nitrogen, 19)
+	clean.temperature = 300
+	clean.archive()
+	target.replace_turf_air(clean)
+	var/list/moles = clean.moles
+	var/list/old_archive = clean.moles_archive
+	var/list/old_results = clean.reaction_results
+	var/obj/machinery/banda_exchange_probe/first = new(target)
+	var/obj/machinery/banda_exchange_probe/second = new(target)
+	first.air_target = target
+	second.air_target = target
+	var/list/saved_machinery = SSair.atmos_machinery
+	var/saved_state = SSair.state
+	var/saved_limit = Master.current_ticklimit
+	SSair.atmos_machinery = list()
+	SSair.start_processing_machine(second)
+	SSair.start_processing_machine(first)
+	SSair.state = SS_RUNNING
+	Master.current_ticklimit = 1e9
+	var/before = phase.commits
+	SSair.process_atmos_machinery(FALSE)
+	checks["equipment_shares_one_safe_phase"] = first.safe_access && second.safe_access && first.observed_moles == 19 && second.observed_moles == 20 && phase.commits == before + 1
+	checks["equipment_kill_results_and_boundary_are_preserved"] = !length(SSair.atmos_machinery) && !phase.in_safe_callback && !length(phase.working_mixtures) && cell.read_air().moles[/datum/gas/nitrogen] == 21
+	SSair.start_processing_machine(second)
+	SSair.start_processing_machine(first)
+	SSair.state = SS_RUNNING
+	Master.current_ticklimit = -1
+	before = phase.commits
+	SSair.process_atmos_machinery(FALSE)
+	checks["paused_equipment_flushes_before_return"] = phase.commits == before + 1 && !phase.in_safe_callback && !length(phase.working_mixtures) && length(SSair.currentrun) == 1 && cell.read_air().moles[/datum/gas/nitrogen] == 22
+	SSair.state = SS_RUNNING
+	Master.current_ticklimit = 1e9
+	SSair.process_atmos_machinery(TRUE)
+	checks["resumed_equipment_sees_committed_air"] = phase.commits == before + 2 && second.observed_moles == 22 && !length(SSair.atmos_machinery) && !phase.in_safe_callback && cell.read_air().moles[/datum/gas/nitrogen] == 23
+	SSair.state = saved_state
+	Master.current_ticklimit = saved_limit
+	SSair.atmos_machinery = saved_machinery
+	qdel(first)
+	qdel(second)
+	SSair.times_fired++
+	phase.run_tick(TRUE)
+	checks["publication_preserves_borrowed_moles_identity"] = clean == cell.cached_air && clean.moles == moles && clean.moles[/datum/gas/nitrogen] == 23
+	checks["publication_keeps_archive_result_snapshot_semantics"] = clean.moles_archive != old_archive && clean.reaction_results != old_results && old_archive[/datum/gas/nitrogen] == 19
+	qdel(phase)
+	return checks
+
+/// Compare partial writes across an equipment exception with the original DM path.
+/datum/controller/subsystem/atmos_phase_test/proc/exchange_error_contract()
+	var/list/result = list()
+	for(var/backend in list("dm", "rust"))
+		var/turf/open/target = floor_at(backend == "dm" ? 192 : 193, 180)
+		target.air.set_gas(/datum/gas/nitrogen, 100)
+		target.air.temperature = 300
+		target.air.archive()
+		var/datum/banda_atmos_phase/world_adapter/phase
+		if(backend == "rust")
+			phase = new("bandastation_atmos.dll")
+			SSair.native_atmos = phase
+			phase.register_batch(list(target))
+			phase.native(18, list(), list())
+			phase.native(30)
+			phase.initializing = FALSE
+		var/obj/machinery/banda_exchange_probe/first = new(target)
+		var/obj/machinery/banda_exchange_probe/second = new(target)
+		first.air_target = target
+		second.air_target = target
+		second.throw_after_write = TRUE
+		var/list/saved_machinery = SSair.atmos_machinery
+		var/saved_state = SSair.state
+		var/saved_limit = Master.current_ticklimit
+		SSair.atmos_machinery = list()
+		SSair.start_processing_machine(second)
+		SSair.start_processing_machine(first)
+		SSair.state = SS_RUNNING
+		Master.current_ticklimit = 1e9
+		var/caught = FALSE
+		try
+			SSair.process_atmos_machinery(FALSE)
+		catch(var/exception/error)
+			caught = error.name == "BANDA_EXCHANGE_EXPECTED_EQUIPMENT_FAILURE"
+		SSair.state = saved_state
+		Master.current_ticklimit = saved_limit
+		SSair.atmos_machinery = saved_machinery
+		var/datum/gas_mixture/observed = phase ? target.banda_atmos_cell.read_air() : target.air
+		result["[backend]_caught"] = caught
+		result["[backend]_moles"] = observed.moles[/datum/gas/nitrogen]
+		qdel(first)
+		qdel(second)
+		if(phase)
+			qdel(phase)
+	return result
+
+/datum/banda_exchange_listener
+	var/turf/tracked
+	var/datum/gas_mixture/seen_air
+	var/exposures = 0
+
+/datum/banda_exchange_listener/proc/listen(turf/target)
+	tracked = target
+	RegisterSignal(target, COMSIG_TURF_EXPOSE, PROC_REF(on_expose))
+
+/datum/banda_exchange_listener/proc/on_expose(datum/source, datum/gas_mixture/air, temperature)
+	SIGNAL_HANDLER
+	exposures++
+	seen_air = air
+	air.moles[/datum/gas/nitrogen] += 2
+
+/datum/banda_exchange_listener/Destroy()
+	if(tracked)
+		UnregisterSignal(tracked, COMSIG_TURF_EXPOSE)
+	tracked = null
+	seen_air = null
+	return ..()
+
+/obj/item/wrench/banda_exchange_alias
+	var/datum/gas_mixture/stored_air
+	var/fire_calls = 0
+
+/obj/item/wrench/banda_exchange_alias/fire_act(temperature, volume)
+	fire_calls++
+	stored_air.moles[/datum/gas/nitrogen] += 3
+
+/obj/item/wrench/banda_exchange_alias/Destroy()
+	stored_air = null
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/exchange_effect_checks()
+	var/list/checks = list()
+	var/index = 0
+	for(var/scenario in list("bare", "listener", "damage", "coal", "held"))
+		var/turf/open/target = floor_at(200 + index++, 190)
+		target.air.set_gas(/datum/gas/nitrogen, 17)
+		target.air.temperature = 300
+		target.air.archive()
+		if(scenario == "damage")
+			target.heat_capacity = 1
+		var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(list(target))
+		phase.native(18, list(target.banda_atmos_id), list())
+		phase.native(30)
+		phase.initializing = FALSE
+		var/datum/banda_exchange_listener/listener
+		var/obj/item/wrench/banda_exchange_alias/alias
+		if(scenario == "listener")
+			listener = new()
+			listener.listen(target)
+		if(scenario == "coal" || scenario == "held")
+			if(scenario == "coal")
+				new /obj/item/stack/sheet/mineral/coal(target, 1)
+			else
+				alias = new(target)
+				alias.stored_air = phase.invoke(CALLBACK(src, PROC_REF(exchange_modify), target, "read"))
+			var/datum/banda_atmos_safe/world_commands/world/executor = new()
+			executor.owner = phase
+			executor.run_args = list(list(target.banda_atmos_id, phase.ensure_binding(target).binding_version, 9, 700, CELL_VOLUME))
+			phase.run_callback(executor)
+		else
+			SSair.times_fired++
+			phase.run_tick(TRUE)
+		var/datum/banda_atmos_cell/cell = target.banda_atmos_cell
+		switch(scenario)
+			if("bare")
+				checks["bare_turf_exposure_needs_no_dm_air"] = !cell.cached_air && !cell.readonly_air && cell.read_air().moles[/datum/gas/nitrogen] == 17
+			if("listener")
+				checks["turf_signal_receives_live_air_and_keeps_direct_writes"] = listener.exposures == 1 && listener.seen_air == cell.cached_air && cell.read_air().moles[/datum/gas/nitrogen] == 19
+			if("damage")
+				checks["damaged_turf_still_queues_exposure"] = !!cell.cached_air && (target in SSair.atom_process) && (target.flags_1 & ATMOS_IS_PROCESSING_1)
+			if("coal")
+				checks["real_coal_can_create_air_without_preborrow"] = cell.read_air().moles[/datum/gas/carbon_dioxide] == 10
+			if("held")
+				checks["fire_effect_keeps_direct_writes_to_held_air"] = alias.fire_calls == 1 && alias.stored_air == cell.cached_air && cell.read_air().moles[/datum/gas/nitrogen] == 20
+		if(listener)
+			qdel(listener)
+		if(alias)
+			qdel(alias)
+		SSair.atom_process -= target
+		target.flags_1 &= ~ATMOS_IS_PROCESSING_1
+		qdel(phase)
+	return checks
+
+/// The shared helper must retain both LINDA archives, the cycle and activation, including immutable space.
+/datum/controller/subsystem/atmos_phase_test/proc/exchange_spawn_after_replacement(turf/open/target)
+	target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+	target.temperature = 325
+	target.atmos_spawn_air("[GAS_CO2]=10;[TURF_TEMPERATURE(700)]")
+	return target
+
+/datum/controller/subsystem/atmos_phase_test/proc/exchange_spawn_checks()
+	var/list/checks = list()
+	var/index = 0
+	for(var/mixture_kind in list("floor", "space", "replacement"))
+		var/list/observed = list()
+		for(var/backend in list("dm", "rust"))
+			var/turf/open/target = floor_at(220 + index++, 190)
+			if(mixture_kind == "space")
+				target = target.ChangeTurf(/turf/open/space)
+			else
+				target.air.set_gas(/datum/gas/nitrogen, 17)
+				target.air.temperature = 300
+				target.air.archive()
+			target.temperature = 325
+			var/datum/banda_atmos_phase/world_adapter/phase
+			if(backend == "rust")
+				phase = new("bandastation_atmos.dll")
+				SSair.native_atmos = phase
+				phase.register_batch(list(target))
+				phase.native(18, list(), list())
+				phase.native(30)
+				phase.initializing = FALSE
+			if(mixture_kind == "replacement")
+				if(phase)
+					target = phase.invoke(CALLBACK(src, PROC_REF(exchange_spawn_after_replacement), target))
+					phase.apply_frame()
+				else
+					target = exchange_spawn_after_replacement(target)
+			else
+				target.atmos_spawn_air("[GAS_CO2]=10;[TURF_TEMPERATURE(700)]")
+			var/datum/gas_mixture/air = target.air
+			var/cycle = target.archived_cycle
+			var/terrain_archive = target.temperature_archived
+			var/active = (target in SSair.active_turfs)
+			if(phase)
+				var/datum/banda_atmos_cell/cell = target.banda_atmos_cell
+				air = cell.read_air()
+				var/list/metadata = cell.read_metadata()
+				cycle = metadata[3]
+				terrain_archive = metadata[2]
+				active = metadata[6]
+			observed[backend] = list("packet" = banda_atmos_full_packet(air), "cycle" = cycle, "terrain_archive" = terrain_archive, "active" = !!active)
+			if(phase)
+				qdel(phase)
+		checks["[mixture_kind]_spawn_full_state_matches_dm"] = json_encode(observed["dm"]["packet"]) == json_encode(observed["rust"]["packet"])
+		observed["dm"] -= "packet"
+		observed["rust"] -= "packet"
+		log_world("BANDA_ATMOS_SPAWN_META [mixture_kind]: [json_encode(observed)]")
+		checks["[mixture_kind]_spawn_archive_cycle_and_activation_match_dm"] = json_encode(observed["dm"]) == json_encode(observed["rust"]) && observed["rust"]["cycle"] == SSair.times_fired
+	return checks

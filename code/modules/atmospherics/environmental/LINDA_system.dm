@@ -107,6 +107,8 @@
 	UNSETEMPTY(atmos_adjacent_turfs)
 	src.atmos_adjacent_turfs = atmos_adjacent_turfs
 	SEND_SIGNAL(src, COMSIG_TURF_CALCULATED_ADJACENT_ATMOS)
+	// BANDASTATION ADDITION - Publish initialization geometry to the native solver.
+	SSair.native_atmos?.topology_rebuilt(src)
 
 /turf/proc/immediate_calculate_adjacent_turfs()
 	LAZYINITLIST(src.atmos_adjacent_turfs)
@@ -119,7 +121,7 @@
 
 		//Can you and me form a deeper relationship, or is this just a passing wind
 		// (direction & (UP | DOWN)) is just "is this vertical" by the by
-		if(canpass && CANATMOSPASS(current_turf, src, (direction & (UP|DOWN))) && current_turf.air)
+		if(canpass && CANATMOSPASS(current_turf, src, (direction & (UP|DOWN))) && current_turf.has_turf_air()) // BANDASTATION EDIT - Rust owns the gas.
 			LAZYINITLIST(current_turf.atmos_adjacent_turfs)
 			atmos_adjacent_turfs[current_turf] = TRUE
 			current_turf.atmos_adjacent_turfs[src] = TRUE
@@ -133,6 +135,8 @@
 	UNSETEMPTY(atmos_adjacent_turfs)
 	src.atmos_adjacent_turfs = atmos_adjacent_turfs
 	SEND_SIGNAL(src, COMSIG_TURF_CALCULATED_ADJACENT_ATMOS)
+	// BANDASTATION ADDITION - Publish runtime geometry, including removed door/multiz links.
+	SSair.native_atmos?.topology_rebuilt(src)
 
 /**
  * returns a list of adjacent turfs that can share air with this one.
@@ -210,11 +214,18 @@
 	local_turf.atmos_spawn_air(text)
 
 /turf/open/atmos_spawn_air(text)
-	if(!text || !air)
+	if(!text || !has_turf_air()) // BANDASTATION EDIT - Native gas has no turf.air mirror.
 		return
+	// BANDASTATION ADDITION START - All gas-producing items use the same safe native API.
+	if(SSair.native_atmos && banda_atmos_id && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, TYPE_PROC_REF(/atom, atmos_spawn_air), text))
+	var/datum/gas_mixture/working_air = get_mutable_air()
+	if(!working_air)
+		return
+	// BANDASTATION ADDITION END
 
 	var/datum/gas_mixture/turf_mixture = SSair.parse_gas_string(text, /datum/gas_mixture/turf)
 
-	air.merge(turf_mixture)
+	working_air.merge(turf_mixture) // BANDASTATION EDIT
 	archive()
 	SSair.add_to_active(src)

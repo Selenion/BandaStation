@@ -1,0 +1,198 @@
+// Local integration only: real 32-bit DLL, asynchronous native work, real game effects.
+SUBSYSTEM_DEF(atmos_phase_test)
+	name = "Native atmosphere phase integration"
+	init_stage = INITSTAGE_LAST
+	ss_flags = SS_NO_FIRE
+	dependencies = list(/datum/controller/subsystem/ticker)
+
+/datum/controller/subsystem/atmos_phase_test/PreInit()
+	Master.random_seed = 29051994
+	rand_seed(Master.random_seed)
+
+/datum/controller/subsystem/atmos_phase_test/Initialize()
+	Master.sleep_offline_after_initializations = FALSE
+	// The fixture supplies a closed graph; ordinary SSair must not rebuild or process it concurrently.
+	SSair.can_fire = FALSE
+	SSticker.start_immediately = TRUE
+	SSticker.delay_end = TRUE
+	SSticker.OnRoundstart(CALLBACK(src, PROC_REF(capture)))
+	return SS_INIT_SUCCESS
+
+/obj/item/wrench/banda_phase_probe
+	var/fire_calls = 0
+
+/obj/item/wrench/banda_phase_probe/fire_act(exposed_temperature, exposed_volume)
+	fire_calls++
+	return ..()
+
+var/global/banda_phase_callback_calls = 0
+
+/datum/banda_atmos_safe/phase_test/on_run(turf/open/target)
+	banda_phase_callback_calls++
+	var/datum/gas_mixture/air = get_turf_air(target)
+	if(air)
+		air.adjust_gas(/datum/gas/nitrogen, 7)
+
+/datum/banda_atmos_safe/nested_phase_test/on_run(turf/open/target)
+	var/datum/gas_mixture/air = get_turf_air(target)
+	if(!air)
+		return
+	air.adjust_gas(/datum/gas/nitrogen, 1)
+	var/datum/banda_atmos_safe/phase_test/inner = new()
+	inner.invoke_async(owner, target)
+	air.adjust_gas(/datum/gas/nitrogen, 1)
+	var/datum/gas_mixture/released = new()
+	released.temperature = T20C
+	released.set_gas(/datum/gas/oxygen, 2)
+	target.assume_air(released)
+	var/datum/gas_mixture/detached = target.banda_atmos_cell.read_air()
+	detached.adjust_gas(/datum/gas/nitrogen, 100)
+
+/datum/controller/subsystem/atmos_phase_test/proc/floor_at(x, y = 10, z = 1)
+	// Keep hot fixtures away from map edges: original DM conduction expects cardinal neighbors.
+	var/turf/open/target = locate(10 + x, y, z)
+	target = target.ChangeTurf(/turf/open/floor/iron)
+	target.thermal_conductivity = 0
+	for(var/direction in GLOB.cardinals)
+		var/turf/neighbor = get_step(target, direction)
+		neighbor.thermal_conductivity = 0
+	for(var/atom/movable/thing in target)
+		qdel(thing)
+	target.atmos_adjacent_turfs = list()
+	target.air.moles.Cut()
+	target.air.moles_archive.Cut()
+	return target
+
+/datum/controller/subsystem/atmos_phase_test/proc/capture()
+	var/datum/banda_atmos_phase/phase = new("bandastation_atmos.dll")
+	var/list/scenarios = json_decode(file2text("phase-cases.json"))
+	var/list/output = list()
+	var/index = 0
+	for(var/list/scenario in scenarios)
+		index++
+		var/turf/open/target = floor_at(index)
+		target.air.temperature = scenario["temperature"]
+		for(var/list/pair in scenario["gases"])
+			target.air.set_gas(gas_id2path(pair[1]), pair[2])
+		var/obj/item/wrench/banda_phase_probe/item = new(target)
+		var/obj/item/wrench/protected_item = new(target)
+		protected_item.resistance_flags |= FREEZE_PROOF
+		var/mob/living/carbon/human/person
+		if(scenario["person"])
+			person = new(target)
+			person.bodytemperature = scenario["bodytemperature"]
+			if(scenario["cold_resistant"])
+				ADD_TRAIT(person, TRAIT_RESISTCOLD, "atmos_phase_test")
+		if(scenario["permafrost"])
+			target.MakeSlippery(TURF_WET_PERMAFROST, 10 SECONDS)
+		var/obj/item/stack/sheet/mineral/coal/coal
+		if(scenario["coal"])
+			coal = new(target, scenario["coal"])
+		var/datum/banda_atmos_cell/cell = phase.bind(target)
+		// Golden cases isolate one calculation, matching the synchronous world adapter.
+		// External writes during await are exercised separately by mechanism_checks().
+		phase.run_tick(TRUE)
+		var/list/state = cell.read_packet()
+		var/list/gases = list()
+		for(var/gas in target.air.moles)
+			gases += list(list(GLOB.meta_gas_info[META_GAS_ID][gas], num2text(target.air.moles[gas], 9)))
+		var/datum/component/wet_floor/wet_floor = target.GetComponent(/datum/component/wet_floor)
+		output += list(list(
+			"id" = scenario["id"], "flags" = state[length(state)],
+			"temperature" = num2text(target.air.temperature, 9), "gases" = gases,
+			"native_hotspot" = state[length(state) - 3],
+			"hotspot_temperature" = state[length(state) - 3] ? num2text(state[length(state) - 2], 9) : null,
+			"hotspot_volume" = state[length(state) - 3] ? num2text(state[length(state) - 1], 9) : null,
+			"wet_strength" = wet_floor?.highest_strength || 0,
+			"item_frozen" = HAS_TRAIT(item, TRAIT_FROZEN),
+			"protected_item_frozen" = HAS_TRAIT(protected_item, TRAIT_FROZEN),
+			"person_freon" = person ? !!person.has_status_effect(/datum/status_effect/freon) : null,
+			"fire_calls" = item.fire_calls,
+		))
+		qdel(cell)
+		qdel(item)
+		qdel(protected_item)
+		if(person)
+			qdel(person)
+		if(coal && !QDELETED(coal))
+			qdel(coal)
+	qdel(phase)
+	var/list/checks = mechanism_checks()
+	var/list/networks = network_checks()
+	var/list/inheritance = inheritance_check()
+	var/list/bindings = binding_checks()
+	var/list/deferred = deferred_checks()
+	var/list/api = api_world_checks()
+	var/list/contacts = contact_world_checks()
+	var/list/debug = debug_world_checks()
+	var/list/exchange = exchange_world_checks()
+	var/list/exchange_error = exchange_error_contract()
+	var/list/exchange_effects = exchange_effect_checks()
+	var/list/exchange_spawn = exchange_spawn_checks()
+	WRITE_FILE(file("phase-output.json"), json_encode(list("byond" = "[world.byond_version].[world.byond_build]", "startup_seed" = num2text(Master.random_seed, 9), "cases" = output, "checks" = checks, "networks" = networks, "inheritance" = inheritance, "bindings" = bindings, "deferred" = deferred, "api" = api, "contacts" = contacts, "debug" = debug, "exchange" = exchange, "exchange_error" = exchange_error, "exchange_effects" = exchange_effects, "exchange_spawn" = exchange_spawn)))
+	log_world("BANDA_ATMOS_PHASE_INTEGRATION_COMPLETE")
+	shutdown()
+
+/datum/controller/subsystem/atmos_phase_test/proc/mechanism_checks()
+	var/list/checks = list()
+	var/datum/banda_atmos_phase/phase = new("bandastation_atmos.dll")
+	var/turf/open/target = floor_at(30)
+	target.air.temperature = T20C
+	target.air.set_gas(/datum/gas/nitrogen, 10)
+	var/datum/banda_atmos_cell/cell = phase.bind(target)
+	var/datum/gas_mixture/snapshot = cell.read_air()
+	INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick))
+	var/was_running = phase.running
+	var/datum/banda_atmos_safe/phase_test/callback = new()
+	callback.invoke_async(phase, target)
+	var/datum/gas_mixture/released = new()
+	released.temperature = T20C
+	released.set_gas(/datum/gas/oxygen, 3)
+	target.assume_air(released)
+	while(phase.running || phase.processing)
+		stoplag(1)
+	var/datum/gas_mixture/after = cell.read_air()
+	checks["concurrent_write_exercised"] = was_running
+	checks["release_not_lost"] = after.moles[/datum/gas/oxygen] == 3
+	checks["safe_callback_applied_once"] = banda_phase_callback_calls == 1 && after.moles[/datum/gas/nitrogen] == 17
+	checks["detached_snapshot_unchanged"] = snapshot.moles[/datum/gas/nitrogen] == 10 && !snapshot.moles[/datum/gas/oxygen]
+	var/list/commands = list()
+	phase.native(5, commands)
+	checks["commands_not_replayed"] = !length(commands)
+	var/datum/banda_atmos_safe/nested_phase_test/nested = new()
+	nested.invoke_async(phase, target)
+	after = cell.read_air()
+	checks["nested_callbacks_share_air"] = after.moles[/datum/gas/nitrogen] == 26 && banda_phase_callback_calls == 2
+	checks["release_inside_callback_not_lost"] = after.moles[/datum/gas/oxygen] == 5
+	qdel(phase)
+	phase = new("bandastation_atmos.dll")
+	target = floor_at(31)
+	target.air.temperature = 190
+	target.air.set_gas(/datum/gas/water_vapor, 1)
+	cell = phase.bind(target)
+	var/old_id = cell.native_id
+	var/old_version = cell.binding_version
+	INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick))
+	target = target.ChangeTurf(/turf/open/floor/wood)
+	target.atmos_adjacent_turfs = list()
+	target.air.moles.Cut()
+	target.air.set_gas(/datum/gas/nitrogen, 999)
+	while(phase.running || phase.processing)
+		stoplag(1)
+	checks["replacement_not_overwritten"] = target.air.moles[/datum/gas/nitrogen] == 999 && target.banda_atmos_cell == cell && phase.cells[old_id] == cell && cell.binding_version == old_version + 1
+	checks["old_freeze_not_applied"] = !target.GetComponent(/datum/component/wet_floor)
+	qdel(phase)
+	phase = new("bandastation_atmos.dll")
+	target = floor_at(32)
+	target.air.set_gas(/datum/gas/nitrogen, 10)
+	phase.bind(target)
+	INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick))
+	released = new()
+	released.temperature = T20C
+	released.set_gas(/datum/gas/oxygen, 4)
+	target.assume_air(released)
+	qdel(phase)
+	stoplag(2)
+	checks["owner_closed_during_work"] = !target.banda_atmos_cell
+	checks["closing_preserves_external_gas"] = target.air.moles[/datum/gas/oxygen] == 4
+	return checks

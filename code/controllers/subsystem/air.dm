@@ -75,18 +75,22 @@ SUBSYSTEM_DEF(air)
 	msg += "RB:[round(cost_rebuilds,1)]|"
 	msg += "AJ:[round(cost_adjacent,1)]|"
 	msg += "} "
-	msg += "\n  Count:{AT:[active_turfs.len]|"
-	msg += "HS:[hotspots.len]|"
-	msg += "EG:[excited_groups.len]|"
-	msg += "HP:[high_pressure_delta.len]|"
-	msg += "SC:[active_super_conductivity.len]|"
+	// BANDASTATION EDIT START - Read native processing counts without creating gas caches.
+	var/list/native_counts = native_atmos && !native_atmos.initializing ? native_atmos.debug_state() : null
+	var/active_count = native_counts ? native_counts[1] : active_turfs.len
+	msg += "\n  Count:{AT:[active_count]|"
+	msg += "HS:[native_counts ? native_counts[2] : hotspots.len]|"
+	msg += "EG:[native_counts ? native_counts[3] : excited_groups.len]|"
+	msg += "HP:[native_counts ? native_counts[5] : high_pressure_delta.len]|"
+	msg += "SC:[native_counts ? native_counts[4] : active_super_conductivity.len]|"
+	// BANDASTATION EDIT END
 	msg += "PN:[networks.len]|"
 	msg += "AM:[atmos_machinery.len]|"
 	msg += "AO:[atom_process.len]|"
 	msg += "RB:[rebuild_queue.len]|"
 	msg += "EP:[expansion_queue.len]|"
 	msg += "AJ:[adjacent_rebuild.len]|"
-	msg += "AT/MS:[round((cost ? active_turfs.len/cost : 0),0.1)]"
+	msg += "AT/MS:[round((cost ? active_count/cost : 0),0.1)]" // BANDASTATION EDIT - Native active count.
 	msg += "}"
 	return ..()
 
@@ -102,6 +106,19 @@ SUBSYSTEM_DEF(air)
 	setup_turf_visuals()
 	process_adjacent_rebuild()
 	atmos_handbooks_init()
+	// BANDASTATION ADDITION START - Optional native environment solver; devices remain in DM.
+	var/library = CONFIG_GET(string/rust_atmos_library)
+	if(length(library))
+		try
+			native_atmos = new(library)
+			if(!native_atmos.native_ready || !native_atmos.initialize_world())
+				throw EXCEPTION(native_atmos.startup_error || "Native atmosphere initialization did not complete")
+		catch(var/exception/error)
+			can_fire = FALSE
+			log_world("Native atmosphere initialization failed: [error.name]")
+			QDEL_NULL(native_atmos)
+			return SS_INIT_FAILURE
+	// BANDASTATION ADDITION END
 	return SS_INIT_SUCCESS
 
 
@@ -155,6 +172,19 @@ SUBSYSTEM_DEF(air)
 		resumed = FALSE
 		currentpart = SSAIR_ACTIVETURFS
 
+	if(currentpart == SSAIR_ACTIVETURFS)
+		// BANDASTATION ADDITION START - Native tick includes hotspots, groups, pressure and conduction.
+		if(native_atmos)
+			timer = TICK_USAGE_REAL
+			native_atmos.run_tick()
+			cost_turfs = MC_AVERAGE(cost_turfs, TICK_DELTA_TO_MS(TICK_USAGE_REAL - timer))
+			cost_hotspots = 0
+			cost_groups = 0
+			cost_highpressure = 0
+			cost_superconductivity = 0
+			resumed = FALSE
+			currentpart = SSAIR_PROCESS_ATOMS
+		// BANDASTATION ADDITION END
 	if(currentpart == SSAIR_ACTIVETURFS)
 		timer = TICK_USAGE_REAL
 		if(!resumed)
@@ -231,6 +261,8 @@ SUBSYSTEM_DEF(air)
 	SStgui.update_uis(SSair) //Lightning fast debugging motherfucker
 
 /datum/controller/subsystem/air/Recover()
+	// BANDASTATION ADDITION - Retain the coordinate registry across subsystem recovery.
+	native_atmos = SSair.native_atmos
 	excited_groups = SSair.excited_groups
 	active_turfs = SSair.active_turfs
 	hotspots = SSair.hotspots
@@ -311,11 +343,20 @@ SUBSYSTEM_DEF(air)
 		currentrun.len--
 		if(!talk_to)
 			return
-		talk_to.process_exposure()
+		// BANDASTATION ADDITION START - Exposure effects may exchange gas with their turf.
+		if(native_atmos)
+			native_atmos.invoke(CALLBACK(talk_to, TYPE_PROC_REF(/atom, process_exposure)))
+		else
+			talk_to.process_exposure()
+		// BANDASTATION ADDITION END
 		if(MC_TICK_CHECK)
 			return
 
 /datum/controller/subsystem/air/proc/process_atmos_machinery(resumed = FALSE)
+	// BANDASTATION ADDITION START - Borrow equipment air once per non-sleeping SSair phase, including MC pauses.
+	if(native_atmos && !native_atmos.in_safe_callback)
+		return native_atmos.invoke(CALLBACK(src, PROC_REF(process_atmos_machinery), resumed), commit_on_error = TRUE)
+	// BANDASTATION ADDITION END
 	if (!resumed)
 		src.currentrun = atmos_machinery.Copy()
 	//cache for sanic speed (lists are references anyways)
@@ -473,6 +514,14 @@ SUBSYSTEM_DEF(air)
 
 ///Removes a turf from processing, and causes its excited group to clean up so things properly adapt to the change
 /datum/controller/subsystem/air/proc/remove_from_active(turf/open/T)
+	// BANDASTATION ADDITION START - Forward scheduling of native-owned atmosphere cells.
+	if(native_atmos && !native_atmos.initializing)
+		native_atmos.ensure_binding(T)?.control(3)
+		return
+	if(T?.banda_atmos_cell)
+		T.banda_atmos_cell.control(3)
+		return
+	// BANDASTATION ADDITION END
 	active_turfs -= T
 	if(currentpart == SSAIR_ACTIVETURFS)
 		currentrun -= T
@@ -488,6 +537,14 @@ SUBSYSTEM_DEF(air)
 
 ///Puts an active turf to sleep so it doesn't process. Do this without cleaning up its excited group.
 /datum/controller/subsystem/air/proc/sleep_active_turf(turf/open/T)
+	// BANDASTATION ADDITION START - Forward scheduling of native-owned atmosphere cells.
+	if(native_atmos && !native_atmos.initializing)
+		native_atmos.ensure_binding(T)?.control(2)
+		return
+	if(T?.banda_atmos_cell)
+		T.banda_atmos_cell.control(2)
+		return
+	// BANDASTATION ADDITION END
 	active_turfs -= T
 	if(currentpart == SSAIR_ACTIVETURFS)
 		currentrun -= T
@@ -499,7 +556,15 @@ SUBSYSTEM_DEF(air)
 
 ///Adds a turf to active processing, handles duplicates. Call this with blockchanges == TRUE if you want to nuke the assoc excited group
 /datum/controller/subsystem/air/proc/add_to_active(turf/open/activate, blockchanges = FALSE)
-	if(istype(activate) && activate.air)
+	// BANDASTATION ADDITION START - Forward scheduling of native-owned atmosphere cells.
+	if(native_atmos && !native_atmos.initializing && isopenturf(activate) && activate.has_turf_air())
+		native_atmos.ensure_binding(activate)?.control(blockchanges ? 1 : 0)
+		return
+	if(activate?.banda_atmos_cell && activate.has_turf_air())
+		activate.banda_atmos_cell.control(blockchanges ? 1 : 0)
+		return
+	// BANDASTATION ADDITION END
+	if(istype(activate) && activate.has_turf_air()) // BANDASTATION EDIT - Native gas need not have a DM cache.
 		activate.significant_share_ticker = 0
 		if(blockchanges && activate.excited_group) //This is used almost exclusivly for shuttles, so the excited group doesn't stay behind
 			activate.excited_group.garbage_collect() //Nuke it
@@ -861,7 +926,10 @@ GLOBAL_LIST_EMPTY(colored_images)
 /datum/controller/subsystem/air/ui_data(mob/user)
 	var/list/data = list()
 	data["excited_groups"] = list()
-	for(var/datum/excited_group/group in excited_groups)
+	// BANDASTATION EDIT START - Legacy groups stop receiving updates while Rust owns the world.
+	var/list/panel_groups = native_atmos && !native_atmos.initializing ? list() : excited_groups
+	for(var/datum/excited_group/group in panel_groups)
+	// BANDASTATION EDIT END
 		var/turf/T = group.turf_list[1]
 		var/area/target = get_area(T)
 		var/max = 0
@@ -884,6 +952,10 @@ GLOBAL_LIST_EMPTY(colored_images)
 	data["hotspots_size"] = hotspots.len
 	data["excited_size"] = excited_groups.len
 	data["conducting_size"] = active_super_conductivity.len
+	// BANDASTATION ADDITION START - Keep the existing panel backed by native groups.
+	if(native_atmos && !native_atmos.initializing)
+		native_atmos.debug_ui_data(data)
+	// BANDASTATION ADDITION END
 	data["frozen"] = can_fire
 	data["show_all"] = display_all_groups
 	data["fire_count"] = times_fired
@@ -909,6 +981,10 @@ GLOBAL_LIST_EMPTY(colored_images)
 			can_fire = !can_fire
 			return TRUE
 		if("toggle_show_group")
+			// BANDASTATION ADDITION START - Reject foreign/stale native presentation references.
+			if(native_atmos && !native_atmos.initializing)
+				return native_atmos.debug_toggle_group(params["group"])
+			// BANDASTATION ADDITION END
 			var/datum/excited_group/group = locate(params["group"])
 			if(!group)
 				return
@@ -921,6 +997,10 @@ GLOBAL_LIST_EMPTY(colored_images)
 				group.hide_turfs()
 			return TRUE
 		if("toggle_show_all")
+			// BANDASTATION ADDITION START - Native groups have no legacy DM simulation datum.
+			if(native_atmos && !native_atmos.initializing)
+				return native_atmos.debug_toggle_all()
+			// BANDASTATION ADDITION END
 			display_all_groups = !display_all_groups
 			for(var/datum/excited_group/group in excited_groups)
 				if(display_all_groups)

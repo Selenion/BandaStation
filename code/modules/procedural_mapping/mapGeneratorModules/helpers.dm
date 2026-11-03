@@ -13,8 +13,8 @@
 	for(var/turf/T in map)
 		SSair.remove_from_active(T)
 	for(var/turf/open/T in map)
-		if(T.air)
-			T.air = T.create_gas_mixture()
+		if(T.has_turf_air()) // BANDASTATION EDIT - A native cell has no eager DM mirror.
+			T.replace_turf_air(T.create_gas_mixture()) // BANDASTATION EDIT - Full replacement, including mixture class.
 		SSair.add_to_active(T, TRUE)
 
 /datum/map_generator_module/bottom_layer/massdelete

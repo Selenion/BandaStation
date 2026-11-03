@@ -97,6 +97,7 @@
 #include "vampire/_vampire.dme"
 #include "weapon/_weapon.dme"
 #include "world_topics/_world_topics.dme"
+#include "atmos_rust/_atmos_rust.dme"
 // --- MODULES END --- //
 
 // --- PRIME --- //

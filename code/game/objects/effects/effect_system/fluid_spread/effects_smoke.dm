@@ -289,11 +289,15 @@
  * - [chilly][/turf/open]: The open turf to chill
  */
 /datum/effect_system/fluid_spread/smoke/freezing/proc/chill_turf(turf/open/chilly)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(chill_turf), chilly))
+	// BANDASTATION ADDITION END
 	if(!istype(chilly))
 		return
 
-	if(chilly.air)
-		var/datum/gas_mixture/air = chilly.air
+	if(chilly.return_air()) // BANDASTATION EDIT - Atmosphere API.
+		var/datum/gas_mixture/air = chilly.return_air() // BANDASTATION EDIT - Atmosphere API.
 		if(!distcheck || get_dist(location, chilly) < blast) // Otherwise we'll get silliness like people using Nanofrost to kill people through walls with cold air
 			air.temperature = temperature
 

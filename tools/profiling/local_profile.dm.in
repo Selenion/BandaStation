@@ -1,0 +1,180 @@
+// Included only by generated local-profile.test.dme, never by tgstation.dme.
+
+/// Collect a bounded baseline with the ordinary master controller and DM systems.
+SUBSYSTEM_DEF(local_profile)
+	name = "Local profiling harness"
+	init_stage = INITSTAGE_LAST
+	ss_flags = SS_NO_FIRE
+	dependencies = list(/datum/controller/subsystem/ticker)
+
+/datum/controller/subsystem/local_profile/Initialize()
+	Master.sleep_offline_after_initializations = FALSE
+	SSticker.start_immediately = TRUE
+	SSticker.delay_end = TRUE
+	SSticker.OnRoundstart(CALLBACK(src, PROC_REF(measure)))
+	return SS_INIT_SUCCESS
+
+/datum/controller/subsystem/local_profile/PreInit()
+	Master.random_seed = 29051994
+	rand_seed(Master.random_seed)
+
+/// Separate warmup and sample windows; preserve raw native and subsystem data.
+/datum/controller/subsystem/local_profile/proc/measure()
+	set waitfor = FALSE
+	sleep(30 SECONDS)
+	var/rust_enabled = FALSE
+	#ifdef BANDA_ATMOS_CATALOG_SIGNATURE
+	rust_enabled = !!SSair.native_atmos && !SSair.native_atmos.initializing
+	#endif
+	if(rust_enabled != (world.params["profile-rust"] == "1"))
+		log_world("LOCAL_PROFILE_WRONG_BACKEND")
+		shutdown()
+		return
+	var/scenario = world.params["profile-scenario"] || "empty-station"
+	var/list/seeded_turfs = list()
+	if(scenario == "atmos-fire")
+		seeded_turfs = seed_fire()
+	var/list/incident = list()
+	var/obj/machinery/power/supermatter_crystal/sm
+	if(scenario == "sm-plasma")
+		sm = seed_sm(incident)
+		if(!sm || !length(incident["seeded_turfs"]))
+			log_world("LOCAL_PROFILE_NO_SM_INCIDENT")
+			shutdown()
+			return
+	var/start_unix = rustg_unix_timestamp()
+	var/list/start_atmos = atmos_state()
+	world.Profile(PROFILE_RESTART)
+	world.Profile(PROFILE_RESTART, type = "sendmaps")
+	var/start_time = world.time
+	var/start_real = REALTIMEOFDAY
+	var/list/start_fires = list()
+	for(var/datum/controller/subsystem/subsystem as anything in Master.subsystems)
+		start_fires[subsystem.type] = subsystem.times_fired
+	log_world("LOCAL_PROFILE_SAMPLE_BEGIN")
+	var/datum/weakref/sm_reference
+	if(sm)
+		sm_reference = WEAKREF(sm)
+		sm.force_delam()
+		sm = null
+	sleep(60 SECONDS)
+	world.Profile(PROFILE_STOP)
+	world.Profile(PROFILE_STOP, type = "sendmaps")
+	var/end_unix = rustg_unix_timestamp()
+	if(sm_reference)
+		incident["sm_deleted"] = !sm_reference.resolve()
+	WRITE_FILE(file("profile-procs.json"), world.Profile(PROFILE_REFRESH, format = "json"))
+	WRITE_FILE(file("profile-sendmaps.json"), world.Profile(PROFILE_REFRESH, type = "sendmaps", format = "json"))
+	var/list/subsystem_data = list()
+	for(var/datum/controller/subsystem/subsystem as anything in Master.subsystems)
+		subsystem_data += list(list(
+			"type" = "[subsystem.type]",
+			"name" = subsystem.name,
+			"cost_ms_rolling" = subsystem.cost,
+			"times_fired" = subsystem.times_fired - start_fires[subsystem.type],
+			"wait_ds" = subsystem.wait,
+			"tick_usage_rolling" = subsystem.tick_usage,
+			"tick_overrun_rolling" = subsystem.tick_overrun,
+		))
+	var/list/metadata = list(
+		"scenario" = scenario,
+		"rust_enabled" = rust_enabled,
+		"startup_seed" = num2text(Master.random_seed, 9),
+		"incident" = incident,
+		"atmos_start" = start_atmos,
+		"seeded_turfs" = seeded_turfs,
+		"sample_start_unix" = start_unix,
+		"sample_end_unix" = end_unix,
+		"byond" = "[world.byond_version].[world.byond_build]",
+		"map" = SSmapping.current_map.map_name,
+		"connected_clients" = length(GLOB.clients),
+		"warmup_seconds" = 30,
+		"sample_game_seconds" = (world.time - start_time) / 10,
+		"sample_wall_seconds" = (REALTIMEOFDAY - start_real) / 10,
+		"fps" = world.fps,
+		"map_cpu" = world.map_cpu,
+		"subsystems" = subsystem_data,
+		"atmos" = atmos_state(),
+	)
+	WRITE_FILE(file("profile-metadata.json"), json_encode(metadata))
+	log_world("LOCAL_PROFILE_SAMPLE_END")
+	shutdown()
+
+/datum/controller/subsystem/local_profile/proc/atmos_state()
+	var/list/state = list(
+		"active_turfs" = length(SSair.active_turfs), "hotspots" = length(SSair.hotspots),
+		"excited_groups" = length(SSair.excited_groups), "pipenets" = length(SSair.networks),
+		"cost_turfs" = SSair.cost_turfs, "cost_hotspots" = SSair.cost_hotspots,
+		"cost_pipenets" = SSair.cost_pipenets, "cost_atmos_machinery" = SSair.cost_atmos_machinery,
+	)
+	#ifdef BANDA_ATMOS_CATALOG_SIGNATURE
+	if(SSair.native_atmos && !SSair.native_atmos.initializing)
+		var/list/counts = SSair.native_atmos.debug_state()
+		state["active_turfs"] = counts[1]
+		state["hotspots"] = counts[2]
+		state["excited_groups"] = counts[3]
+	#endif
+	return state
+
+/// A fixed local fire incident; the initial cell coordinates are recorded.
+/datum/controller/subsystem/local_profile/proc/seed_fire()
+	#ifdef BANDA_ATMOS_CATALOG_SIGNATURE
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(seed_fire)))
+	#endif
+	var/list/station_levels = SSmapping.levels_by_trait(ZTRAIT_STATION)
+	var/station_z = station_levels[1]
+	var/list/seeded = list()
+	for(var/x in 100 to 150)
+		for(var/y in 100 to 150)
+			var/turf/open/floor/cell = locate(x, y, station_z)
+			if(!isfloorturf(cell) || cell.density)
+				continue
+			var/datum/gas_mixture/air = cell.return_air()
+			if(!air)
+				continue
+			air.moles.Cut()
+			air.set_gas(/datum/gas/oxygen, 100)
+			air.set_gas(/datum/gas/nitrogen, 300)
+			air.set_gas(/datum/gas/plasma, 20)
+			air.temperature = 700
+			SSair.add_to_active(cell)
+			seeded += list(list(x, y, station_z))
+			if(length(seeded) >= 64)
+				return seeded
+	return seeded
+
+/// Force the real explosive delamination after seeding the existing main engine's chamber.
+/// Countdown is excluded: both backends receive the same explosion and initial plasma input.
+/datum/controller/subsystem/local_profile/proc/seed_sm(list/incident)
+	#ifdef BANDA_ATMOS_CATALOG_SIGNATURE
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(seed_sm), incident))
+	#endif
+	var/obj/machinery/power/supermatter_crystal/sm = GLOB.main_supermatter_engine
+	if(QDELETED(sm) || !isturf(sm.loc))
+		return
+	var/list/seeded = list()
+	for(var/turf/open/floor/cell in get_area(sm))
+		var/datum/gas_mixture/air = cell.return_air()
+		if(!air)
+			continue
+		air.moles.Cut()
+		air.set_gas(/datum/gas/plasma, 300)
+		air.temperature = 1200
+		SSair.add_to_active(cell)
+		seeded += list(list(cell.x, cell.y, cell.z))
+	var/turf/center = get_turf(sm)
+	sm.absorbed_gasmix = center.return_air().copy()
+	sm.calculate_gases()
+	sm.internal_energy = 5000
+	sm.set_delam(SM_DELAM_PRIO_ADMIN, /datum/sm_delam/explosive)
+	incident["seeded_turfs"] = seeded
+	incident["center"] = list(center.x, center.y, center.z)
+	incident["plasma_moles_per_turf"] = 300
+	incident["temperature"] = 1200
+	incident["internal_energy"] = sm.internal_energy
+	incident["gas_heat_power_generation"] = sm.gas_heat_power_generation
+	incident["strategy"] = "[sm.delamination_strategy.type]"
+	incident["explosion_radius"] = sm.delamination_strategy.calculate_explosion(sm)
+	return sm

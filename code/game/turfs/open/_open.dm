@@ -528,13 +528,18 @@
 	init_immediate_calculate_adjacent_turfs()
 
 /turf/open/GetHeatCapacity()
-	. = air.heat_capacity()
+	. = get_readonly_air().heat_capacity() // BANDASTATION EDIT - Native gas access.
 
 /turf/open/GetTemperature()
-	. = air.temperature
+	. = get_readonly_air().temperature // BANDASTATION EDIT - Native gas access.
 
 /turf/open/TakeTemperature(temp)
-	air.temperature += temp
+	// BANDASTATION ADDITION START - Preserve the original energy update inside a safe phase.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, TYPE_PROC_REF(/turf, TakeTemperature), temp))
+	// BANDASTATION ADDITION END
+	var/datum/gas_mixture/current_air = get_mutable_air() // BANDASTATION ADDITION
+	current_air.temperature += temp // BANDASTATION EDIT
 	air_update_turf(FALSE, FALSE)
 
 /turf/open/proc/freeze_turf()

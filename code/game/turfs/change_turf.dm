@@ -45,7 +45,7 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 		var/datum/component/wet_floor/new_wet_floor_component = copy_to_turf.AddComponent(/datum/component/wet_floor)
 		new_wet_floor_component.InheritComponent(slip)
 	if (copy_air)
-		copy_to_turf.air.copy_from(air)
+		copy_to_turf.copy_air(get_readonly_air()) // BANDASTATION EDIT - Preserve copy_from through the native API.
 
 //wrapper for ChangeTurf()s that you want to prevent/affect without overriding ChangeTurf() itself
 /turf/proc/TerraformTurf(path, new_baseturf, flags)
@@ -54,6 +54,9 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 // Creates a new turf
 // new_baseturfs can be either a single type or list of types, formated the same as baseturfs. see turf.dm
 /turf/proc/ChangeTurf(path, list/new_baseturfs, flags)
+	// BANDASTATION ADDITION START - Match the caller's air-restoration branch before resolving baseturf placeholders.
+	var/defer_native_rebind = isopenturf(src) && ispath(path, /turf/open) && (flags & CHANGETURF_INHERIT_AIR)
+	// BANDASTATION ADDITION END
 	switch(path)
 		if(null)
 			return
@@ -75,6 +78,10 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 	if(flags & CHANGETURF_SKIP)
 		return new path(src)
 
+	// BANDASTATION ADDITION START - Install the versioned replacement handler even for a passive cell.
+	if(SSair.native_atmos && (!SSair.native_atmos.initializing || banda_atmos_id))
+		SSair.native_atmos.ensure_binding(src)
+	// BANDASTATION ADDITION END
 	var/old_lighting_object = lighting_object
 	var/old_lighting_corner_NE = lighting_corner_NE
 	var/old_lighting_corner_SE = lighting_corner_SE
@@ -207,12 +214,16 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 	for(var/mob/living/target in new_turf.contents)
 		target.refresh_gravity()
 
+	// BANDASTATION ADDITION START - Finish native rebinding after DM has initialized the new turf.
+	if(!defer_native_rebind)
+		new_turf.banda_atmos_cell?.turf_change_finished()
+	// BANDASTATION ADDITION END
 	return new_turf
 
 /turf/open/ChangeTurf(path, list/new_baseturfs, flags) //Resist the temptation to make this default to keeping air.
 	if ((flags & CHANGETURF_INHERIT_AIR) && ispath(path, /turf/open))
 		var/datum/gas_mixture/stashed_air = new()
-		stashed_air.copy_from(air)
+		stashed_air.copy_from(get_readonly_air()) // BANDASTATION EDIT - The authoritative mixture may be native.
 		var/stashed_state = excited
 		var/datum/excited_group/stashed_group = excited_group
 		. = ..() //If path == type this will return us, don't bank on making a new type
@@ -229,6 +240,9 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 		if(stashed_group)
 			if(stashed_group.should_display || SSair.display_all_groups)
 				stashed_group.display_turf(new_turf)
+		// BANDASTATION ADDITION START - Preserve the native cell after DM restores inherited air.
+		new_turf.banda_atmos_cell?.turf_change_finished()
+		// BANDASTATION ADDITION END
 	else
 		if(excited || excited_group)
 			SSair.remove_from_active(src) //Clean up wall excitement, and refresh excited groups
@@ -254,6 +268,10 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 
 //////Assimilate Air//////
 /turf/open/proc/Assimilate_Air()
+	// BANDASTATION ADDITION START - Neighbors are borrowed together for the original averaging operation.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(Assimilate_Air)))
+	// BANDASTATION ADDITION END
 	var/turf_count = LAZYLEN(atmos_adjacent_turfs)
 	if(blocks_air || !turf_count) //if there weren't any open turfs, no need to update.
 		return
@@ -267,7 +285,7 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 
 	for(var/turf/open/turf in turf_list)
 		//Cache?
-		var/datum/gas_mixture/turf/mix = turf.air
+		var/datum/gas_mixture/turf/mix = turf.return_air() // BANDASTATION EDIT - Safe API access.
 		//"borrowing" this code from merge(), I need to play with the temp portion. Lets expand it out
 		//temperature = (giver.temperature * giver_heat_capacity + temperature * self_heat_capacity) / combined_heat_capacity
 		var/capacity = mix.heat_capacity()
@@ -283,7 +301,7 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 		cached_total_moles[id] /= turflen
 
 	for(var/turf/open/turf in turf_list)
-		turf.air.copy_from(total)
+		turf.copy_air(total) // BANDASTATION EDIT - Commit all affected native mixtures.
 		turf.update_visuals()
 		SSair.add_to_active(turf)
 

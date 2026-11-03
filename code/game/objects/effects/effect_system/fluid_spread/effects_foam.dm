@@ -284,6 +284,10 @@
 	RemoveElement(/datum/element/atmos_sensitive)
 
 /obj/effect/particle_effect/fluid/foam/firefighting/process()
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, TYPE_PROC_REF(/datum, process)))
+	// BANDASTATION ADDITION END
 	..()
 
 	var/turf/open/location = loc
@@ -291,11 +295,11 @@
 		return
 
 	var/obj/effect/hotspot/hotspot = locate() in location
-	if(!(hotspot && location.air))
+	if(!(hotspot && location.return_air())) // BANDASTATION EDIT - Atmosphere API.
 		return
 
 	QDEL_NULL(hotspot)
-	var/datum/gas_mixture/air = location.air
+	var/datum/gas_mixture/air = location.return_air() // BANDASTATION EDIT - Atmosphere API.
 	if (air.moles[/datum/gas/plasma])
 		var/scrub_amt = min(30, air.moles[/datum/gas/plasma]) //Absorb some plasma
 		air.adjust_gas(/datum/gas/plasma, -scrub_amt)
@@ -445,9 +449,17 @@
 		return
 
 	location.ClearWet()
+	// BANDASTATION ADDITION START - Initialization can also change native gas.
+	if(SSair.native_atmos)
+		SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(reset_atmosphere), location))
+	else
+		reset_atmosphere(location)
+
+/obj/structure/foamedmetal/resin/proc/reset_atmosphere(turf/open/location)
+	// BANDASTATION ADDITION END
 	location.temperature = T20C
-	if(location.air)
-		var/datum/gas_mixture/air = location.air
+	if(location.return_air()) // BANDASTATION EDIT - Atmosphere API.
+		var/datum/gas_mixture/air = location.return_air() // BANDASTATION EDIT - Atmosphere API.
 		air.temperature = T20C
 		for(var/obj/effect/hotspot/fire in location)
 			qdel(fire)

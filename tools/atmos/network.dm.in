@@ -1,0 +1,159 @@
+// Numeric process_cell/group oracle; actual procedures are extracted from Banda source.
+// Fixtures have zero thermal conductivity, ordinary mutable air, and no combustible gases.
+#define LAZYLEN(value) length(value)
+#define LAZYADD(L, I) L ||= list(); L += I;
+#define MC_TICK_CHECK 0
+#define INITIALIZED_1 1
+#define SSAIR_ACTIVETURFS 3
+#define SSAIR_EXCITEDGROUPS 5
+#define LINDA_CYCLE_ARCHIVE(turf) turf.air.archive(); turf.archived_cycle = SSair.times_fired; turf.temperature_archived = turf.temperature;
+
+/datum/oracle_air
+	var/list/active_turfs = list()
+	var/list/excited_groups = list()
+	var/list/currentrun = list()
+	var/list/high_pressure_delta = list()
+	var/list/planetary = list()
+	var/list/queued_for_activation
+	var/display_all_groups = FALSE
+	var/map_loading = FALSE
+	var/currentpart = SSAIR_ACTIVETURFS
+	var/times_fired = 0
+
+/turf
+	var/temperature = TCMB
+	var/archived_cycle = 0
+	var/current_cycle = 0
+	var/temperature_archived = TCMB
+	var/flags_1 = INITIALIZED_1
+	var/requires_activation = FALSE
+	var/list/atmos_adjacent_turfs = list()
+
+/turf/open
+	var/datum/gas_mixture/air
+	var/datum/excited_group/excited_group
+	var/excited = FALSE
+	var/active_hotspot
+	var/significant_share_ticker = 0
+	var/planetary_atmos = FALSE
+	var/initial_gas_mix
+	var/run_later = FALSE
+	var/pressure_difference = 0
+	var/pressure_direction = 0
+
+/turf/open/proc/update_visuals()
+	return
+/turf/proc/process_cell(fire_count)
+	return
+/turf/open/proc/consider_superconductivity(starting)
+	return FALSE
+/turf/open/proc/temperature_expose(datum/gas_mixture/air, exposed_temperature)
+	return
+/turf/open/proc/archive()
+	LINDA_CYCLE_ARCHIVE(src)
+
+/datum/excited_group/proc/display_turf(turf/target)
+	return
+/datum/excited_group/proc/display_turfs()
+	return
+/datum/excited_group/proc/hide_turfs()
+	return
+
+world
+	maxx = 8
+	maxy = 8
+	maxz = 3
+	fps = 1
+
+/world/New()
+	..()
+	oracle_setup()
+	oracle_bits = 3
+	var/list/output = list()
+	var/list/scenarios = json_decode(file2text("cases.json"))
+	for(var/list/scenario in scenarios)
+		SSair.active_turfs = list()
+		SSair.excited_groups = list()
+		SSair.high_pressure_delta = list()
+		SSair.times_fired = 0
+		var/list/cells = list()
+		var/list/gases = oracle_gases()
+		var/datum/gas_mixture/immutable/space/shared_space = new
+		for(var/list/node in scenario["nodes"])
+			var/list/coordinates = node["coordinates"]
+			var/turf/open/cell = new(locate(coordinates[1], coordinates[2], coordinates[3]))
+			if(node["kind"] == 1)
+				cell.air = shared_space
+				cell.run_later = TRUE
+			else
+				cell.air = new /datum/gas_mixture/turf(CELL_VOLUME)
+				cell.air.temperature = node["temperature"]
+				for(var/list/pair in node["gases"])
+					cell.air.moles[gases[pair[1] + 1]] = pair[2]
+				if(node["kind"] == 2)
+					var/datum/gas_mixture/immutable/planetary/fixed_mix = new
+					fixed_mix.initial_gas = cell.air.moles.Copy()
+					fixed_mix.initial_temperature = cell.air.temperature
+					fixed_mix.garbage_collect()
+					cell.air = fixed_mix
+			var/list/planet = node["planetary"]
+			if(planet)
+				cell.planetary_atmos = TRUE
+				cell.initial_gas_mix = "[length(cells)]"
+				var/datum/gas_mixture/immutable/planetary/atmosphere = new
+				atmosphere.initial_temperature = planet["temperature"]
+				for(var/list/pair in planet["gases"])
+					atmosphere.initial_gas[gases[pair[1] + 1]] = pair[2]
+				atmosphere.garbage_collect()
+				SSair.planetary[cell.initial_gas_mix] = atmosphere
+			cells += cell
+		for(var/index in 1 to length(cells))
+			var/turf/open/cell = cells[index]
+			var/list/node = scenario["nodes"][index]
+			for(var/neighbor in node["neighbors"])
+				cell.atmos_adjacent_turfs += cells[neighbor + 1]
+		for(var/index in scenario["active"])
+			SSair.add_to_active(cells[index + 1])
+		var/list/states = list()
+		for(var/tick in 1 to scenario["ticks"])
+			SSair.times_fired++
+			SSair.currentpart = SSAIR_ACTIVETURFS
+			SSair.process_active_turfs()
+			SSair.currentpart = SSAIR_EXCITEDGROUPS
+			SSair.process_excited_groups()
+			states += list(network_state(cells))
+			for(var/turf/open/cell as anything in SSair.high_pressure_delta)
+				cell.pressure_difference = 0
+			SSair.high_pressure_delta.Cut()
+		output += list(states)
+	text2file(json_encode(list("version"="[world.byond_version].[world.byond_build]", "cases"=output)), "dm-output.json")
+	shutdown()
+
+/proc/network_state(list/cells)
+	var/list/active = list()
+	for(var/cell in SSair.active_turfs)
+		active += cells.Find(cell) - 1
+	var/list/tiles = list()
+	for(var/turf/open/cell as anything in cells)
+		var/list/state = transport_state(cell.air)
+		var/list/results = list()
+		for(var/reaction in network_reactions())
+			var/value = cell.air.reaction_results[reaction]
+			results += list(isnull(value) ? null : num2text(value, 9))
+		state["results"] = results
+		state["archived_cycle"] = cell.archived_cycle
+		state["current_cycle"] = cell.current_cycle
+		state["ticker"] = cell.significant_share_ticker
+		state["excited"] = cell.excited
+		state["group"] = SSair.excited_groups.Find(cell.excited_group)
+		state["last_share"] = num2text(cell.air.last_share, 9)
+		state["pressure"] = num2text(cell.pressure_difference, 9)
+		state["direction"] = cell.pressure_direction
+		tiles += list(state)
+	var/list/groups = list()
+	for(var/datum/excited_group/group as anything in SSair.excited_groups)
+		var/list/members = list()
+		for(var/member in group.turf_list)
+			members += cells.Find(member) - 1
+		groups += list(list("members"=members,"breakdown"=group.breakdown_cooldown,"dismantle"=group.dismantle_cooldown))
+	return list("active"=active,"cells"=tiles,"groups"=groups)

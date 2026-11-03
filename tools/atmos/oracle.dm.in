@@ -1,0 +1,198 @@
+// Standalone test harness. Included only by generated tmp/atmos-oracle/oracle.dme.
+// Production react() procedures and mixture helpers are extracted verbatim.
+#define SECONDS * 10
+#define INVERSE(x) (1 / (x))
+#define QUANTIZE(x) round(x, MOLAR_ACCURACY)
+#define subtypesof(path) (typesof(path) - path)
+#define GLOBAL_LIST_INIT(name, value)
+#define CRASH(message) oracle_crash(message)
+#define stack_trace(message) oracle_crash(message)
+#define SEND_SIGNAL(source, signal) oracle_signals++
+#define COMSIG_GASMIX_REACTED 1
+#define TURF_WET_PERMAFROST 2
+#define prob(chance) oracle_probability(chance)
+#define isopenturf(target) istype(target, /turf/open)
+#define isatom(target) istype(target, /atom)
+#define isgroundlessturf(target) (oracle_bits & 4)
+#define isnoslipturf(target) (oracle_bits & 8)
+#define GAS_META /datum/gas_mixture::gas_meta
+
+var/oracle_bits = 0
+var/oracle_signals = 0
+var/list/oracle_effects = list()
+var/datum/oracle_globals/GLOB = new
+var/datum/oracle_air/SSair = new
+
+/datum
+	var/abstract_type
+
+/datum/oracle_globals
+	var/list/meta_gas_info
+
+/datum/oracle_air
+	var/list/gas_reactions
+
+/// Report a harness failure; Python also checks runtime output and result count.
+/proc/oracle_crash(message)
+	world.log << "ORACLE_FAILURE: [message]"
+	shutdown()
+
+/proc/oracle_probability(chance)
+	return chance == 10 ? !!(oracle_bits & 64) : !!(oracle_bits & 128)
+
+/proc/oracle_event(kind, a = 0, b = 0)
+	oracle_effects += list(list(kind, num2text(a, 9), num2text(b, 9)))
+
+/datum/gas_mixture
+	var/list/moles
+	var/list/moles_archive
+	var/static/list/gas_meta
+	var/temperature = TCMB
+	var/volume = CELL_VOLUME
+	var/list/reaction_results
+
+/datum/component/wet_floor
+	var/highest_strength = TURF_WET_PERMAFROST
+
+/turf/proc/freeze_turf()
+	oracle_event(1)
+	return !!(oracle_bits & 1)
+
+/turf/proc/GetComponent(component_type)
+	if(oracle_bits & 2)
+		return new /datum/component/wet_floor
+	return null
+
+/turf/proc/water_vapor_gas_act()
+	oracle_event(2)
+
+/turf/proc/hotspot_expose(temperature, volume)
+	oracle_event(3, temperature, volume)
+
+/turf/open
+
+/atom/proc/fire_nuclear_particle()
+	oracle_event(7)
+
+/datum/pipeline
+	var/list/members = list()
+
+/obj/effect/particle_effect/fluid/foam
+
+/obj/structure/foamedmetal/resin
+
+/datum/effect_system/fluid_spread/foam/metal/resin/halon
+
+/obj/item/stack/sheet/hot_ice/New()
+	..()
+	oracle_event(5)
+
+/proc/radiation_pulse(atom/location, max_range, threshold)
+	oracle_event(4, max_range, threshold)
+
+/proc/do_foam(amount, holder, location, foam_type)
+	oracle_event(6, amount)
+
+/proc/visible_hallucination_pulse(atom/location, radius, duration)
+	oracle_event(8, radius, duration)
+
+world
+	maxx = 1
+	maxy = 1
+	maxz = 1
+	fps = 1
+
+/// Run a complete file in one process so there is no process startup per case.
+/world/New()
+	..()
+	oracle_setup()
+	var/list/cases = json_decode(file2text("cases.json"))
+	var/list/output = list()
+	var/list/standard_paths = subtypesof(/datum/gas_reaction/standard)
+	var/list/electrolyzer_paths = subtypesof(/datum/gas_reaction/electrolyzer)
+	var/list/all_paths = standard_paths + electrolyzer_paths
+	var/list/by_id = list()
+	var/list/observed_order = list()
+	for(var/reaction_path in all_paths)
+		var/datum/gas_reaction/reaction = new reaction_path
+		by_id[reaction.id] = reaction
+		observed_order += reaction.id
+	for(var/list/case in cases)
+		oracle_bits = case["bits"]
+		oracle_effects = list()
+		oracle_signals = 0
+		var/datum/gas_mixture/air
+		if(case["turf_heat_capacity"])
+			air = new /datum/gas_mixture/turf(case["volume"])
+		else
+			air = new /datum/gas_mixture(case["volume"])
+		air.temperature = case["temperature"]
+		var/list/gases = oracle_gases()
+		for(var/list/pair in case["gases"])
+			air.moles[gases[pair[1] + 1]] = pair[2]
+		if(case["seed_results"])
+			for(var/reaction_id in by_id)
+				var/datum/gas_reaction/seed_reaction = by_id[reaction_id]
+				air.reaction_results[seed_reaction.type] = 123
+		var/turf/holder_turf = new /turf/open(locate(1, 1, 1))
+		for(var/obj/previous in holder_turf)
+			del(previous)
+		var/datum/holder
+		switch(case["holder"])
+			if(1)
+				holder = new /obj
+			if(2)
+				holder_turf = new /turf(holder_turf)
+				holder = holder_turf
+			if(3)
+				holder = holder_turf
+			if(4, 5)
+				var/datum/pipeline/pipeline = new
+				pipeline.members += case["holder"] == 5 ? holder_turf : new /obj
+				holder = pipeline
+		if(oracle_bits & 16)
+			new /obj/effect/particle_effect/fluid/foam(holder_turf)
+		if(oracle_bits & 32)
+			new /obj/structure/foamedmetal/resin(holder_turf)
+		var/flags = NO_REACTION
+		var/initial_heat = air.heat_capacity()
+		var/initial_total = air.total_moles()
+		for(var/tick in 1 to case["ticks"])
+			flags = oracle_step(air, holder, case, by_id)
+		var/list/moles = list()
+		var/list/keys = list()
+		var/list/results = list()
+		for(var/gas in gases)
+			moles += num2text((air.moles[gas] || 0), 9)
+		for(var/gas in air.moles)
+			keys += gases.Find(gas) - 1
+		for(var/reaction_id in oracle_reaction_ids())
+			var/datum/gas_reaction/reaction = by_id[reaction_id]
+			var/result = air.reaction_results[reaction.type]
+			results += list(isnull(result) ? null : num2text(result, 9))
+		output += list(list("flags" = flags || 0, "temperature" = num2text(air.temperature, 9), "moles" = moles, "keys" = keys, "results" = results, "effects" = oracle_effects, "signals" = oracle_signals, "initial_heat" = num2text(initial_heat, 9), "initial_total" = num2text(initial_total, 9)))
+	text2file(json_encode(list("version" = "[world.byond_version].[world.byond_build]", "order" = observed_order, "cases" = output)), "dm-output.json")
+	shutdown()
+
+/// Dispatch a single reaction, or use the original mixture scheduler for a batch.
+/proc/oracle_step(datum/gas_mixture/air, datum/holder, list/case, list/by_id)
+	if(case["reaction"] == "batch")
+		return air.react(holder)
+	var/datum/gas_reaction/reaction = by_id[case["reaction"]]
+	if(istype(reaction, /datum/gas_reaction/electrolyzer))
+		var/datum/gas_reaction/electrolyzer/electrolysis = reaction
+		var/list/electrolyzer_args = list(ELECTROLYSIS_ARGUMENT_SUPERMATTER_POWER = case["supermatter_power"])
+		if(electrolysis.reaction_check(air, electrolyzer_args))
+			electrolysis.react(air, case["working_power"], electrolyzer_args)
+		return NO_REACTION
+	var/datum/gas_reaction/standard/standard = reaction
+	for(var/key, value in reaction.requirements)
+		if(key == "MIN_TEMP")
+			if(air.temperature < value)
+				return NO_REACTION
+		else if(key == "MAX_TEMP")
+			if(air.temperature > value)
+				return NO_REACTION
+		else if(air.moles[key] < value)
+			return NO_REACTION
+	return standard.react(air, holder)

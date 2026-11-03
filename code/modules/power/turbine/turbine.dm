@@ -361,6 +361,10 @@
 
 /// push gases from its gas mix to output turf
 /obj/machinery/power/turbine/turbine_outlet/proc/expel_gases()
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(expel_gases)))
+	// BANDASTATION ADDITION END
 	SHOULD_NOT_OVERRIDE(TRUE)
 
 	if(QDELETED(output_turf))
@@ -370,7 +374,7 @@
 		return FALSE
 
 	//eject gases and update turf if any was ejected
-	var/datum/gas_mixture/ejected_gases = machine_gasmix.pump_gas_to(output_turf.air, machine_gasmix.return_pressure())
+	var/datum/gas_mixture/ejected_gases = machine_gasmix.pump_gas_to(output_turf.return_air(), machine_gasmix.return_pressure()) // BANDASTATION EDIT - Atmosphere API.
 	if(ejected_gases)
 		output_turf.air_update_turf(TRUE)
 		output_turf.update_visuals()

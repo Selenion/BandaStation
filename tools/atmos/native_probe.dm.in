@@ -1,0 +1,13 @@
+// Verify the staged DLL before compiling or loading the complete game.
+/world/New()
+	spawn(20)
+		shutdown()
+	var/engine = call_ext("bandastation_atmos.dll", "byond:banda_atmos")(0)
+	if(!engine)
+		return
+	var/list/abi = list()
+	call_ext("bandastation_atmos.dll", "byond:banda_atmos")(9, engine, abi)
+	call_ext("bandastation_atmos.dll", "byond:banda_atmos")(1, engine)
+	if(length(abi) == 4)
+		text2file(json_encode(abi), "native-probe.json")
+	shutdown()

@@ -1,0 +1,137 @@
+// Included only by generated local-atmos-behavior.test.dme, never the live server.
+SUBSYSTEM_DEF(atmos_behavior)
+	name = "Atmos behavior reference"
+	init_stage = INITSTAGE_LAST
+	ss_flags = SS_NO_FIRE
+	dependencies = list(/datum/controller/subsystem/ticker)
+
+/datum/controller/subsystem/atmos_behavior/Initialize()
+	Master.sleep_offline_after_initializations = FALSE
+	SSticker.start_immediately = TRUE
+	SSticker.delay_end = TRUE
+	SSticker.OnRoundstart(CALLBACK(src, PROC_REF(capture)))
+	return SS_INIT_SUCCESS
+
+/// Observe the actual object's exposure, without replacing the original hotspot lifecycle.
+/obj/item/wrench/atmos_behavior_probe
+	var/fire_calls = 0
+	var/list/fire_observations = list()
+
+/obj/item/wrench/atmos_behavior_probe/fire_act(exposed_temperature, exposed_volume)
+	fire_calls++
+	var/turf/open/cell = get_turf(src)
+	fire_observations += list(list("oxygen" = num2text(cell.air.moles[/datum/gas/oxygen] || 0, 9), "temperature" = num2text(cell.air.temperature, 9)))
+	return ..()
+
+/// Compare immediate game feedback with an executor applying the same action after chemistry.
+/obj/item/stack/sheet/mineral/coal/atmos_behavior_probe
+	var/defer_exposure = FALSE
+	var/list/pending_exposure = list()
+
+/obj/item/stack/sheet/mineral/coal/atmos_behavior_probe/fire_act(exposed_temperature, exposed_volume)
+	if(defer_exposure)
+		pending_exposure += list(list(exposed_temperature, exposed_volume))
+		return
+	return ..()
+
+/obj/item/stack/sheet/mineral/coal/atmos_behavior_probe/proc/flush_exposure()
+	defer_exposure = FALSE
+	for(var/list/exposure in pending_exposure)
+		if(QDELETED(src))
+			break
+		fire_act(arglist(exposure))
+	pending_exposure.Cut()
+
+/datum/gas_mixture/turf/banda_tick_probe
+	var/last_flags = NO_REACTION
+
+/datum/gas_mixture/turf/banda_tick_probe/react(atom/holder)
+	. = ..()
+	last_flags = .
+
+/datum/controller/subsystem/atmos_behavior/proc/capture()
+	var/list/cases = json_decode(file2text("world-cases.json"))
+	var/list/output = list()
+	var/index = 0
+	for(var/list/scenario in cases)
+		index++
+		var/turf/open/cell = locate(index, 1, 1)
+		cell = cell.ChangeTurf(/turf/open/floor/iron)
+		for(var/atom/movable/existing in cell)
+			qdel(existing)
+		cell.atmos_adjacent_turfs = list()
+		if(scenario["tick"])
+			SSair.can_fire = FALSE
+			SSair.active_turfs = list()
+			SSair.excited_groups = list()
+			SSair.hotspots = list()
+			SSair.high_pressure_delta = list()
+			SSair.active_super_conductivity = list()
+			SSair.times_fired = 0
+			cell.air = new /datum/gas_mixture/turf/banda_tick_probe(CELL_VOLUME)
+			cell.thermal_conductivity = 0
+			cell.current_cycle = 0
+			cell.archived_cycle = 0
+			cell.excited = FALSE
+			cell.significant_share_ticker = 0
+		cell.air.moles.Cut()
+		cell.air.moles_archive.Cut()
+		cell.air.temperature = scenario["temperature"]
+		for(var/list/pair in scenario["gases"])
+			cell.air.set_gas(gas_id2path(pair[1]), pair[2])
+		var/obj/item/wrench/atmos_behavior_probe/item = new(cell)
+		var/obj/item/wrench/protected_item = new(cell)
+		protected_item.resistance_flags |= FREEZE_PROOF
+		var/obj/item/stack/sheet/mineral/coal/atmos_behavior_probe/coal
+		if(scenario["coal"])
+			coal = new(cell, scenario["coal"])
+			coal.defer_exposure = !!scenario["defer_fire"]
+		var/mob/living/carbon/human/person
+		if(scenario["person"])
+			person = new(cell)
+			person.bodytemperature = scenario["bodytemperature"]
+			if(scenario["cold_resistant"])
+				ADD_TRAIT(person, TRAIT_RESISTCOLD, "atmos_behavior")
+		if(scenario["permafrost"])
+			cell.MakeSlippery(TURF_WET_PERMAFROST, 10 SECONDS)
+		var/flags = NO_REACTION
+		if(scenario["tick"])
+			SSair.add_to_active(cell)
+			SSair.times_fired++
+			banda_atmos_world_air_step(TRUE, TRUE)
+			var/datum/gas_mixture/turf/banda_tick_probe/air = cell.air
+			flags = air.last_flags
+		else if(scenario["operation"] == "hotspot")
+			cell.hotspot_expose(scenario["temperature"], CELL_VOLUME)
+		else
+			flags = cell.air.react(cell)
+		if(coal && !QDELETED(coal))
+			coal.flush_exposure()
+		var/datum/component/wet_floor/wet_floor = cell.GetComponent(/datum/component/wet_floor)
+		var/list/gases = list()
+		var/list/results = list()
+		for(var/gas in cell.air.moles)
+			gases += list(list(GLOB.meta_gas_info[META_GAS_ID][gas], num2text(cell.air.moles[gas], 9)))
+		for(var/reaction in cell.air.reaction_results)
+			results += list(list("[reaction]", num2text(cell.air.reaction_results[reaction], 9)))
+		output += list(list(
+			"id" = scenario["id"], "flags" = flags,
+			"temperature" = num2text(cell.air.temperature, 9), "gases" = gases, "results" = results,
+			"wet_strength" = wet_floor?.highest_strength || 0,
+			"item_frozen" = HAS_TRAIT(item, TRAIT_FROZEN),
+			"protected_item_frozen" = HAS_TRAIT(protected_item, TRAIT_FROZEN),
+			"person_freon" = person ? !!person.has_status_effect(/datum/status_effect/freon) : null,
+			"hotspot" = !isnull(cell.active_hotspot),
+			"hotspot_temperature" = cell.active_hotspot ? num2text(cell.active_hotspot.temperature, 9) : null,
+			"hotspot_volume" = cell.active_hotspot ? num2text(cell.active_hotspot.volume, 9) : null,
+			"fire_calls" = item.fire_calls, "fire_observations" = item.fire_observations.Copy(),
+		))
+		qdel(item)
+		qdel(protected_item)
+		if(person)
+			qdel(person)
+		if(cell.active_hotspot)
+			QDEL_NULL(cell.active_hotspot)
+	WRITE_FILE(file("world-output.json"), json_encode(list("byond" = "[world.byond_version].[world.byond_build]", "cases" = output)))
+	log_world("ATMOS_BEHAVIOR_CAPTURE_COMPLETE")
+	shutdown()

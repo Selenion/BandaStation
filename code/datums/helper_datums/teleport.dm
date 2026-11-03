@@ -183,7 +183,7 @@
 	if(no_teleport && (destination_area.area_flags & NOTELEPORT))
 		return
 
-	var/datum/gas_mixture/floor_gas_mixture = floor_turf.air
+	var/datum/gas_mixture/floor_gas_mixture = floor_turf.get_readonly_air() // BANDASTATION EDIT - Read native atmosphere through the API.
 	if(!floor_gas_mixture)
 		return
 

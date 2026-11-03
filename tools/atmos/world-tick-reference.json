@@ -1,0 +1,561 @@
+{
+	"schema": 1,
+	"source_revision": "a72025a0480566585ab7cc48a62873581fe3a6a5",
+	"harness_sha256": "099f6ccd9d8173e18278f10690e6268fe54201ac37f46f00cc04cffe1902aa13",
+	"source_sha256": {
+		"code/modules/atmospherics/gasmixtures/gas_types.dm": "acf498d475fb77492d90d3c4ad60ad2b833dcb63550205605b914e9949d93620",
+		"code/modules/atmospherics/gasmixtures/reactions.dm": "13c2dce3daa64d74393b5ed420be43befdc1b202c51cc2b855492ca189d3e445",
+		"code/modules/atmospherics/gasmixtures/gas_mixture.dm": "23a5a8dccb82e5766db8159500566bce068d55f5ce14dd089688570eb364b1fa",
+		"code/modules/atmospherics/environmental/LINDA_fire.dm": "5694f57b7a77723063e834664956cef439e725f4ee07828204de0f5a15bd24a4",
+		"code/game/turfs/open/_open.dm": "09e22f02ba9bbbe1e9dcdfd1141a1bc300d61ad5133d959a9fcba60bae90d1b0",
+		"code/datums/elements/frozen.dm": "9d466aa5643a847dc5ddd944500ee8abfd3417e5d12f42f9838b106782149d87",
+		"code/datums/components/wet_floor.dm": "c4da2949b6b2df9d7866031c574fb57301927d89a64f7c195e535286899d0c15",
+		"code/datums/status_effects/gas.dm": "57f896e16afb644c19ec448b50ea9c0e32ea55f32ff704e852c00e5bfe690be8",
+		"code/__DEFINES/atmospherics/atmos_core.dm": "3bef6133964d1633727c6e76ca50e238c5739af947ce415096579362e5294495",
+		"code/__DEFINES/atmospherics/atmos_gasses.dm": "09f0e12f39488feaceecab7adeff3140ed13342f01ec8849fb6c4846cf23ea70",
+		"code/__DEFINES/reactions.dm": "42d4d043a267bd93c9c1a9683bf6039d0b6571ebe1c9a971f3903618a07307d8",
+		"code/__DEFINES/supermatter.dm": "4a030ab10a7147493ca49901b595171c14f0b561df48883d070273f454929225",
+		"code/__DEFINES/maths.dm": "b3fd5b3b58200cfa06c1c636bdccba0b903fce96ea91b0e2ee9d58b9569954ee",
+		"code/game/objects/items/stacks/sheets/mineral.dm": "84ab7e073797b5830bad1c22b9de3e3d199e91a69def6b971a3b723001689c09"
+	},
+	"input": [
+		{
+			"id": "water:190",
+			"temperature": 190,
+			"gases": [
+				[
+					"water_vapor",
+					1
+				]
+			],
+			"operation": "react",
+			"tick": true
+		},
+		{
+			"id": "water:200",
+			"temperature": 200,
+			"gases": [
+				[
+					"water_vapor",
+					1
+				]
+			],
+			"operation": "react",
+			"tick": true
+		},
+		{
+			"id": "water:200.01",
+			"temperature": 200.01,
+			"gases": [
+				[
+					"water_vapor",
+					1
+				]
+			],
+			"operation": "react",
+			"tick": true
+		},
+		{
+			"id": "water:283",
+			"temperature": 283,
+			"gases": [
+				[
+					"water_vapor",
+					1
+				]
+			],
+			"operation": "react",
+			"tick": true
+		},
+		{
+			"id": "water:303.15",
+			"temperature": 303.15,
+			"gases": [
+				[
+					"water_vapor",
+					1
+				]
+			],
+			"operation": "react",
+			"tick": true
+		},
+		{
+			"id": "water:303.16",
+			"temperature": 303.16,
+			"gases": [
+				[
+					"water_vapor",
+					1
+				]
+			],
+			"operation": "react",
+			"tick": true
+		},
+		{
+			"id": "freeze:body=40,resistant=False",
+			"temperature": 190,
+			"gases": [
+				[
+					"water_vapor",
+					1
+				]
+			],
+			"operation": "react",
+			"person": true,
+			"bodytemperature": 40,
+			"cold_resistant": false,
+			"tick": true
+		},
+		{
+			"id": "freeze:body=40,resistant=True",
+			"temperature": 190,
+			"gases": [
+				[
+					"water_vapor",
+					1
+				]
+			],
+			"operation": "react",
+			"person": true,
+			"bodytemperature": 40,
+			"cold_resistant": true,
+			"tick": true
+		},
+		{
+			"id": "freeze:body=51,resistant=False",
+			"temperature": 190,
+			"gases": [
+				[
+					"water_vapor",
+					1
+				]
+			],
+			"operation": "react",
+			"person": true,
+			"bodytemperature": 51,
+			"cold_resistant": false,
+			"tick": true
+		},
+		{
+			"id": "existing_permafrost",
+			"temperature": 190,
+			"gases": [
+				[
+					"water_vapor",
+					1
+				]
+			],
+			"operation": "react",
+			"permafrost": true,
+			"tick": true
+		},
+		{
+			"id": "reaction_intermediate_fire",
+			"temperature": 1644,
+			"gases": [
+				[
+					"plasma",
+					1
+				],
+				[
+					"o2",
+					0.51
+				],
+				[
+					"hydrogen",
+					1
+				]
+			],
+			"operation": "react",
+			"tick": true
+		},
+		{
+			"id": "coal_feedback:deferred=True",
+			"temperature": 500,
+			"gases": [
+				[
+					"hydrogen",
+					1
+				],
+				[
+					"plasma",
+					10
+				],
+				[
+					"o2",
+					10
+				]
+			],
+			"operation": "react",
+			"coal": 50,
+			"defer_fire": true,
+			"tick": true
+		}
+	],
+	"observed": {
+		"byond": "516.1688",
+		"cases": [
+			{
+				"id": "water:190",
+				"flags": 5,
+				"temperature": "190",
+				"gases": [
+					[
+						"water_vapor",
+						"0.75"
+					]
+				],
+				"results": [
+					[
+						"/datum/gas_reaction/standard/water_vapor",
+						"0.25"
+					]
+				],
+				"wet_strength": 2,
+				"item_frozen": 1,
+				"protected_item_frozen": 0,
+				"person_freon": null,
+				"hotspot": 0,
+				"hotspot_temperature": null,
+				"hotspot_volume": null,
+				"fire_calls": 0,
+				"fire_observations": []
+			},
+			{
+				"id": "water:200",
+				"flags": 5,
+				"temperature": "200",
+				"gases": [
+					[
+						"water_vapor",
+						"0.75"
+					]
+				],
+				"results": [
+					[
+						"/datum/gas_reaction/standard/water_vapor",
+						"0.25"
+					]
+				],
+				"wet_strength": 2,
+				"item_frozen": 1,
+				"protected_item_frozen": 0,
+				"person_freon": null,
+				"hotspot": 0,
+				"hotspot_temperature": null,
+				"hotspot_volume": null,
+				"fire_calls": 0,
+				"fire_observations": []
+			},
+			{
+				"id": "water:200.01",
+				"flags": 1,
+				"temperature": "200.009995",
+				"gases": [
+					[
+						"water_vapor",
+						"0.75"
+					]
+				],
+				"results": [
+					[
+						"/datum/gas_reaction/standard/water_vapor",
+						"0.25"
+					]
+				],
+				"wet_strength": 1,
+				"item_frozen": 0,
+				"protected_item_frozen": 0,
+				"person_freon": null,
+				"hotspot": 0,
+				"hotspot_temperature": null,
+				"hotspot_volume": null,
+				"fire_calls": 0,
+				"fire_observations": []
+			},
+			{
+				"id": "water:283",
+				"flags": 1,
+				"temperature": "283",
+				"gases": [
+					[
+						"water_vapor",
+						"0.75"
+					]
+				],
+				"results": [
+					[
+						"/datum/gas_reaction/standard/water_vapor",
+						"0.25"
+					]
+				],
+				"wet_strength": 1,
+				"item_frozen": 0,
+				"protected_item_frozen": 0,
+				"person_freon": null,
+				"hotspot": 0,
+				"hotspot_temperature": null,
+				"hotspot_volume": null,
+				"fire_calls": 0,
+				"fire_observations": []
+			},
+			{
+				"id": "water:303.15",
+				"flags": 1,
+				"temperature": "303.149994",
+				"gases": [
+					[
+						"water_vapor",
+						"0.75"
+					]
+				],
+				"results": [
+					[
+						"/datum/gas_reaction/standard/water_vapor",
+						"0.25"
+					]
+				],
+				"wet_strength": 1,
+				"item_frozen": 0,
+				"protected_item_frozen": 0,
+				"person_freon": null,
+				"hotspot": 0,
+				"hotspot_temperature": null,
+				"hotspot_volume": null,
+				"fire_calls": 0,
+				"fire_observations": []
+			},
+			{
+				"id": "water:303.16",
+				"flags": 0,
+				"temperature": "303.160004",
+				"gases": [
+					[
+						"water_vapor",
+						"1"
+					]
+				],
+				"results": [],
+				"wet_strength": 0,
+				"item_frozen": 0,
+				"protected_item_frozen": 0,
+				"person_freon": null,
+				"hotspot": 0,
+				"hotspot_temperature": null,
+				"hotspot_volume": null,
+				"fire_calls": 0,
+				"fire_observations": []
+			},
+			{
+				"id": "freeze:body=40,resistant=False",
+				"flags": 5,
+				"temperature": "190",
+				"gases": [
+					[
+						"water_vapor",
+						"0.75"
+					]
+				],
+				"results": [
+					[
+						"/datum/gas_reaction/standard/water_vapor",
+						"0.25"
+					]
+				],
+				"wet_strength": 2,
+				"item_frozen": 1,
+				"protected_item_frozen": 0,
+				"person_freon": 1,
+				"hotspot": 0,
+				"hotspot_temperature": null,
+				"hotspot_volume": null,
+				"fire_calls": 0,
+				"fire_observations": []
+			},
+			{
+				"id": "freeze:body=40,resistant=True",
+				"flags": 5,
+				"temperature": "190",
+				"gases": [
+					[
+						"water_vapor",
+						"0.75"
+					]
+				],
+				"results": [
+					[
+						"/datum/gas_reaction/standard/water_vapor",
+						"0.25"
+					]
+				],
+				"wet_strength": 2,
+				"item_frozen": 1,
+				"protected_item_frozen": 0,
+				"person_freon": 0,
+				"hotspot": 0,
+				"hotspot_temperature": null,
+				"hotspot_volume": null,
+				"fire_calls": 0,
+				"fire_observations": []
+			},
+			{
+				"id": "freeze:body=51,resistant=False",
+				"flags": 5,
+				"temperature": "190",
+				"gases": [
+					[
+						"water_vapor",
+						"0.75"
+					]
+				],
+				"results": [
+					[
+						"/datum/gas_reaction/standard/water_vapor",
+						"0.25"
+					]
+				],
+				"wet_strength": 2,
+				"item_frozen": 1,
+				"protected_item_frozen": 0,
+				"person_freon": 0,
+				"hotspot": 0,
+				"hotspot_temperature": null,
+				"hotspot_volume": null,
+				"fire_calls": 0,
+				"fire_observations": []
+			},
+			{
+				"id": "existing_permafrost",
+				"flags": 5,
+				"temperature": "190",
+				"gases": [
+					[
+						"water_vapor",
+						"0.75"
+					]
+				],
+				"results": [
+					[
+						"/datum/gas_reaction/standard/water_vapor",
+						"0.25"
+					]
+				],
+				"wet_strength": 2,
+				"item_frozen": 1,
+				"protected_item_frozen": 0,
+				"person_freon": null,
+				"hotspot": 0,
+				"hotspot_temperature": null,
+				"hotspot_volume": null,
+				"fire_calls": 0,
+				"fire_observations": []
+			},
+			{
+				"id": "reaction_intermediate_fire",
+				"flags": 5,
+				"temperature": "2044.61047",
+				"gases": [
+					[
+						"plasma",
+						"0.988699973"
+					],
+					[
+						"o2",
+						"0.480445892"
+					],
+					[
+						"hydrogen",
+						"0.950091779"
+					],
+					[
+						"co2",
+						"0.00853083283"
+					],
+					[
+						"water_vapor",
+						"0.0527185276"
+					]
+				],
+				"results": [
+					[
+						"/datum/gas_reaction/standard/plasmafire",
+						"0.00793333352"
+					],
+					[
+						"/datum/gas_reaction/standard/h2fire",
+						"0.0246382505"
+					]
+				],
+				"wet_strength": 0,
+				"item_frozen": 0,
+				"protected_item_frozen": 0,
+				"person_freon": null,
+				"hotspot": 0,
+				"hotspot_temperature": null,
+				"hotspot_volume": null,
+				"fire_calls": 1,
+				"fire_observations": [
+					{
+						"oxygen": "0.492765009",
+						"temperature": "1739.45435"
+					}
+				]
+			},
+			{
+				"id": "coal_feedback:deferred=True",
+				"flags": 5,
+				"temperature": "1543.58655",
+				"gases": [
+					[
+						"hydrogen",
+						"0.25"
+					],
+					[
+						"plasma",
+						"9.83790016"
+					],
+					[
+						"o2",
+						"9.52260017"
+					],
+					[
+						"water_vapor",
+						"0.79052496"
+					],
+					[
+						"co2",
+						"500.121582"
+					]
+				],
+				"results": [
+					[
+						"/datum/gas_reaction/standard/h2fire",
+						"0.5"
+					],
+					[
+						"/datum/gas_reaction/standard/plasmafire",
+						"0.124278396"
+					]
+				],
+				"wet_strength": 0,
+				"item_frozen": 0,
+				"protected_item_frozen": 0,
+				"person_freon": null,
+				"hotspot": 1,
+				"hotspot_temperature": "1340.99658",
+				"hotspot_volume": "24971.1367",
+				"fire_calls": 2,
+				"fire_observations": [
+					{
+						"oxygen": "9.5746994",
+						"temperature": "1235.02881"
+					},
+					{
+						"oxygen": "9.52260017",
+						"temperature": "1340.99658"
+					}
+				]
+			}
+		]
+	}
+}

@@ -641,6 +641,10 @@ GLOBAL_VAR_INIT(disposals_animals_spawned, 0)
 //timed process
 //charge the gas reservoir and perform flush if ready
 /obj/machinery/disposal/bin/process(seconds_per_tick)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, TYPE_PROC_REF(/datum, process), seconds_per_tick))
+	// BANDASTATION ADDITION END
 
 	if(contained_animal && prob(ANIMAL_SHAKE_CHANCE))
 		Shake(duration = 2 SECONDS, pixelshiftx = 1, pixelshifty = 0, duration = (seconds_per_tick SECONDS), shake_interval = 0.1 SECONDS)

@@ -1,0 +1,492 @@
+{
+  "date": "2026-11-03",
+  "byond": "516.1688",
+  "rust_g": "6.2.0",
+  "platform": "Windows i686",
+  "seed": 29051994,
+  "limitations": [
+    "No clients or 50+ player workload",
+    "One capture per scenario, background RNG/scheduling can diverge",
+    "CPU is percent of one core; private memory is not added to working set",
+    "SM runs with runtimes remain diagnostic even when all game seconds complete"
+  ],
+  "final_artifacts": {
+    "dll_sha256": "9947c69875fcd36df35c659a882e70cfe50a27cf5a4539b97dc6a7d7ae03a9a9",
+    "actual_binary_sha256": "6703ae967c2cd4492191257b6cc136518a56751a2e6c7bfbe005e047f6632b30",
+    "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c"
+  },
+  "validation": {
+    "abi": 11,
+    "rust_tests": 69,
+    "game_report": "tmp/atmos-phase/integration-exchange-08/report.json",
+    "failures": 0
+  },
+  "scenarios": [
+    {
+      "name": "idle",
+      "diagnostic_only": false,
+      "original_dm": {
+        "capture": "compare-dm-idle-01",
+        "accepted_clean": true,
+        "process": {
+          "samples": 59,
+          "sampled_wall_seconds": 58.429915,
+          "cpu_one_core_percent": 13.34397799483364,
+          "working_set_mib": [
+            1641.9453125,
+            1642.0
+          ],
+          "private_mib": [
+            1668.44921875,
+            1668.60546875
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 60.1094,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 12.7229,
+          "times_fired": 120,
+          "wait_ds": 5,
+          "tick_usage_rolling": 25.4458,
+          "tick_overrun_rolling": 0
+        },
+        "atmos_start": {
+          "active_turfs": 23,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 1.71842,
+          "cost_hotspots": 0.00293704,
+          "cost_pipenets": 2.35829,
+          "cost_atmos_machinery": 7.61497
+        },
+        "atmos_end": {
+          "active_turfs": 41,
+          "hotspots": 1,
+          "excited_groups": 11,
+          "pipenets": 296,
+          "cost_turfs": 2.56485,
+          "cost_hotspots": 0.144211,
+          "cost_pipenets": 1.90722,
+          "cost_atmos_machinery": 7.48616
+        },
+        "runtime_messages": []
+      },
+      "rust_before": {
+        "capture": "compare-rust-idle-06",
+        "accepted_clean": true,
+        "process": {
+          "samples": 60,
+          "sampled_wall_seconds": 59.356517,
+          "cpu_one_core_percent": 18.11090094791108,
+          "working_set_mib": [
+            2422.5390625,
+            2444.9375
+          ],
+          "private_mib": [
+            2455.83984375,
+            2475.9296875
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 60.2938,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 30.9573,
+          "times_fired": 120,
+          "wait_ds": 5,
+          "tick_usage_rolling": 61.9145,
+          "tick_overrun_rolling": 0
+        },
+        "atmos_start": {
+          "active_turfs": 30,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 11.1605,
+          "cost_hotspots": 0,
+          "cost_pipenets": 3.01349,
+          "cost_atmos_machinery": 24.625
+        },
+        "atmos_end": {
+          "active_turfs": 28,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 7.31733,
+          "cost_hotspots": 0,
+          "cost_pipenets": 0.982276,
+          "cost_atmos_machinery": 19.506
+        },
+        "runtime_messages": []
+      },
+      "rust_after": {
+        "capture": "compare-rust-exchange-idle-05",
+        "accepted_clean": true,
+        "process": {
+          "samples": 60,
+          "sampled_wall_seconds": 59.322542,
+          "cpu_one_core_percent": 13.53827689986717,
+          "working_set_mib": [
+            2481.4609375,
+            2755.30859375
+          ],
+          "private_mib": [
+            2514.1796875,
+            2791.9140625
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 60.0438,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 20.5973,
+          "times_fired": 120,
+          "wait_ds": 5,
+          "tick_usage_rolling": 41.1946,
+          "tick_overrun_rolling": 0
+        },
+        "atmos_start": {
+          "active_turfs": 23,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 5.94486,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.46677,
+          "cost_atmos_machinery": 12.4523
+        },
+        "atmos_end": {
+          "active_turfs": 25,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 5.27136,
+          "cost_hotspots": 0,
+          "cost_pipenets": 0.961598,
+          "cost_atmos_machinery": 12.1116
+        },
+        "runtime_messages": []
+      }
+    },
+    {
+      "name": "fire",
+      "diagnostic_only": false,
+      "original_dm": {
+        "capture": "compare-dm-fire-02",
+        "accepted_clean": true,
+        "process": {
+          "samples": 61,
+          "sampled_wall_seconds": 60.341741,
+          "cpu_one_core_percent": 27.473726686142516,
+          "working_set_mib": [
+            1672.55078125,
+            1672.921875
+          ],
+          "private_mib": [
+            1696.828125,
+            1696.98046875
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 62.0062,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 69.5637,
+          "times_fired": 119,
+          "wait_ds": 5,
+          "tick_usage_rolling": 139.127,
+          "tick_overrun_rolling": 0
+        },
+        "atmos_start": {
+          "active_turfs": 83,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 1.51408,
+          "cost_hotspots": 0.00289168,
+          "cost_pipenets": 2.29858,
+          "cost_atmos_machinery": 7.42662
+        },
+        "atmos_end": {
+          "active_turfs": 653,
+          "hotspots": 2,
+          "excited_groups": 22,
+          "pipenets": 296,
+          "cost_turfs": 48.7863,
+          "cost_hotspots": 0.050271,
+          "cost_pipenets": 2.08298,
+          "cost_atmos_machinery": 7.48526
+        },
+        "runtime_messages": []
+      },
+      "rust_before": {
+        "capture": "compare-rust-fire-03",
+        "accepted_clean": true,
+        "process": {
+          "samples": 69,
+          "sampled_wall_seconds": 68.432545,
+          "cpu_one_core_percent": 31.280803600099922,
+          "working_set_mib": [
+            2483.21484375,
+            2567.68359375
+          ],
+          "private_mib": [
+            2517.80859375,
+            2598.55859375
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 69.9313,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 136.449,
+          "times_fired": 101,
+          "wait_ds": 5,
+          "tick_usage_rolling": 272.898,
+          "tick_overrun_rolling": 131.359
+        },
+        "atmos_start": {
+          "active_turfs": 92,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 9.30072,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.31009,
+          "cost_atmos_machinery": 19.5675
+        },
+        "atmos_end": {
+          "active_turfs": 710,
+          "hotspots": 3,
+          "excited_groups": 19,
+          "pipenets": 296,
+          "cost_turfs": 110.694,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.02515,
+          "cost_atmos_machinery": 19.8617
+        },
+        "runtime_messages": []
+      },
+      "rust_after": {
+        "capture": "compare-rust-exchange-fire-02",
+        "accepted_clean": true,
+        "process": {
+          "samples": 66,
+          "sampled_wall_seconds": 65.384609,
+          "cpu_one_core_percent": 30.970591259481264,
+          "working_set_mib": [
+            2501.578125,
+            2540.3671875
+          ],
+          "private_mib": [
+            2536.515625,
+            2573.9296875
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 66.9313,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 94.6964,
+          "times_fired": 105,
+          "wait_ds": 5,
+          "tick_usage_rolling": 189.393,
+          "tick_overrun_rolling": 94.1466
+        },
+        "atmos_start": {
+          "active_turfs": 119,
+          "hotspots": 0,
+          "excited_groups": 6,
+          "pipenets": 343,
+          "cost_turfs": 25.0026,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.86393,
+          "cost_atmos_machinery": 15.3238
+        },
+        "atmos_end": {
+          "active_turfs": 680,
+          "hotspots": 0,
+          "excited_groups": 17,
+          "pipenets": 343,
+          "cost_turfs": 76.0163,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.62966,
+          "cost_atmos_machinery": 15.0269
+        },
+        "runtime_messages": []
+      }
+    },
+    {
+      "name": "sm_plasma",
+      "diagnostic_only": true,
+      "original_dm": {
+        "capture": "compare-dm-sm-guard-01",
+        "accepted_clean": false,
+        "process": {
+          "samples": 62,
+          "sampled_wall_seconds": 61.553906,
+          "cpu_one_core_percent": 41.6301769704103,
+          "working_set_mib": [
+            1653.609375,
+            1666.1171875
+          ],
+          "private_mib": [
+            1677.9296875,
+            1688.11328125
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 63.0062,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 59.1415,
+          "times_fired": 110,
+          "wait_ds": 5,
+          "tick_usage_rolling": 118.283,
+          "tick_overrun_rolling": 0
+        },
+        "atmos_start": {
+          "active_turfs": 53,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 1.61558,
+          "cost_hotspots": 0.00273467,
+          "cost_pipenets": 2.36711,
+          "cost_atmos_machinery": 7.55029
+        },
+        "atmos_end": {
+          "active_turfs": 594,
+          "hotspots": 0,
+          "excited_groups": 10,
+          "pipenets": 374,
+          "cost_turfs": 50.723,
+          "cost_hotspots": 0.148778,
+          "cost_pipenets": 2.13651,
+          "cost_atmos_machinery": 6.71786
+        },
+        "runtime_messages": [
+          "runtime error: Cannot read null.z",
+          "runtime error: list index out of bounds",
+          "runtime error: The frag grenade taking damage while having <= 0 integrity",
+          "runtime error: The frag grenade taking damage while having <= 0 integrity",
+          "runtime error: The frag grenade taking damage while having <= 0 integrity",
+          "runtime error: The frag grenade taking damage while having <= 0 integrity"
+        ]
+      },
+      "rust_before": {
+        "capture": "compare-rust-sm-03",
+        "accepted_clean": false,
+        "process": {
+          "samples": 77,
+          "sampled_wall_seconds": 76.585606,
+          "cpu_one_core_percent": 45.761699659332855,
+          "working_set_mib": [
+            2622.7265625,
+            2895.70703125
+          ],
+          "private_mib": [
+            2665.4453125,
+            2938.046875
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 76.7188,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 157.531,
+          "times_fired": 91,
+          "wait_ds": 5,
+          "tick_usage_rolling": 315.062,
+          "tick_overrun_rolling": 166.098
+        },
+        "atmos_start": {
+          "active_turfs": 70,
+          "hotspots": 0,
+          "excited_groups": 10,
+          "pipenets": 331,
+          "cost_turfs": 11.4707,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.70157,
+          "cost_atmos_machinery": 22.8339
+        },
+        "atmos_end": {
+          "active_turfs": 1282,
+          "hotspots": 0,
+          "excited_groups": 7,
+          "pipenets": 402,
+          "cost_turfs": 137.345,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.45426,
+          "cost_atmos_machinery": 20.2494
+        },
+        "runtime_messages": [
+          "runtime error: list index out of bounds",
+          "runtime error: Spritesheet chat UNKNOWN ERROR: NO SUCH JOB"
+        ]
+      },
+      "rust_after": {
+        "capture": "compare-rust-exchange-sm-02",
+        "accepted_clean": false,
+        "process": {
+          "samples": 68,
+          "sampled_wall_seconds": 67.478083,
+          "cpu_one_core_percent": 38.80889740154592,
+          "working_set_mib": [
+            2416.390625,
+            2482.2421875
+          ],
+          "private_mib": [
+            2449.75390625,
+            2511.41015625
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 68.975,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 72.5019,
+          "times_fired": 101,
+          "wait_ds": 5,
+          "tick_usage_rolling": 145.004,
+          "tick_overrun_rolling": 72.2392
+        },
+        "atmos_start": {
+          "active_turfs": 53,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 5.76349,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.39534,
+          "cost_atmos_machinery": 12.27
+        },
+        "atmos_end": {
+          "active_turfs": 50,
+          "hotspots": 0,
+          "excited_groups": 6,
+          "pipenets": 381,
+          "cost_turfs": 56.5915,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.1157,
+          "cost_atmos_machinery": 10.8335
+        },
+        "runtime_messages": [
+          "runtime error: Cannot read null.z",
+          "runtime error: list index out of bounds"
+        ]
+      }
+    }
+  ]
+}

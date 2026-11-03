@@ -1,0 +1,19 @@
+[package]
+name = "bandastation-atmos"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "AGPL-3.0-or-later"
+description = "Experimental BandaStation atmosphere compatibility kernel"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[features]
+byond = []
+
+[[bin]]
+name = "chemistry"
+path = "src/main.rs"
+
+[dependencies]

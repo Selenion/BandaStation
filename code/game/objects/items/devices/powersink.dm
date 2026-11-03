@@ -141,6 +141,10 @@
 
 /// Removes internal heat and shares it with the atmosphere.
 /obj/item/powersink/proc/release_heat()
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(release_heat)))
+	// BANDASTATION ADDITION END
 	var/turf/our_turf = get_turf(src)
 	var/temp_to_give = internal_heat / FRACTION_TO_RELEASE
 	internal_heat -= temp_to_give

@@ -353,6 +353,10 @@
  */
 /datum/heretic_knowledge/ultimate/void_final/proc/on_life(mob/living/source, seconds_per_tick)
 	SIGNAL_HANDLER
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(on_life), source, seconds_per_tick))
+	// BANDASTATION ADDITION END
 
 	for(var/atom/thing_in_range as anything in range(10, source))
 		if(iscarbon(thing_in_range))

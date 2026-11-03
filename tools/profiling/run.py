@@ -1,0 +1,179 @@
+"""Build a profiling harness, stage an isolated local server, collect a baseline."""
+
+import argparse
+import ctypes
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+import platform
+from pathlib import Path
+import shutil
+import subprocess
+import time
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def windows_process_sample(pid):
+    """Read counters for this run's console DreamDaemon, without extra packages."""
+    from ctypes import wintypes
+
+    class Memory(ctypes.Structure):
+        _fields_ = [("cb", wintypes.DWORD), ("faults", wintypes.DWORD)] + [
+            (name, ctypes.c_size_t) for name in ["peak_working", "working", "peak_paged", "paged",
+                                               "peak_nonpaged", "nonpaged", "pagefile", "peak_pagefile", "private"]]
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    psapi = ctypes.WinDLL("psapi", use_last_error=True)
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(ctypes.c_uint64)] * 4
+    psapi.GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(Memory), wintypes.DWORD]
+    handle = kernel.OpenProcess(0x410, False, pid)  # QUERY_INFORMATION | VM_READ
+    if not handle:
+        return None
+    try:
+        memory = Memory()
+        memory.cb = ctypes.sizeof(memory)
+        times = [ctypes.c_uint64() for _ in range(4)]
+        if not psapi.GetProcessMemoryInfo(handle, ctypes.byref(memory), memory.cb):
+            return None
+        if not kernel.GetProcessTimes(handle, *(ctypes.byref(t) for t in times)):
+            return None
+        return dict(utc=datetime.now(timezone.utc).isoformat(), cpu_seconds=(times[2].value + times[3].value) / 1e7,
+                    working_set_bytes=memory.working, private_bytes=memory.private)
+    finally:
+        kernel.CloseHandle(handle)
+
+
+def capture(daemon, output, scenario, rust_enabled=False):
+    samples = []
+    with (output / "launcher.log").open("w", encoding="utf-8") as log:
+        process = subprocess.Popen([str(daemon), "tgstation.dmb", "-trusted", "-close", "-invisible", "-ip", "127.0.0.1",
+                                    "-logself", "-params", f"log-directory=local-profile&profile-scenario={scenario}&profile-rust={int(rust_enabled)}"],
+                                   cwd=output, stdout=log, stderr=subprocess.STDOUT)
+        started = time.monotonic()
+        try:
+            while process.poll() is None:
+                if time.monotonic() - started > 600:
+                    process.kill()
+                    process.wait()
+                    raise TimeoutError("Local profiling run exceeded 600 seconds")
+                if os.name == "nt":
+                    sample = windows_process_sample(process.pid)
+                    if sample:
+                        samples.append(sample)
+                try:
+                    process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    pass
+        finally:
+            # Interrupting a diagnostic must not leave its local server running.
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+            if samples:
+                (output / "process-samples.json").write_text(json.dumps(samples), encoding="utf-8")
+        if process.returncode:
+            raise subprocess.CalledProcessError(process.returncode, process.args)
+    return time.monotonic() - started
+
+
+def stage(target):
+    """Hard-link immutable runtime resources; copy all mutable config/data files."""
+    resources = ["_maps", "build/behavior_trees", "code/datums/greyscale/json_configs",
+                 "icons", "sound/runtime", "strings", "tgui/public", "modular_bandastation"]
+    for resource in resources:
+        source = ROOT / resource
+        for directory, _, names in os.walk(source):
+            relative = Path(directory).relative_to(ROOT)
+            (target / relative).mkdir(parents=True, exist_ok=True)
+            for name in names:
+                if name.endswith((".dm", ".dme")):
+                    continue
+                dest = target / relative / name
+                if not dest.exists():
+                    os.link(Path(directory) / name, dest)
+    shutil.copytree(ROOT / "config", target / "config", dirs_exist_ok=True)
+    with (target / "config/config.txt").open("a", encoding="utf-8") as config:
+        config.write("\nAUTO_PROFILE\nPROFILER_INTERVAL 6000\n")
+    # This deployment is intentionally disconnected from the live database.
+    (target / "config/dbconfig.txt").write_text("# Local profile: SQL disabled\n", encoding="utf-8")
+    (target / "data").mkdir(exist_ok=True)
+    for dll in ROOT.glob("*.dll"):
+        shutil.copy2(dll, target / dll.name)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--byond", type=Path, required=True)
+    parser.add_argument("--map", default="metastation")
+    parser.add_argument("--name", default="baseline")
+    parser.add_argument("--scenario", choices=["empty-station", "atmos-fire", "sm-plasma"], default="empty-station")
+    parser.add_argument("--source-root", type=Path, default=ROOT)
+    parser.add_argument("--compiled-binary", type=Path)
+    parser.add_argument("--rust-dll", type=Path)
+    parser.add_argument("--prepare-only", action="store_true")
+    args = parser.parse_args()
+    if not args.name.replace("-", "").replace("_", "").isalnum():
+        parser.error("--name must contain letters, digits, hyphens or underscores")
+    source_root = args.source_root.resolve()
+    map_source = source_root / "_maps/map_jsons" / (args.map + ".json")
+    if map_source.parent != source_root / "_maps/map_jsons" or not map_source.is_file():
+        parser.error("Unknown map")
+    output = ROOT / "tmp/profiling" / args.name
+    if output.exists():
+        parser.error(f"Use a new --name to preserve the previous capture: {output}")
+    output.mkdir(parents=True)
+    dme = source_root / "local-profile.test.dme"
+    source = (source_root / "tgstation.dme").read_text(encoding="utf-8-sig")
+    source += f'\n#include "{(ROOT / "tools/profiling/local_profile.dm.in").as_posix()}"\n'
+    dme.write_text(source, encoding="utf-8", newline="\n")
+    stage(output)
+    with (output / "config/config.txt").open("a", encoding="utf-8") as config:
+        config.write("\nFORBID_STATION_TRAITS\n")
+        if args.rust_dll:
+            config.write("RUST_ATMOS_LIBRARY bandastation_atmos.dll\n")
+    if args.rust_dll:
+        shutil.copy2(args.rust_dll, output / "bandastation_atmos.dll")
+    shutil.copy2(map_source, output / "data/next_map.json")
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    manifest = dict(revision=revision, map=args.map, scenario=args.scenario, warmup_seconds=30,
+                    sample_seconds=60, profiler="BYOND world.Profile", rust_enabled=bool(args.rust_dll), source_root=str(source_root),
+                    baseline_source=json.loads((source_root / "baseline-source.json").read_text(encoding="utf-8")) if (source_root / "baseline-source.json").exists() else None,
+                    harness_sha256=hashlib.sha256((ROOT / "tools/profiling/local_profile.dm.in").read_bytes()).hexdigest(),
+                    limitations=["No connected players; SendMaps is not representative of 50+ players.",
+                                 "Fixed startup seed; scheduling and subsequent random background events can diverge.",
+                                 "Native profiling adds overhead; use identical profiling settings in comparisons."])
+    manifest["platform"] = platform.platform()
+    manifest["logical_cpus"] = os.cpu_count()
+    manifest["dll_sha256"] = {dll.name: hashlib.sha256(dll.read_bytes()).hexdigest() for dll in output.glob("*.dll")}
+    (output / "manifest.json").write_text(json.dumps(manifest, indent="\t") + "\n", encoding="utf-8")
+    print(f"Prepared {output}", flush=True)
+    if args.prepare_only:
+        return
+    compiler = args.byond / ("dm.exe" if os.name == "nt" else "DreamMaker")
+    if not args.compiled_binary:
+        subprocess.run([str(compiler), "-DCBT", str(dme)], cwd=source_root, check=True, timeout=300)
+    binary = args.compiled_binary or dme.with_suffix(".dmb")
+    for extension in ("dmb", "rsc"):
+        shutil.copy2(binary.with_suffix("." + extension), output / ("tgstation." + extension))
+    daemon = args.byond / ("dd.exe" if os.name == "nt" else "DreamDaemon")
+    elapsed = capture(daemon, output, args.scenario, bool(args.rust_dll))
+    logs = "\n".join(p.read_text(encoding="utf-8-sig", errors="replace") for p in output.rglob("*") if p.is_file() and (p.suffix == ".log" or p.name.endswith(".log.json")))
+    if any(marker in logs.lower() for marker in ("runtime error:", "runtime in ", "infinite loop")):
+        raise SystemExit(f"Runtime in profiling run; inspect {output}")
+    metadata_path = output / "profile-metadata.json"
+    if not metadata_path.exists():
+        raise SystemExit(f"No completed profile. Inspect {output / 'tgstation.log'}")
+    manifest["total_wall_seconds"] = elapsed
+    manifest["metadata"] = json.loads(metadata_path.read_text(encoding="utf-8-sig"))
+    manifest["binary_sha256"] = hashlib.sha256((output / "tgstation.dmb").read_bytes()).hexdigest()
+    (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
+    print(f"Captured profile: {output}")
+
+
+if __name__ == "__main__":
+    main()

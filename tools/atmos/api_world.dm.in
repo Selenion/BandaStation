@@ -1,0 +1,280 @@
+/// Compare real DM consumers against the same calls with Rust-owned tile gas.
+/datum/controller/subsystem/atmos_phase_test/proc/api_actor_actions(turf/open/target, mob/living/carbon/human/person, obj/machinery/portable_atmospherics/canister/canister, datum/reagent/consumable/frostoil/coolant)
+	person.breathe(2)
+	coolant.expose_turf(target, 2)
+	canister.process_atmos()
+	person.breathe(2)
+
+/datum/controller/subsystem/atmos_phase_test/proc/api_modify(turf/open/target)
+	var/datum/gas_mixture/air = target.return_air()
+	air.adjust_gas(/datum/gas/nitrogen, 3)
+	air.archive()
+	air.reaction_results[/datum/gas_reaction/standard/plasmafire] = 7
+	air.temperature = 333
+	return air
+
+/datum/controller/subsystem/atmos_phase_test/proc/api_increment(turf/open/target, amount)
+	var/datum/gas_mixture/air = target.return_air()
+	air.adjust_gas(/datum/gas/nitrogen, amount)
+	return air.moles[/datum/gas/nitrogen]
+
+/datum/controller/subsystem/atmos_phase_test/proc/api_throw()
+	throw EXCEPTION("BANDA_ATMOS_EXPECTED_CALLBACK_FAILURE")
+
+/datum/controller/subsystem/atmos_phase_test/proc/api_zero()
+	return 0
+
+/datum/controller/subsystem/atmos_phase_test/proc/api_nested_invoke(datum/banda_atmos_phase/world_adapter/phase, turf/open/target)
+	var/datum/gas_mixture/air = target.return_air()
+	var/before = air.moles[/datum/gas/nitrogen]
+	air.adjust_gas(/datum/gas/nitrogen, 1)
+	var/result = phase.invoke(CALLBACK(src, PROC_REF(api_increment), target, 2))
+	var/caught = FALSE
+	try
+		phase.invoke(CALLBACK(src, PROC_REF(api_throw)))
+	catch(var/exception/error)
+		caught = error.name == "BANDA_ATMOS_EXPECTED_CALLBACK_FAILURE"
+	return caught && phase.in_safe_callback && phase.working_mixtures[target.banda_atmos_cell] == air && result == before + 3 && air.moles[/datum/gas/nitrogen] == before + 3
+
+/datum/controller/subsystem/atmos_phase_test/proc/api_world_checks()
+	var/list/checks = list()
+	var/turf/open/baseline = floor_at(110, 110)
+	baseline.blocks_air = TRUE
+	checks["temporarily_blocked_turf_still_has_its_mixture"] = baseline.has_turf_air() == !!baseline.air
+	SSair.add_to_active(baseline)
+	baseline.blocks_air = FALSE
+	baseline.air.set_gas(/datum/gas/nitrogen, 200)
+	baseline.air.set_gas(/datum/gas/oxygen, 50)
+	baseline.air.temperature = 310
+	var/datum/gas_mixture/initial_air = baseline.air.copy()
+	var/mob/living/carbon/human/person = new(baseline)
+	person.bodytemperature = 310
+	var/obj/machinery/portable_atmospherics/canister/canister = new(baseline)
+	canister.air_contents.set_gas(/datum/gas/oxygen, 100)
+	canister.air_contents.temperature = 320
+	canister.release_pressure = 10 * ONE_ATMOSPHERE
+	canister.valve_open = TRUE
+	var/datum/reagent/consumable/frostoil/coolant = new()
+	api_actor_actions(baseline, person, canister, coolant)
+	var/list/expected = banda_atmos_full_packet(baseline.air)
+	qdel(person)
+	qdel(canister)
+
+	var/turf/open/target = floor_at(115, 110)
+	target.air.copy_from(initial_air)
+	person = new(target)
+	person.bodytemperature = 310
+	canister = new(target)
+	canister.air_contents.set_gas(/datum/gas/oxygen, 100)
+	canister.air_contents.temperature = 320
+	canister.release_pressure = 10 * ONE_ATMOSPHERE
+	canister.valve_open = TRUE
+	var/turf/open/passive = floor_at(120, 110)
+	passive.air.set_gas(/datum/gas/nitrogen, 17)
+	var/turf/open/space/space = locate(140, 110, 1)
+	space = space.ChangeTurf(/turf/open/space)
+	space.thermal_conductivity = 0
+	space.atmos_adjacent_turfs = list()
+	var/turf/open/space/blocked_space = locate(145, 110, 1)
+	blocked_space = blocked_space.ChangeTurf(/turf/open/space)
+	blocked_space.blocks_air = TRUE
+	blocked_space.thermal_conductivity = 0
+	blocked_space.atmos_adjacent_turfs = list()
+	var/blocked_capacity = blocked_space.get_readonly_air().heat_capacity()
+	var/turf/open/cold_baseline = floor_at(130, 115)
+	cold_baseline.blocks_air = TRUE
+	cold_baseline.air.set_gas(/datum/gas/nitrogen, 17)
+	cold_baseline.air.set_gas(/datum/gas/water_vapor, 1)
+	cold_baseline.air.temperature = 190
+	SSair.times_fired++
+	cold_baseline.process_cell(SSair.times_fired)
+	var/list/expected_blocked = banda_atmos_full_packet(cold_baseline.air)
+	var/turf/open/blocked_floor = floor_at(125, 115)
+	blocked_floor.blocks_air = TRUE
+	blocked_floor.air.set_gas(/datum/gas/nitrogen, 17)
+	blocked_floor.air.set_gas(/datum/gas/water_vapor, 1)
+	blocked_floor.air.temperature = 190
+	var/turf/open/receiver = floor_at(135, 115)
+	receiver.blocks_air = TRUE
+	var/turf/open/airless = locate(155, 115, 1)
+	airless = airless.ChangeTurf(/turf/open/indestructible/airblock)
+	airless.thermal_conductivity = 0
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target, passive, space, blocked_space, blocked_floor, receiver, airless))
+	phase.native(18, list(blocked_floor.banda_atmos_id), list())
+	phase.native(30)
+	phase.initializing = FALSE
+	checks["registration_removes_dm_map_mirror"] = !target.air && !passive.air && !space.air && !passive.banda_atmos_cell
+	checks["initially_blocked_space_keeps_underlying_air_class"] = phase.native(32, blocked_space.banda_atmos_id) == 3 && blocked_space.get_readonly_air().heat_capacity() == blocked_capacity
+	checks["blocked_turf_keeps_presence_without_dm_mirror"] = blocked_floor.has_turf_air() && blocked_space.has_turf_air() && !blocked_floor.air && !blocked_space.air
+	checks["airless_turf_does_not_gain_a_mixture"] = !airless.has_turf_air() && !airless.get_readonly_air() && phase.native(32, airless.banda_atmos_id) == 4
+	receiver.copy_air_with_tile(blocked_floor)
+	checks["shuttle_copy_works_while_both_turfs_are_blocked"] = receiver.get_readonly_air().moles[/datum/gas/nitrogen] == 17 && receiver.get_readonly_air().temperature == 190 && !receiver.air
+	phase.invoke(CALLBACK(src, PROC_REF(api_actor_actions), target, person, canister, coolant))
+	checks["breathing_canister_and_cooling_match_dm"] = json_encode(banda_atmos_full_packet(target.get_readonly_air())) == json_encode(expected)
+	qdel(person)
+	qdel(canister)
+	qdel(coolant)
+	var/datum/banda_atmos_cell/cell = target.banda_atmos_cell
+	var/datum/gas_mixture/readonly_air = target.get_readonly_air()
+	var/datum/gas_mixture/working = phase.invoke(CALLBACK(src, PROC_REF(api_modify), target))
+	checks["safe_changes_visible_before_next_tick"] = target.get_readonly_air().temperature == 333 && readonly_air.temperature == 333 && cell.read_air().reaction_results[/datum/gas_reaction/standard/plasmafire] == 7
+	checks["readonly_snapshot_is_separate_from_mutable_air"] = working != readonly_air && !target.air
+	var/before_nested = readonly_air.moles[/datum/gas/nitrogen]
+	checks["nested_invoke_shares_air_and_keeps_outer_state_after_error"] = phase.invoke(CALLBACK(src, PROC_REF(api_nested_invoke), phase, target)) && !phase.in_safe_callback && !length(phase.working_mixtures) && target.get_readonly_air().moles[/datum/gas/nitrogen] == before_nested + 3
+	var/caught = FALSE
+	try
+		phase.invoke(CALLBACK(src, PROC_REF(api_throw)))
+	catch(var/exception/error)
+		caught = error.name == "BANDA_ATMOS_EXPECTED_CALLBACK_FAILURE"
+	checks["invoke_failure_restores_outer_boundary"] = caught && !phase.in_safe_callback && !length(phase.working_mixtures)
+	var/zero_result = phase.invoke(CALLBACK(src, PROC_REF(api_zero)))
+	checks["invoke_preserves_numeric_zero_return"] = isnum(zero_result) && zero_result == 0
+	var/list/moles = working.moles
+	SSair.times_fired++
+	phase.run_tick(TRUE)
+	checks["blocked_floor_reactions_and_archive_match_dm"] = json_encode(banda_atmos_full_packet(blocked_floor.get_readonly_air())) == json_encode(expected_blocked)
+	blocked_floor.blocks_air = FALSE
+	phase.mark_dirty(blocked_floor)
+	checks["unblocking_keeps_the_same_gas_class_and_contents"] = blocked_floor.has_turf_air() && phase.native(32, blocked_floor.banda_atmos_id) == 2 && blocked_floor.get_readonly_air().moles[/datum/gas/nitrogen] == 17
+	blocked_floor.blocks_air = TRUE
+	checks["passive_cells_need_no_dm_gas_cache"] = !passive.air && !passive.banda_atmos_cell
+	checks["borrow_preserves_held_moles_list"] = working.moles == moles && working.moles[/datum/gas/nitrogen] == readonly_air.moles[/datum/gas/nitrogen]
+	var/id = cell.native_id
+	var/version = cell.binding_version
+	var/list/old_moles = target.get_readonly_air().moles.Copy()
+	target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+	checks["lazy_air_survives_inherited_floor_change"] = !target.air && target.banda_atmos_cell == cell && target.banda_atmos_id == id && cell.binding_version == version + 1 && json_encode(target.get_readonly_air().moles) == json_encode(old_moles)
+	var/datum/gas_mixture/turf/replacement = new(100)
+	replacement.set_gas(/datum/gas/oxygen, 5)
+	replacement.temperature = 500
+	replacement.archive()
+	replacement.reaction_results[/datum/gas_reaction/standard/plasmafire] = 99
+	target.replace_turf_air(replacement)
+	var/datum/gas_mixture/after = target.get_readonly_air()
+	checks["full_replacement_keeps_volume_archive_results"] = after.volume == 100 && after.temperature_archived == 500 && after.moles_archive[/datum/gas/oxygen] == 5 && after.reaction_results[/datum/gas_reaction/standard/plasmafire] == 99
+	checks["space_current_and_archive_heat_capacity_preserved"] = space.get_readonly_air().heat_capacity() == HEAT_CAPACITY_VACUUM && space.get_readonly_air().heat_capacity_archive() == 0
+	space.replace_turf_air(space.create_gas_mixture())
+	checks["repressurize_replaces_space_mixture_class"] = phase.native(32, space.banda_atmos_id) == 2 && space.get_readonly_air().heat_capacity_archive() == HEAT_CAPACITY_VACUUM
+	target.replace_turf_air(new /datum/gas_mixture(100))
+	checks["plain_mixture_keeps_zero_vacuum_heat_capacity"] = target.get_readonly_air().heat_capacity() == 0 && target.get_readonly_air().heat_capacity_archive() == 0
+	target.replace_turf_air(replacement)
+	qdel(phase)
+	checks["closing_restores_unaccessed_tile_air"] = passive.air.moles[/datum/gas/nitrogen] == 17 && !passive.banda_atmos_id
+	checks["closing_restores_held_mixture_and_binding"] = target.air == replacement && replacement.moles[/datum/gas/oxygen] == 5 && !target.banda_atmos_cell && !replacement.banda_cell && !SSair.native_atmos
+	checks["closing_restores_blocked_floor_and_space_types"] = istype(blocked_floor.air, /datum/gas_mixture/turf) && blocked_floor.air.moles[/datum/gas/nitrogen] == 17 && istype(blocked_space.air, /datum/gas_mixture/immutable/space) && !airless.air
+	checks["sparse_results_keep_the_full_wire_packet"] = full_packet_check()
+	checks["space_cache_follows_shared_last_share"] = space_cache_check()
+	vent_pump_checks(checks)
+	return checks
+
+/// Isolate pipe notification while exercising the real pump's pressure/transfer logic.
+/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe
+	var/parent_updates = 0
+
+/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe/update_parents()
+	parent_updates++
+
+/datum/controller/subsystem/atmos_phase_test/proc/vent_pump_process(obj/machinery/atmospherics/components/unary/vent_pump/pump, datum/banda_atmos_phase/world_adapter/phase)
+	pump.process_atmos()
+	return length(phase.working_mixtures)
+
+/datum/controller/subsystem/atmos_phase_test/proc/vent_pump_checks(list/checks)
+	for(var/mode in list("idle", "release", "siphon", "empty_pipe"))
+		var/list/expected = vent_pump_state(FALSE, mode)
+		var/list/actual = vent_pump_state(TRUE, mode)
+		var/expected_updates = mode == "release" || mode == "siphon" ? 1 : 0
+		checks["vent_[mode]_matches_dm"] = json_encode(expected["state"]) == json_encode(actual["state"]) && actual["state"]["updates"] == expected_updates
+		if(mode == "idle" || mode == "empty_pipe")
+			checks["vent_[mode]_does_not_borrow_native_air"] = actual["borrowed"] == 0
+
+/datum/controller/subsystem/atmos_phase_test/proc/vent_pump_state(native, mode)
+	var/turf/open/target = floor_at(185, 175)
+	target.air.temperature = T20C
+	target.air.set_gas(/datum/gas/oxygen, 100)
+	target.air.set_gas(/datum/gas/nitrogen, 300)
+	var/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe/pump = new(target)
+	// Only the connection-presence guard is relevant; no live pipenet may process the fixture.
+	pump.nodes[1] = pump
+	pump.on = TRUE
+	pump.set_is_operational(TRUE)
+	pump.external_pressure_bound = target.air.return_pressure() + (mode == "idle" ? 0 : (mode == "siphon" ? -20 : 20))
+	pump.pump_direction = mode == "siphon" ? ATMOS_DIRECTION_SIPHONING : ATMOS_DIRECTION_RELEASING
+	var/datum/gas_mixture/pipe_air = pump.airs[1]
+	pipe_air.moles.Cut()
+	pipe_air.temperature = 350
+	if(mode != "empty_pipe")
+		pipe_air.set_gas(/datum/gas/nitrogen, 200)
+	var/datum/banda_atmos_phase/world_adapter/phase
+	var/borrowed = 0
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(list(target))
+		phase.native(30)
+		phase.initializing = FALSE
+		borrowed = phase.invoke(CALLBACK(src, PROC_REF(vent_pump_process), pump, phase))
+	else
+		pump.process_atmos()
+	var/list/state = list("air" = banda_atmos_full_packet(target.get_readonly_air()), "pipe" = banda_atmos_full_packet(pipe_air), "updates" = pump.parent_updates)
+	if(native)
+		qdel(phase)
+	pump.nodes[1] = null
+	qdel(pump)
+	return list("state" = state, "borrowed" = borrowed)
+
+/// Keep the pre-optimization encoder as an independent wire-format reference.
+/datum/controller/subsystem/atmos_phase_test/proc/full_packet_check()
+	var/datum/gas_mixture/air = new(123)
+	air.set_gas(/datum/gas/oxygen, 12)
+	air.set_gas(/datum/gas/nitrogen, 0)
+	air.temperature = 413
+	air.archive()
+	var/list/reactions = banda_atmos_reactions()
+	for(var/scenario in 0 to length(reactions))
+		air.reaction_results.Cut()
+		for(var/index in 1 to scenario)
+			air.reaction_results[reactions[index]] = (index % 3) ? index * -0.25 : 0
+		// The old encoder ignores unknown keys and treats explicit null like absence.
+		air.reaction_results[/datum/gas/nitrogen] = 7
+		air.reaction_results[reactions[length(reactions)]] = null
+		var/list/expected = banda_atmos_air_packet(air)
+		for(var/reaction in reactions)
+			var/value = air.reaction_results[reaction]
+			expected += list(!isnull(value), isnull(value) ? 0 : value)
+		expected += banda_atmos_air_packet(air, TRUE)
+		if(json_encode(expected) != json_encode(banda_atmos_full_packet(air)))
+			return FALSE
+	return TRUE
+
+/datum/controller/subsystem/atmos_phase_test/proc/space_cache_check()
+	var/turf/open/source = floor_at(175, 175)
+	source.air.set_gas(/datum/gas/nitrogen, 100)
+	var/turf/open/space/breach = floor_at(176, 175)
+	breach = breach.ChangeTurf(/turf/open/space)
+	var/turf/open/space/passive = floor_at(180, 175)
+	passive = passive.ChangeTurf(/turf/open/space)
+	breach.thermal_conductivity = 0
+	passive.thermal_conductivity = 0
+	source.atmos_adjacent_turfs = list(breach)
+	breach.atmos_adjacent_turfs = list(source)
+	passive.atmos_adjacent_turfs = list()
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(source, breach, passive))
+	phase.native(18, list(source.banda_atmos_id, breach.banda_atmos_id), list())
+	for(var/turf/target as anything in list(source, breach, passive))
+		phase.mark_topology(target)
+	phase.flush_topology()
+	phase.native(30)
+	phase.initializing = FALSE
+	var/datum/gas_mixture/old_snapshot = passive.get_readonly_air()
+	var/before = old_snapshot.last_share
+	SSair.times_fired++
+	phase.run_tick(TRUE)
+	var/list/metadata = phase.ensure_binding(breach).read_metadata()
+	var/datum/gas_mixture/current = passive.get_readonly_air()
+	var/success = metadata[7] > 0 && metadata[7] != before && current.last_share == metadata[7]
+	qdel(phase)
+	return success

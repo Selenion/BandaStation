@@ -1,0 +1,57 @@
+name: Rust Atmosphere
+
+on:
+  pull_request:
+    paths:
+      - "rust/atmos/**"
+      - "tools/atmos/**"
+      - "modular_bandastation/atmos_rust/**"
+      - "code/modules/atmospherics/**"
+      - "code/__DEFINES/**"
+      - ".github/workflows/rust_atmos.yml"
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    name: Kernel and 32-bit adapter (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: i686-unknown-linux-gnu
+            executable: ""
+          - os: windows-latest
+            target: i686-pc-windows-msvc
+            executable: ".exe"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Linux 32-bit linker
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib
+      - name: Install checked Rust toolchain
+        run: |
+          rustup toolchain install 1.86.0 --profile minimal --component rustfmt --component clippy --target ${{ matrix.target }}
+          rustup override set 1.86.0
+      - name: Check generated gas and reaction catalog
+        run: python tools/atmos/catalog.py --check
+      - name: Check Rust style
+        run: cargo fmt --manifest-path rust/atmos/Cargo.toml --check
+      - name: Check adapter warnings
+        run: cargo clippy --manifest-path rust/atmos/Cargo.toml --target ${{ matrix.target }} --features byond --lib -- -D warnings
+      - name: Test kernel and adapter parser
+        run: cargo test --manifest-path rust/atmos/Cargo.toml --target ${{ matrix.target }} --features byond --release --locked
+      - name: Build DLL and comparison tools
+        run: cargo build --manifest-path rust/atmos/Cargo.toml --target ${{ matrix.target }} --features byond --release --locked
+      - name: Compare captured Banda physics
+        run: |
+          python tools/atmos/cell.py --rust rust/atmos/target/${{ matrix.target }}/release/cell${{ matrix.executable }}
+          python tools/atmos/fire.py --rust rust/atmos/target/${{ matrix.target }}/release/network${{ matrix.executable }}
+          python tools/atmos/thermal.py --rust rust/atmos/target/${{ matrix.target }}/release/network${{ matrix.executable }}

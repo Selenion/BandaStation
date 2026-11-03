@@ -88,6 +88,10 @@
 		cabin_air.pump_gas_to(external_air, PUMP_MAX_PRESSURE, /datum/gas/carbon_dioxide)
 
 /obj/item/mecha_parts/mecha_equipment/air_tank/proc/process_pump(seconds_per_tick)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(process_pump), seconds_per_tick))
+	// BANDASTATION ADDITION END
 	if(!tank_pump_active)
 		return
 	var/turf/local_turf = get_turf(chassis)

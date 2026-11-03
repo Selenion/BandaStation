@@ -20,7 +20,7 @@
 	lab_rat.forceMove(run_loc_floor_bottom_left)
 	var/turf/open/to_fill = run_loc_floor_bottom_left
 	to_fill.initial_gas_mix = OPENTURF_DEFAULT_ATMOS
-	to_fill.air = to_fill.create_gas_mixture()
+	to_fill.replace_turf_air(to_fill.create_gas_mixture()) // BANDASTATION EDIT - Native API also resets the full mixture.
 	lab_rat.breathe()
 	TEST_ASSERT(!lab_rat.failed_last_breath && !lab_rat.has_alert(ALERT_NOT_ENOUGH_OXYGEN), "Humans can't get a full breath from the standard initial_gas_mix on a turf")
 

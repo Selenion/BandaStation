@@ -364,6 +364,10 @@
 	return coefficient
 
 /obj/structure/chem_separator/process(seconds_per_tick)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, TYPE_PROC_REF(/datum, process), seconds_per_tick))
+	// BANDASTATION ADDITION END
 	if(!reagents.total_volume)
 		if(QDELETED(distilled_container) || !distilled_container.reagents.total_volume)
 			boiling = FALSE

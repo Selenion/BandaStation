@@ -1,0 +1,240 @@
+// Actual process_cell/group calls in the complete game, including real hotspot creation.
+// Geometry is a fixed input, not a CanAtmosPass/door test. Rebuilds must retain that same graph.
+/turf
+	var/list/banda_atmos_fixture_links
+
+/turf/open/floor/iron/banda_atmos_fixture/can_atmos_pass(turf/other, vertical)
+	return isnull(banda_atmos_fixture_links) ? ..() : (other in banda_atmos_fixture_links)
+
+/turf/open/floor/iron/banda_atmos_fixture/immediate_calculate_adjacent_turfs()
+	if(isnull(banda_atmos_fixture_links))
+		return ..()
+	atmos_adjacent_turfs = banda_atmos_fixture_links.Copy()
+
+/turf/open/space/banda_atmos_fixture/can_atmos_pass(turf/other, vertical)
+	return isnull(banda_atmos_fixture_links) ? ..() : (other in banda_atmos_fixture_links)
+
+/turf/open/space/banda_atmos_fixture/immediate_calculate_adjacent_turfs()
+	if(isnull(banda_atmos_fixture_links))
+		return ..()
+	atmos_adjacent_turfs = banda_atmos_fixture_links.Copy()
+
+/proc/banda_atmos_restrict_fixture(list/scope)
+	if(!scope)
+		return
+	SSair.active_turfs &= scope
+	SSair.active_super_conductivity &= scope
+	SSair.high_pressure_delta &= scope
+	for(var/obj/effect/hotspot/spot as anything in SSair.hotspots.Copy())
+		if(!(spot.loc in scope))
+			SSair.hotspots -= spot
+
+/proc/banda_atmos_world_air_step(fire = FALSE, thermal = FALSE, list/scope)
+	banda_atmos_restrict_fixture(scope)
+	SSair.currentpart = SSAIR_ACTIVETURFS
+	SSair.state = SS_RUNNING
+	SSair.process_active_turfs()
+	while(length(SSair.currentrun))
+		// This driver runs outside Master. Its changing tick limit is not a valid stoplag target.
+		sleep(world.tick_lag)
+		SSair.state = SS_RUNNING
+		SSair.process_active_turfs(TRUE)
+	if(fire)
+		banda_atmos_restrict_fixture(scope)
+		SSair.currentpart = SSAIR_HOTSPOTS
+		SSair.state = SS_RUNNING
+		SSair.process_hotspots()
+		while(length(SSair.currentrun))
+			sleep(world.tick_lag)
+			SSair.state = SS_RUNNING
+			SSair.process_hotspots(TRUE)
+	SSair.currentpart = SSAIR_EXCITEDGROUPS
+	SSair.state = SS_RUNNING
+	SSair.process_excited_groups()
+	while(length(SSair.currentrun))
+		sleep(world.tick_lag)
+		SSair.state = SS_RUNNING
+		SSair.process_excited_groups(TRUE)
+	if(thermal)
+		banda_atmos_restrict_fixture(scope)
+		SSair.currentpart = SSAIR_SUPERCONDUCTIVITY
+		SSair.state = SS_RUNNING
+		SSair.process_super_conductivity()
+		while(length(SSair.currentrun))
+			sleep(world.tick_lag)
+			SSair.state = SS_RUNNING
+			SSair.process_super_conductivity(TRUE)
+	banda_atmos_restrict_fixture(scope)
+
+/proc/banda_atmos_world_networks()
+	// Wet-floor aging is a separate subsystem. Fixed graph inputs must not depend on
+	// whether it ran during an MC yield; MakeSlippery/freeze_turf themselves remain real.
+	var/wet_processing = SSwet_floors.can_fire
+	SSwet_floors.can_fire = FALSE
+	var/list/scenarios = json_decode(file2text("world-network-cases.json"))
+	var/list/output = list()
+	var/list/gases = banda_atmos_gases()
+	for(var/list/scenario in scenarios)
+		var/list/cells = list()
+		SSair.active_turfs = list()
+		SSair.excited_groups = list()
+		SSair.high_pressure_delta = list()
+		SSair.times_fired = 0
+		SSair.hotspots = list()
+		SSair.active_super_conductivity = list()
+		// Heat uses physical cardinal neighbors, independently of the gas graph.
+		// Insulate the surrounding ring so the fixture has the same finite domain as Rust.
+		for(var/list/node in scenario["nodes"])
+			var/list/position = node["coordinates"]
+			var/turf/center = locate(60 + position[1], 60 + position[2], position[3])
+			for(var/direction in GLOB.cardinals)
+				var/turf/neighbor = get_step(center, direction)
+				neighbor.thermal_conductivity = 0
+		for(var/list/node in scenario["nodes"])
+			var/list/position = node["coordinates"]
+			var/turf/target = locate(60 + position[1], 60 + position[2], position[3])
+			var/turf_path = node["kind"] == 3 ? /turf/closed/wall : (node["kind"] == 1 ? /turf/open/space/banda_atmos_fixture : /turf/open/floor/iron/banda_atmos_fixture)
+			target = target.ChangeTurf(turf_path)
+			// ChangeTurf can transfer wet_floor even when the gas/geometry input is new.
+			// Each graph starts dry; wall-clock expiration from another graph is not an input.
+			var/datum/component/wet_floor/previous_wetness = target.GetComponent(/datum/component/wet_floor)
+			if(previous_wetness)
+				qdel(previous_wetness)
+			target.banda_atmos_fixture_links = null
+			for(var/atom/movable/thing in target)
+				qdel(thing)
+			target.thermal_conductivity = 0
+			target.temperature_archived = TCMB
+			target.archived_cycle = 0
+			target.current_cycle = 0
+			var/list/terrain = node["terrain"]
+			if(terrain)
+				target.temperature = terrain["temperature"]
+				target.heat_capacity = terrain["capacity"]
+				target.thermal_conductivity = terrain["conductivity"]
+				target.atmos_supeconductivity = terrain["blocked"]
+			if(!isopenturf(target))
+				cells += target
+				continue
+			var/turf/open/open = target
+			SSair.remove_from_active(open)
+			open.active_hotspot = null
+			open.significant_share_ticker = 0
+			open.pressure_difference = 0
+			open.pressure_direction = 0
+			open.planetary_atmos = FALSE
+			open.run_later = node["kind"] == 1
+			target.atmos_adjacent_turfs = list()
+			if(node["kind"] == 1)
+				open.air.garbage_collect()
+				open.air.last_share = 0
+			else
+				var/datum/gas_mixture/air
+				if(node["kind"] == 2)
+					var/datum/gas_mixture/immutable/planetary/fixed_mix = new
+					fixed_mix.initial_temperature = node["temperature"]
+					for(var/list/pair in node["gases"])
+						fixed_mix.initial_gas[gases[pair[1] + 1]] = pair[2]
+					fixed_mix.garbage_collect()
+					air = fixed_mix
+				else
+					air = new /datum/gas_mixture/turf(CELL_VOLUME)
+					air.temperature = node["temperature"]
+					for(var/list/pair in node["gases"])
+						air.moles[gases[pair[1] + 1]] = pair[2]
+				open.air = air
+			var/list/planet = node["planetary"]
+			if(planet)
+				open.planetary_atmos = TRUE
+				target.initial_gas_mix = "audit:[length(cells)]"
+				var/datum/gas_mixture/immutable/planetary/atmosphere = new
+				atmosphere.initial_temperature = planet["temperature"]
+				for(var/list/pair in planet["gases"])
+					atmosphere.initial_gas[gases[pair[1] + 1]] = pair[2]
+				atmosphere.garbage_collect()
+				SSair.planetary[target.initial_gas_mix] = atmosphere
+			cells += target
+		// ChangeTurf updates both ends of neighboring links, including already constructed fixtures.
+		for(var/turf/target as anything in cells)
+			if(isopenturf(target))
+				SSair.remove_from_active(target)
+			target.atmos_adjacent_turfs = list()
+		SSair.active_turfs = list()
+		SSair.excited_groups = list()
+		SSair.high_pressure_delta = list()
+		for(var/index in 1 to length(cells))
+			var/turf/target = cells[index]
+			var/list/node = scenario["nodes"][index]
+			for(var/neighbor in node["neighbors"])
+				target.atmos_adjacent_turfs += cells[neighbor + 1]
+			target.banda_atmos_fixture_links = target.atmos_adjacent_turfs.Copy()
+		for(var/index in scenario["active"])
+			SSair.add_to_active(cells[index + 1])
+		for(var/index in scenario["conducting"])
+			SSair.active_super_conductivity += cells[index + 1]
+		var/list/states = list()
+		for(var/tick in 1 to scenario["ticks"])
+			SSair.times_fired++
+			banda_atmos_world_air_step(scenario["hotspots"], scenario["thermal"], cells)
+			states += list(banda_atmos_world_network_state(cells, scenario["hotspots"], scenario["thermal"]))
+			for(var/turf/open/target as anything in SSair.high_pressure_delta)
+				target.pressure_difference = 0
+			SSair.high_pressure_delta.Cut()
+		output += list(states)
+	SSwet_floors.can_fire = wet_processing
+	return output
+
+/proc/banda_atmos_world_network_state(list/cells, fire = FALSE, thermal = FALSE)
+	var/list/gases = banda_atmos_gases()
+	var/list/active = list()
+	for(var/turf/open/target as anything in SSair.active_turfs)
+		active += cells.Find(target) - 1
+	var/list/tiles = list()
+	for(var/turf/target as anything in cells)
+		var/turf/open/open = isopenturf(target) ? target : null
+		var/datum/gas_mixture/air = open ? open.air : new /datum/gas_mixture
+		if(!open)
+			air.temperature = TCMB
+			air.temperature_archived = TCMB
+		var/list/amounts = list()
+		var/list/archived_amounts = list()
+		var/list/keys = list()
+		var/list/archived_keys = list()
+		for(var/gas in gases)
+			amounts += num2text(air.moles[gas] || 0, 9)
+			archived_amounts += num2text(air.moles_archive[gas] || 0, 9)
+		for(var/gas in air.moles)
+			keys += gases.Find(gas) - 1
+		for(var/gas in air.moles_archive)
+			archived_keys += gases.Find(gas) - 1
+		var/list/results = list()
+		for(var/reaction in banda_atmos_reactions())
+			var/value = air.reaction_results[reaction]
+			results += list(isnull(value) ? null : num2text(value, 9))
+		var/list/tile = list("temperature" = num2text(air.temperature, 9), "moles" = amounts, "keys" = keys,
+			"archived_temperature" = num2text(air.temperature_archived, 9), "archived_moles" = archived_amounts, "archived_keys" = archived_keys,
+			"results" = results, "archived_cycle" = target.archived_cycle, "current_cycle" = target.current_cycle,
+			"ticker" = open ? open.significant_share_ticker : 0, "excited" = open ? open.excited : FALSE, "group" = open ? SSair.excited_groups.Find(open.excited_group) : 0,
+			"last_share" = num2text(air.last_share, 9), "pressure" = num2text(open ? open.pressure_difference : 0, 9), "direction" = open ? open.pressure_direction : 0)
+		if(thermal)
+			tile["solid_temperature"] = num2text(target.temperature, 9)
+			tile["solid_archived"] = num2text(target.temperature_archived, 9)
+		tiles += list(tile)
+	var/list/groups = list()
+	for(var/datum/excited_group/group as anything in SSair.excited_groups)
+		var/list/members = list()
+		for(var/member in group.turf_list)
+			members += cells.Find(member) - 1
+		groups += list(list("members" = members, "breakdown" = group.breakdown_cooldown, "dismantle" = group.dismantle_cooldown))
+	var/list/state = list("active" = active, "cells" = tiles, "groups" = groups)
+	if(fire)
+		var/list/spots = list()
+		for(var/obj/effect/hotspot/spot as anything in SSair.hotspots)
+			spots += list(list(cells.Find(spot.loc) - 1, num2text(spot.temperature, 9), num2text(spot.volume, 9), spot.just_spawned, spot.bypassing, spot.cold_fire))
+		state["hotspots"] = spots
+	if(thermal)
+		var/list/conducting = list()
+		for(var/turf/target as anything in SSair.active_super_conductivity)
+			conducting += cells.Find(target) - 1
+		state["conducting"] = conducting
+	return state

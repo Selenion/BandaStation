@@ -25,7 +25,7 @@
 		exposed_temperature = TCMB
 		CRASH("[src].hotspot_expose() called with exposed_temperature < [TCMB]")
 	//If the air doesn't exist we just return false
-	var/cached_moles = air?.moles
+	var/cached_moles = get_readonly_air()?.moles // BANDASTATION EDIT - Gas is read from the native API.
 	if(!cached_moles)
 		return
 
@@ -147,6 +147,10 @@
 	// Remove just_spawned protection if no longer processing the parent cell
 	just_spawned = (our_turf.current_cycle < SSair.times_fired)
 	update_color()
+	// BANDASTATION ADDITION START - Adopt direct world-created hotspots after their initial DM exposure.
+	if(SSair.native_atmos && !our_turf.banda_atmos_cell?.updating_hotspot)
+		SSair.native_atmos.adopt_hotspot(src)
+	// BANDASTATION ADDITION END
 
 /obj/effect/hotspot/set_smoothed_icon_state(new_junction)
 
@@ -169,10 +173,15 @@
  * Returns TRUE if exposed successfully, and FALSE if the hotspot should delete itself
  */
 /obj/effect/hotspot/proc/perform_exposure()
+	// BANDASTATION ADDITION START - Direct hotspot constructors retain Banda's one-shot DM exposure.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(perform_exposure)))
+	// BANDASTATION ADDITION END
 	var/turf/open/location = loc
 	var/datum/gas_mixture/reference
-	if(!istype(location) || !location.air)
+	if(!istype(location) || !location.has_turf_air()) // BANDASTATION EDIT
 		return FALSE
+	var/datum/gas_mixture/environment = location.get_mutable_air() // BANDASTATION ADDITION
 
 	if(location.active_hotspot && location.active_hotspot != src)
 		// If we're attempting to spawn on a turf which *just* had a hotspot spawned on it, abort and kill ourselves
@@ -187,10 +196,10 @@
 
 	//Passive mode
 	if(bypassing || cold_fire)
-		reference = location.air // Our color and volume will depend on the turf's gasmix
+		reference = environment // BANDASTATION EDIT - Borrowed native gas.
 	//Active mode
 	else
-		var/datum/gas_mixture/affected = location.air.remove_ratio(volume/location.air.volume)
+		var/datum/gas_mixture/affected = environment.remove_ratio(volume/environment.volume) // BANDASTATION EDIT
 		if(affected) //in case volume is 0
 			reference = affected // Our color and volume will depend on this small sparked gasmix
 			affected.temperature = temperature
@@ -288,6 +297,11 @@
  * And some visual stuffs too! Colors and fainter icons for specific conditions.
  */
 /obj/effect/hotspot/process()
+	// BANDASTATION ADDITION START - Gas and lifetime already advanced in the native tick.
+	if(binding?.owner?.world_owned)
+		update_native_presentation()
+		return TRUE
+	// BANDASTATION ADDITION END
 	if(just_spawned)
 		just_spawned = FALSE
 		return
@@ -365,6 +379,11 @@
 	update_color()
 
 /obj/effect/hotspot/Destroy()
+	// BANDASTATION ADDITION START - World deletion also clears its native hotspot state.
+	if(binding && !QDELETED(binding) && !binding.pending_rebind && !binding.updating_hotspot && binding.owner && !QDELETED(binding.owner))
+		binding.owner.native(15, binding.native_id)
+	binding = null
+	// BANDASTATION ADDITION END
 	SSair.hotspots -= src
 	var/turf/open/cur_turf = loc
 	if(our_hot_group)

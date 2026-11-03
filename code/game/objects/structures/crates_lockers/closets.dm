@@ -227,6 +227,10 @@ GLOBAL_LIST_EMPTY(roundstart_station_closets)
 	process_internal_air(seconds_per_tick)
 
 /obj/structure/closet/proc/process_internal_air(seconds_per_tick)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(process_internal_air), seconds_per_tick))
+	// BANDASTATION ADDITION END
 	if(opened)
 		var/datum/gas_mixture/current_exposed_air = loc.return_air()
 		if(!current_exposed_air)

@@ -1,0 +1,37 @@
+/// Exercise the actual SSatoms map-loader state, not an artificial missing-air assignment.
+/datum/controller/subsystem/atmos_phase_test/proc/deferred_checks()
+	var/list/checks = list()
+	var/datum/banda_atmos_phase/phase = new("bandastation_atmos.dll")
+	var/turf/open/target = floor_at(95, 90)
+	var/datum/banda_atmos_cell/cell = phase.bind(target)
+	var/id = cell.native_id
+	var/version = cell.binding_version
+	SSatoms.map_loader_begin(REF(src))
+	target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_DEFER_CHANGE | CHANGETURF_IGNORE_AIR)
+	SSatoms.map_loader_stop(REF(src))
+	checks["loader_defers_air_and_binding"] = !target.air && !(target.flags_1 & INITIALIZED_1) && cell.pending_rebind && phase.uninitialized_cells[cell]
+	checks["unfinished_turf_does_not_enter_calculation"] = phase.run_tick(TRUE) == FALSE && cell.read_packet()[1] == 0
+	SSatoms.map_loader_begin(REF(src))
+	target = target.ChangeTurf(/turf/open/floor/iron, flags = CHANGETURF_DEFER_CHANGE | CHANGETURF_IGNORE_AIR)
+	SSatoms.map_loader_stop(REF(src))
+	checks["repeated_deferred_change_keeps_cell"] = target.banda_atmos_cell == cell && cell.native_id == id && cell.binding_version == version + 2 && length(phase.uninitialized_cells) == 1
+	SSatoms.InitializeAtoms(list(target))
+	checks["successful_initialize_finishes_binding"] = !!target.air && !cell.pending_rebind && !length(phase.uninitialized_cells) && target.banda_atmos_cell == cell && cell.native_id == id
+	var/datum/gas_mixture/expected = target.create_gas_mixture()
+	checks["new_turf_initial_gas_imported"] = target.air.moles[/datum/gas/oxygen] == expected.moles[/datum/gas/oxygen] && target.air.moles[/datum/gas/nitrogen] == expected.moles[/datum/gas/nitrogen]
+	target.atmos_adjacent_turfs = list()
+	target.thermal_conductivity = 0
+	phase.run_tick(TRUE)
+	checks["calculation_resumes_after_initialize"] = cell.read_packet()[1] == 1
+	qdel(phase)
+
+	phase = new("bandastation_atmos.dll")
+	target = floor_at(97, 90)
+	cell = phase.bind(target)
+	SSatoms.map_loader_begin(REF(src))
+	target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_DEFER_CHANGE | CHANGETURF_IGNORE_AIR)
+	SSatoms.map_loader_stop(REF(src))
+	qdel(phase)
+	SSatoms.InitializeAtoms(list(target))
+	checks["closing_cancels_initialization_listener"] = !target.banda_atmos_cell && !!target.air
+	return checks

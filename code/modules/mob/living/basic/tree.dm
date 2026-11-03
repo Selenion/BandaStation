@@ -60,15 +60,19 @@
 	AddComponent(/datum/component/aggro_emote, emote_list = string_list(list("рычит")), emote_chance = 20)
 
 /mob/living/basic/tree/Life(seconds_per_tick = SSMOBS_DT)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(Life), seconds_per_tick))
+	// BANDASTATION ADDITION END
 	. = ..()
 	if(!.) //dead or deleted
 		return
 	if(!isopenturf(loc))
 		return
 	var/turf/open/our_turf = src.loc
-	if(!our_turf.air || !our_turf.air.moles[/datum/gas/carbon_dioxide])
+	if(!our_turf.return_air() || !our_turf.return_air().moles[/datum/gas/carbon_dioxide]) // BANDASTATION EDIT - Atmosphere API.
 		return
-	var/datum/gas_mixture/our_air = our_turf.air
+	var/datum/gas_mixture/our_air = our_turf.return_air() // BANDASTATION EDIT - Atmosphere API.
 	var/co2 = our_air.moles[/datum/gas/carbon_dioxide]
 	if(co2 > 0 && SPT_PROB(13, seconds_per_tick))
 		var/amt = min(co2, 9)

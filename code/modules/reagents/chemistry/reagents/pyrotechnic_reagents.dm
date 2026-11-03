@@ -489,6 +489,10 @@
 	randomized_spawns = REAGENT_SPAWN_ALL_RANDOM_SPAWNS
 
 /datum/reagent/firefighting_foam/expose_turf(turf/open/exposed_turf, reac_volume)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(expose_turf), exposed_turf, reac_volume))
+	// BANDASTATION ADDITION END
 	. = ..()
 	if (!istype(exposed_turf))
 		return
@@ -501,8 +505,8 @@
 			foam.lifetime = initial(foam.lifetime) //reduce object churn a little bit when using smoke by keeping existing foam alive a bit longer
 
 	var/obj/effect/hotspot/hotspot = (locate(/obj/effect/hotspot) in exposed_turf)
-	if(hotspot && !isspaceturf(exposed_turf) && exposed_turf.air)
-		var/datum/gas_mixture/air = exposed_turf.air
+	if(hotspot && !isspaceturf(exposed_turf) && exposed_turf.return_air()) // BANDASTATION EDIT - Atmosphere API.
+		var/datum/gas_mixture/air = exposed_turf.return_air() // BANDASTATION EDIT - Atmosphere API.
 		if(air.temperature > T20C)
 			air.temperature = max(air.temperature/2,T20C)
 		air.react(src)

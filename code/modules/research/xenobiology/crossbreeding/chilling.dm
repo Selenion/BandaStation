@@ -104,13 +104,17 @@ Chilling extracts:
 	effect_desc = "Removes all plasma gas in the area."
 
 /obj/item/slimecross/chilling/darkpurple/do_effect(mob/user)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(do_effect), user))
+	// BANDASTATION ADDITION END
 	var/area/A = get_area(get_turf(user))
 	if(A.outdoors)
 		to_chat(user, span_warning("[src] can't affect such a large area."))
 		return
 	var/filtered = FALSE
 	for(var/turf/open/T in A.get_turfs_from_all_zlevels())
-		var/datum/gas_mixture/G = T.air
+		var/datum/gas_mixture/G = T.return_air() // BANDASTATION EDIT - Atmosphere API.
 		if(istype(G))
 			G.assert_gas(/datum/gas/plasma)
 			G.moles[/datum/gas/plasma] = 0

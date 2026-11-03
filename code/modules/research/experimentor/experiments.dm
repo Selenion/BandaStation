@@ -203,6 +203,10 @@
 	machine.investigate_log("Experimentor has made a cup of [chosenchem] coffee.", INVESTIGATE_EXPERIMENTOR)
 
 /datum/experimentor_result_handler/scan/heat/handle_malfunctions(obj/machinery/rnd/experimentor/machine, obj/item/exp_on)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(handle_malfunctions), machine, exp_on))
+	// BANDASTATION ADDITION END
 	var/malf_chance = machine.get_malfunction_chance()
 
 	if(prob(EFFECT_PROB_VERYLOW * malf_chance))
@@ -268,6 +272,10 @@
 	machine.investigate_log("Experimentor has made a cup of [chosenchem] coffee.", INVESTIGATE_EXPERIMENTOR)
 
 /datum/experimentor_result_handler/scan/cold/handle_malfunctions(obj/machinery/rnd/experimentor/machine, obj/item/exp_on)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(handle_malfunctions), machine, exp_on))
+	// BANDASTATION ADDITION END
 	var/malf_chance = machine.get_malfunction_chance()
 
 	if(prob(EFFECT_PROB_VERYLOW * malf_chance))

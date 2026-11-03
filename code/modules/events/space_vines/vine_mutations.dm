@@ -319,6 +319,10 @@
 	var/datum/gas/gas_type = null
 
 /datum/spacevine_mutation/gas_eater/process_mutation(obj/structure/spacevine/vine)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(process_mutation), vine))
+	// BANDASTATION ADDITION END
 	if(isnull(gas_type))
 		stack_trace("gas_type not set for gas_eater mutation [type]")
 		return
@@ -327,7 +331,7 @@
 	if(!istype(turf))
 		return
 
-	var/datum/gas_mixture/gas_mix = turf.air
+	var/datum/gas_mixture/gas_mix = turf.return_air() // BANDASTATION EDIT - Atmosphere API.
 	if(!gas_mix.moles[gas_type])
 		return
 

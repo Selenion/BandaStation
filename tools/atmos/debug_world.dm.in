@@ -1,0 +1,94 @@
+/datum/controller/subsystem/atmos_phase_test/proc/debug_world_checks()
+	var/list/checks = list()
+	var/turf/open/left = floor_at(175, 165)
+	var/turf/open/right = floor_at(176, 165)
+	left.air.set_gas(/datum/gas/nitrogen, 100)
+	right.air.set_gas(/datum/gas/oxygen, 10)
+	left.atmos_adjacent_turfs = list(right)
+	right.atmos_adjacent_turfs = list(left)
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(left, right))
+	phase.native(18, list(left.banda_atmos_id, right.banda_atmos_id), list())
+	phase.initializing = FALSE
+	phase.mark_topology(left)
+	phase.mark_topology(right)
+	phase.flush_topology()
+	SSair.times_fired++
+	phase.native(16, SSair.times_fired)
+	var/list/state = phase.debug_state()
+	var/list/schedule = list()
+	phase.native(17, schedule)
+	var/index = 1
+	checks["active_count"] = state[1] == schedule[index]
+	index += schedule[index] + 1
+	checks["hotspot_count"] = state[2] == schedule[index]
+	index += schedule[index] + 1
+	checks["conducting_count"] = state[4] == schedule[index]
+	index += schedule[index] + 1
+	checks["group_count"] = state[3] == schedule[index] && state[3] == 1
+	var/list/data = list()
+	phase.debug_ui_data(data)
+	var/list/rows = data["excited_groups"]
+	var/list/row = rows[1]
+	var/datum/excited_group/banda_native_view/group = phase.debug_groups[1]
+	checks["group_members_and_timers"] = row["size"] == 2 && row["breakdown"] == schedule[index + 1] && row["dismantle"] == schedule[index + 2] && (left in group.turf_list) && (right in group.turf_list)
+	#ifdef TRACK_MAX_SHARE
+	checks["max_share_mode"] = group.tracked_max > 0
+	#else
+	checks["max_share_mode"] = group.tracked_max == 0
+	#endif
+	checks["debug_does_not_create_air_mirror"] = !left.air && !right.air && !left.banda_atmos_cell && !right.banda_atmos_cell
+	checks["view_is_not_a_dm_simulation_group"] = !(group in SSair.excited_groups)
+	var/reference = REF(group)
+	checks["show_group"] = phase.debug_toggle_group(reference) && group.should_display && !!group.display_id
+	var/atom/movable/overlay = GLOB.colored_turfs[group.display_id][GET_Z_PLANE_OFFSET(left.z) + 1]
+	checks["overlay_on_members"] = (overlay in left.vis_contents) && (overlay in right.vis_contents)
+	phase.debug_toggle_group(reference)
+	checks["hide_group"] = !group.should_display && !(overlay in left.vis_contents) && !(overlay in right.vis_contents)
+	var/datum/excited_group/foreign = new()
+	checks["foreign_reference_rejected"] = !phase.debug_toggle_group(REF(foreign))
+	foreign.garbage_collect()
+	qdel(foreign)
+	phase.debug_toggle_all()
+	checks["show_all"] = SSair.display_all_groups && !!group.display_id
+	phase.debug_toggle_all()
+	checks["hide_all"] = !SSair.display_all_groups && !group.should_display && !length(left.vis_contents) && !length(right.vis_contents)
+	var/list/commands = list()
+	phase.native(5, commands)
+	var/pressure_count = 0
+	for(var/command = 1; command <= length(commands); command += 5)
+		if(commands[command + 2] == 14)
+			pressure_count++
+	var/list/after_commands = phase.debug_state()
+	checks["pressure_count"] = pressure_count > 0 && state[5] == pressure_count && after_commands[5] == 0
+	phase.debug_toggle_group(reference)
+	phase.native(19, left.banda_atmos_id, 1)
+	phase.refresh_debug_overlays()
+	checks["removed_group_hides_overlay"] = !length(phase.debug_groups) && QDELETED(group) && !length(left.vis_contents) && !length(right.vis_contents)
+	checks["stale_reference_rejected"] = !phase.debug_toggle_group(reference)
+	phase.invoke(CALLBACK(src, PROC_REF(api_modify), left))
+	phase.flush_inputs()
+	SSair.times_fired++
+	phase.native(16, SSair.times_fired)
+	phase.debug_toggle_all()
+	var/datum/excited_group/banda_native_view/closing_view = length(phase.debug_groups) ? phase.debug_groups[1] : null
+	// Handback normally redisplays restored DM groups when show-all remains enabled.
+	SSair.display_all_groups = FALSE
+	qdel(phase)
+	checks["owner_cleanup"] = closing_view && QDELETED(closing_view) && !length(left.vis_contents) && !length(right.vis_contents)
+	SSair.display_all_groups = FALSE
+	phase = new("")
+	checks["failed_constructor_rejected"] = !phase.native_ready && !phase.native_id && istext(phase.startup_error)
+	checks["failed_world_did_not_register"] = !length(phase.positions) && !length(phase.debug_groups)
+	qdel(phase)
+	phase = new("bandastation_atmos.dll")
+	var/caught = FALSE
+	try
+		phase.native(31, 2, list())
+	catch(var/exception/error)
+		caught = findtext(error.name, "Invalid debug detail") > 0
+	state = phase.debug_state()
+	checks["native_error_propagates"] = caught && length(state) == 5
+	qdel(phase)
+	return checks

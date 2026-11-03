@@ -91,13 +91,24 @@
 /turf/open/assume_air(datum/gas_mixture/giver) //use this for machines to adjust air
 	if(!giver)
 		return FALSE
-	air.merge(giver)
+	// BANDASTATION ADDITION START - Native atmosphere writes are applied between calculations.
+	if(SSair.native_atmos && banda_atmos_id && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, TYPE_PROC_REF(/atom, assume_air), giver))
+	if(banda_atmos_cell && !banda_atmos_cell.owner.world_owned)
+		return banda_atmos_cell.write_air(giver, TRUE)
+	// BANDASTATION ADDITION END
+	var/datum/gas_mixture/ours = get_mutable_air() // BANDASTATION EDIT - Borrow only this native cell.
+	ours.merge(giver)
 	update_visuals()
 	air_update_turf(FALSE, FALSE)
 	return TRUE
 
 /turf/open/remove_air(amount)
-	var/datum/gas_mixture/ours = return_air()
+	// BANDASTATION ADDITION START - A returned sample must be removed atomically from native air.
+	if(SSair.native_atmos && banda_atmos_id && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, TYPE_PROC_REF(/atom, remove_air), amount))
+	// BANDASTATION ADDITION END
+	var/datum/gas_mixture/ours = get_mutable_air() // BANDASTATION EDIT - Safe native access.
 	var/datum/gas_mixture/removed = ours.remove(amount)
 	update_visuals()
 	air_update_turf(FALSE, FALSE)
@@ -105,11 +116,16 @@
 
 /turf/open/proc/copy_air_with_tile(turf/open/target_turf)
 	if(istype(target_turf))
-		air.copy_from(target_turf.air)
+		copy_air(target_turf.get_readonly_air()) // BANDASTATION EDIT - Read source through its atmosphere API.
 
 /turf/open/proc/copy_air(datum/gas_mixture/copy)
+	// BANDASTATION ADDITION START - Preserve copy_from semantics inside the safe phase.
+	if(SSair.native_atmos && banda_atmos_id && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(copy_air), copy))
+	// BANDASTATION ADDITION END
 	if(copy)
-		air.copy_from(copy)
+		var/datum/gas_mixture/ours = get_mutable_air() // BANDASTATION EDIT
+		ours.copy_from(copy)
 
 /turf/return_air()
 	RETURN_TYPE(/datum/gas_mixture)
@@ -118,7 +134,11 @@
 
 /turf/open/return_air()
 	RETURN_TYPE(/datum/gas_mixture)
-	return air
+	// BANDASTATION EDIT START - Mutable mixtures are available only between native calculations.
+	if(SSair.native_atmos?.in_safe_callback && banda_atmos_id)
+		return get_mutable_air()
+	return get_readonly_air()
+	// BANDASTATION EDIT END
 
 /turf/open/return_analyzable_air()
 	return return_air()
@@ -158,22 +178,41 @@
 	temperature_archived = temperature
 
 /turf/open/archive()
+	// BANDASTATION ADDITION START - Preserve LINDA's gas, cycle and turf-temperature archive through the API.
+	if(SSair.native_atmos && banda_atmos_id)
+		if(!SSair.native_atmos.in_safe_callback)
+			return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(archive)))
+		if(banda_atmos_cell?.pending_rebind)
+			LINDA_CYCLE_ARCHIVE(src)
+			banda_atmos_cell.pending_archive_cycle = archived_cycle
+			banda_atmos_cell.pending_archive_temperature = temperature_archived
+			return
+		var/datum/gas_mixture/working_air = get_mutable_air()
+		working_air.archive()
+		archived_cycle = SSair.times_fired
+		temperature_archived = temperature
+		SSair.native_atmos.native(37, banda_atmos_id, archived_cycle, temperature_archived)
+		return
+	// BANDASTATION ADDITION END
 	LINDA_CYCLE_ARCHIVE(src)
 
 /////////////////////////GAS OVERLAYS//////////////////////////////
 
 
-/turf/open/proc/update_visuals()
+/turf/open/proc/update_visuals(list/native_moles) // BANDASTATION EDIT - Rendering does not retain a DM gas mirror.
 	var/list/atmos_overlay_types = src.atmos_overlay_types // Cache for free performance
 
-	if(!air) // 2019-05-14: was not able to get this path to fire in testing. Consider removing/looking at callers -Naksu
+	var/list/moles = native_moles // BANDASTATION ADDITION - Published packet or lazy consumer read.
+	if(isnull(moles))
+		var/datum/gas_mixture/visual_air = (SSair.native_atmos && banda_atmos_id) ? get_readonly_air() : air
+		moles = visual_air?.moles
+	if(isnull(moles)) // BANDASTATION EDIT
 		if (atmos_overlay_types)
 			for(var/overlay in atmos_overlay_types)
 				vis_contents -= overlay
 			src.atmos_overlay_types = null
 		return
 
-	var/list/moles = air.moles
 	var/list/new_overlay_types
 	GAS_OVERLAYS(moles, new_overlay_types, src)
 
@@ -198,16 +237,19 @@
 			.[gastype] = TRUE
 
 /////////////////////////////SIMULATION///////////////////////////////////
+// BANDASTATION EDIT START - run_later can exchange gas without compare() creating a group.
 #ifdef TRACK_MAX_SHARE
 #define LAST_SHARE_CHECK \
 	var/last_share = our_air.last_share;\
 	max_share = max(last_share, max_share);\
 	if(last_share > MINIMUM_AIR_TO_SUSPEND){\
-		our_excited_group.reset_cooldowns();\
+		our_excited_group?.reset_cooldowns();\
 		cached_ticker = 0;\
 		enemy_tile.significant_share_ticker = 0;\
 	} else if(last_share > MINIMUM_MOLES_DELTA_TO_MOVE) {\
-		our_excited_group.dismantle_cooldown = 0;\
+		if(our_excited_group){\
+			our_excited_group.dismantle_cooldown = 0;\
+		}\
 		cached_ticker = 0;\
 		enemy_tile.significant_share_ticker = 0;\
 	}
@@ -215,15 +257,18 @@
 #define LAST_SHARE_CHECK \
 	var/last_share = our_air.last_share;\
 	if(last_share > MINIMUM_AIR_TO_SUSPEND){\
-		our_excited_group.reset_cooldowns();\
+		our_excited_group?.reset_cooldowns();\
 		cached_ticker = 0;\
 		enemy_tile.significant_share_ticker = 0;\
 	} else if(last_share > MINIMUM_MOLES_DELTA_TO_MOVE) {\
-		our_excited_group.dismantle_cooldown = 0;\
+		if(our_excited_group){\
+			our_excited_group.dismantle_cooldown = 0;\
+		}\
 		cached_ticker = 0;\
 		enemy_tile.significant_share_ticker = 0;\
 	}
 #endif
+// BANDASTATION EDIT END
 #ifdef TRACK_MAX_SHARE
 #define PLANET_SHARE_CHECK \
 	var/last_share = our_air.last_share;\
@@ -654,14 +699,21 @@ Then we space some of our heat, and think about if we should stop conducting.
 /turf/proc/consider_superconductivity(starting)
 	if(!thermal_conductivity)
 		return FALSE
+	// BANDASTATION ADDITION START - Keep thermal scheduling in the native owner.
+	if(SSair.native_atmos && !SSair.native_atmos.initializing)
+		return SSair.native_atmos.ensure_binding(src)?.control(starting ? 4 : 5)
+	if(banda_atmos_cell)
+		return banda_atmos_cell.control(starting ? 4 : 5)
+	// BANDASTATION ADDITION END
 
 	SSair.active_super_conductivity |= src
 	return TRUE
 
 /turf/open/consider_superconductivity(starting)
-	if(air.temperature < (starting?MINIMUM_TEMPERATURE_START_SUPERCONDUCTION:MINIMUM_TEMPERATURE_FOR_SUPERCONDUCTION))
+	var/datum/gas_mixture/current_air = get_readonly_air() // BANDASTATION ADDITION
+	if(current_air.temperature < (starting?MINIMUM_TEMPERATURE_START_SUPERCONDUCTION:MINIMUM_TEMPERATURE_FOR_SUPERCONDUCTION)) // BANDASTATION EDIT
 		return FALSE
-	if(air.heat_capacity() < M_CELL_WITH_RATIO) // Was: MOLES_CELLSTANDARD*0.1*0.05 Since there are no variables here we can make this a constant.
+	if(current_air.heat_capacity() < M_CELL_WITH_RATIO) // BANDASTATION EDIT - Keep the original admission threshold.
 		return FALSE
 	return ..()
 

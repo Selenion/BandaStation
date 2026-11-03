@@ -57,20 +57,22 @@
 		SSair.atom_process -= src
 		flags_1 &= ~ATMOS_IS_PROCESSING_1
 		return
-	if(!should_atmos_process(spot.air, spot.air.temperature)) //Things can change without a tile becoming active
+	var/datum/gas_mixture/environment = spot.return_air() // BANDASTATION ADDITION - SSair executes exposure in a safe native phase.
+	if(!should_atmos_process(environment, environment.temperature)) //Things can change without a tile becoming active // BANDASTATION EDIT
 		atmos_end()
 		SSair.atom_process -= src
 		flags_1 &= ~ATMOS_IS_PROCESSING_1
 		return
-	atmos_expose(spot.air, spot.air.temperature)
+	atmos_expose(environment, environment.temperature) // BANDASTATION EDIT - Exposure may modify native gas.
 
 /turf/open/process_exposure()
-	if(!should_atmos_process(air, air.temperature))
+	var/datum/gas_mixture/environment = return_air() // BANDASTATION ADDITION - Safe native gas access.
+	if(!should_atmos_process(environment, environment.temperature)) // BANDASTATION EDIT
 		atmos_end()
 		SSair.atom_process -= src
 		flags_1 &= ~ATMOS_IS_PROCESSING_1
 		return
-	atmos_expose(air, air.temperature)
+	atmos_expose(environment, environment.temperature) // BANDASTATION EDIT - Safe native gas access.
 
 ///We use this proc to check if we should start processing an item, or continue processing it. Returns true/false as expected
 /atom/proc/should_atmos_process(datum/gas_mixture/air, exposed_temperature)

@@ -218,7 +218,7 @@
 	exposed_turf.MakeSlippery(TURF_WET_LUBE, min_wet_time = 10 SECONDS, wet_time_to_add = reac_volume*2 SECONDS)
 	var/obj/effect/hotspot/hotspot = (locate(/obj/effect/hotspot) in exposed_turf)
 	if(hotspot)
-		var/datum/gas_mixture/lowertemp = exposed_turf.remove_air(exposed_turf.air.total_moles())
+		var/datum/gas_mixture/lowertemp = exposed_turf.remove_air(exposed_turf.get_readonly_air().total_moles()) // BANDASTATION EDIT - Read native atmosphere through the API.
 		lowertemp.temperature = max( min(lowertemp.temperature-2000,lowertemp.temperature / 2) ,0)
 		lowertemp.react(src)
 		exposed_turf.assume_air(lowertemp)
@@ -441,15 +441,21 @@
 	affected_mob.adjust_bodytemperature(0.5 * TEMPERATURE_DAMAGE_COEFFICIENT * cooling * metabolization_ratio * seconds_per_tick, 50)
 
 /datum/reagent/consumable/frostoil/expose_turf(turf/exposed_turf, reac_volume)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(expose_turf), exposed_turf, reac_volume))
+	// BANDASTATION ADDITION END
 	. = ..()
 	if(reac_volume < 1)
 		return
 	if(isopenturf(exposed_turf))
 		var/turf/open/exposed_open_turf = exposed_turf
 		exposed_open_turf.MakeSlippery(wet_setting=TURF_WET_ICE, min_wet_time=100, wet_time_to_add=reac_volume SECONDS) // Is less effective in high pressure/high heat capacity environments. More effective in low pressure.
-		var/temperature = exposed_open_turf.air.temperature
-		var/heat_capacity = exposed_open_turf.air.heat_capacity()
-		exposed_open_turf.air.temperature = max(exposed_open_turf.air.temperature - ((temperature - TCMB) * (heat_capacity * reac_volume * specific_heat) / (heat_capacity + reac_volume * specific_heat)) / heat_capacity, TCMB) // Exchanges environment temperature with reagent. Reagent is at 2.7K with a heat capacity of 40J per unit.
+		var/temperature = exposed_open_turf.return_air().temperature // BANDASTATION EDIT - Atmosphere API.
+		var/heat_capacity = exposed_open_turf.return_air().heat_capacity() // BANDASTATION EDIT - Atmosphere API.
+		// BANDASTATION ADDITION - This raw temperature write does not activate atmospheric processing.
+		SSair.native_atmos?.mark_dirty(exposed_open_turf)
+		exposed_open_turf.return_air().temperature = max(exposed_open_turf.return_air().temperature - ((temperature - TCMB) * (heat_capacity * reac_volume * specific_heat) / (heat_capacity + reac_volume * specific_heat)) / heat_capacity, TCMB) // Exchanges environment temperature with reagent. Reagent is at 2.7K with a heat capacity of 40J per unit. // BANDASTATION EDIT - Atmosphere API.
 	if(reac_volume < 5)
 		return
 	for(var/mob/living/basic/slime/exposed_slime in exposed_turf)

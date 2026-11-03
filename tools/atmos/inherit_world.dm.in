@@ -1,0 +1,57 @@
+/// The ordinary ChangeTurf(INHERIT_AIR) contract is separate from removal/replacement safety.
+/datum/controller/subsystem/atmos_phase_test/proc/inheritance_check()
+	var/turf/open/original = floor_at(80, 80)
+	var/turf/open/neighbor = floor_at(81, 80)
+	original.air.set_gas(/datum/gas/nitrogen, 100)
+	neighbor.air.set_gas(/datum/gas/oxygen, 100)
+	original.atmos_adjacent_turfs = list(neighbor)
+	neighbor.atmos_adjacent_turfs = list(original)
+	var/datum/excited_group/group = new()
+	group.add_turf(original)
+	group.add_turf(neighbor)
+	group.breakdown_cooldown = 2
+	group.dismantle_cooldown = 4
+	original = original.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+	var/list/result = list("source_keeps_group" = original.excited_group == group && neighbor.excited_group == group,
+		"source_keeps_cooldowns" = group.breakdown_cooldown == 2 && group.dismantle_cooldown == 4,
+		"source_keeps_gas" = original.air.moles[/datum/gas/nitrogen] == 100)
+	group.garbage_collect()
+	original = floor_at(83, 80)
+	neighbor = floor_at(84, 80)
+	original.air.set_gas(/datum/gas/nitrogen, 100)
+	neighbor.air.set_gas(/datum/gas/oxygen, 100)
+	original.atmos_adjacent_turfs = list(neighbor)
+	neighbor.atmos_adjacent_turfs = list(original)
+	var/datum/banda_atmos_phase/phase = new("bandastation_atmos.dll")
+	var/datum/banda_atmos_cell/cell = phase.bind(original)
+	phase.bind(neighbor)
+	phase.run_tick()
+	result["native_groups_before"] = native_group_count(phase)
+	var/old_id = cell.native_id
+	var/old_version = cell.binding_version
+	var/list/before_group = native_group_state(phase)
+	var/before_moles = original.air.moles.Copy()
+	original = original.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+	result["native_groups_after"] = native_group_count(phase)
+	result["native_keeps_cell"] = phase.cells[old_id] == cell && original.banda_atmos_cell == cell && cell.native_id == old_id
+	result["native_changes_binding_version"] = cell.binding_version == old_version + 1
+	result["native_keeps_group_state"] = json_encode(before_group) == json_encode(native_group_state(phase))
+	result["native_keeps_gas"] = original.air.moles[/datum/gas/nitrogen] == before_moles[/datum/gas/nitrogen] && original.air.moles[/datum/gas/oxygen] == before_moles[/datum/gas/oxygen]
+	qdel(phase)
+	return result
+
+/datum/controller/subsystem/atmos_phase_test/proc/native_group_count(datum/banda_atmos_phase/phase)
+	var/list/packet = list()
+	phase.native(17, packet)
+	var/index = 1
+	for(var/part in 1 to 3)
+		index += packet[index] + 1
+	return packet[index]
+
+/datum/controller/subsystem/atmos_phase_test/proc/native_group_state(datum/banda_atmos_phase/phase)
+	var/list/packet = list()
+	phase.native(17, packet)
+	var/index = 1
+	for(var/part in 1 to 3)
+		index += packet[index] + 1
+	return packet.Copy(index)

@@ -1,0 +1,58 @@
+// Only included by the generated transport oracle; operations come from current DM source.
+/datum/gas_mixture
+	var/temperature_archived = TCMB
+	var/gc_share = FALSE
+	var/last_share = 0
+
+/proc/transport_sample(list/input)
+	var/datum/gas_mixture/air
+	if(input["turf"])
+		air = new /datum/gas_mixture/turf(input["volume"])
+	else
+		air = new /datum/gas_mixture(input["volume"])
+	air.temperature = input["temperature"]
+	var/list/gases = oracle_gases()
+	for(var/list/pair in input["gases"])
+		air.moles[gases[pair[1] + 1]] = pair[2]
+	return air
+
+/proc/transport_state(datum/gas_mixture/air)
+	var/list/gases = oracle_gases()
+	var/list/amounts = list()
+	var/list/archived_amounts = list()
+	var/list/keys = list()
+	var/list/archived_keys = list()
+	for(var/gas in gases)
+		amounts += num2text(air.moles[gas] || 0, 9)
+		archived_amounts += num2text(air.moles_archive[gas] || 0, 9)
+	for(var/gas in air.moles)
+		keys += gases.Find(gas) - 1
+	for(var/gas in air.moles_archive)
+		archived_keys += gases.Find(gas) - 1
+	return list("temperature" = num2text(air.temperature, 9), "moles" = amounts, "keys" = keys, \
+		"archived_temperature" = num2text(air.temperature_archived, 9), "archived_moles" = archived_amounts, "archived_keys" = archived_keys)
+
+/world/New()
+	..()
+	oracle_setup()
+	var/list/output = list()
+	var/list/cases = json_decode(file2text("cases.json"))
+	for(var/list/case in cases)
+		var/datum/gas_mixture/a = transport_sample(case["a"])
+		var/datum/gas_mixture/b = transport_sample(case["b"])
+		var/list/values = list()
+		var/list/states = list()
+		for(var/tick in 1 to case["ticks"])
+			a.archive()
+			b.archive()
+			for(var/repeat in 1 to case["repeats"])
+				var/value
+				if(case["mode"] == 0)
+					value = a.share(b, case["ca"], case["cb"])
+				else
+					value = a.temperature_share(b, case["ca"])
+				values += list(isnull(value) ? null : num2text(value, 9))
+				states += list(list("a" = transport_state(a), "b" = transport_state(b), "last_share" = num2text(a.last_share, 9)))
+		output += list(list("values" = values, "states" = states))
+	text2file(json_encode(list("version" = "[world.byond_version].[world.byond_build]", "cases" = output)), "dm-output.json")
+	shutdown()

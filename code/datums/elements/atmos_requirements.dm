@@ -57,7 +57,7 @@
 	var/min_co2 = can_breathe_vacuum ? 0 : atmos_requirements["min_co2"]
 
 	var/turf/open/open_turf = target.loc
-	if(isnull(open_turf.air))
+	if(!open_turf.has_turf_air()) // BANDASTATION EDIT - Native cells need no resident DM gas mixture.
 		if (can_breathe_vacuum)
 			return TRUE
 		if(min_oxy || min_plasma || min_n2 || min_co2)
@@ -77,8 +77,13 @@
 	return TRUE
 
 /datum/element/atmos_requirements/proc/get_atmos_req_list(turf/open/open_turf)
-	var/open_turf_moles = open_turf.air.moles
-	open_turf.air.assert_gases(/datum/gas/oxygen, /datum/gas/pluoxium, /datum/gas/nitrogen, /datum/gas/carbon_dioxide, /datum/gas/plasma)
+	// BANDASTATION ADDITION START - assert/garbage_collect also change archived gas keys.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(get_atmos_req_list), open_turf))
+	// BANDASTATION ADDITION END
+	var/datum/gas_mixture/environment = open_turf.return_air() // BANDASTATION EDIT
+	var/open_turf_moles = environment.moles // BANDASTATION EDIT
+	environment.assert_gases(/datum/gas/oxygen, /datum/gas/pluoxium, /datum/gas/nitrogen, /datum/gas/carbon_dioxide, /datum/gas/plasma) // BANDASTATION EDIT
 
 	var/list/return_gases = list()
 	return_gases["plas"] = open_turf_moles[/datum/gas/plasma]
@@ -86,7 +91,7 @@
 	return_gases["n2"] = open_turf_moles[/datum/gas/nitrogen]
 	return_gases["co2"] = open_turf_moles[/datum/gas/carbon_dioxide]
 
-	open_turf.air.garbage_collect()
+	environment.garbage_collect() // BANDASTATION EDIT
 
 	return return_gases
 
@@ -97,7 +102,7 @@
 	var/turf/open/open_turf = living_mob.loc
 	var/list/gases
 	var/string_text = "No Air"
-	if(open_turf.air)
+	if(open_turf.has_turf_air()) // BANDASTATION EDIT
 		gases = get_atmos_req_list(open_turf)
 		string_text = "O2: [gases["o2"]] - Plasma: [gases["plasma"]] - N2: [gases["n2"]] - CO2: [gases["co2"]]"
 	stack_trace("[living_mob] loaded on a turf with unsafe atmos at \[[open_turf.x], [open_turf.y], [open_turf.z]\] (area : [open_turf.loc]). Turf gases: [string_text]. Check the mob atmos requirements again.")

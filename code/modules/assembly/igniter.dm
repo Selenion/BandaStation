@@ -61,6 +61,10 @@
 	heat = MIN_FREEZE_TEMP
 
 /obj/item/assembly/igniter/condenser/activate()
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(activate)))
+	// BANDASTATION ADDITION END
 	. = ..()
 	if(!.)
 		return //Cooldown check

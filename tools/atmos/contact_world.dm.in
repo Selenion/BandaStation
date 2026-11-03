@@ -1,0 +1,50 @@
+/mob/living/carbon/human/banda_contact_probe
+	var/contact_fire_calls = 0
+
+/mob/living/carbon/human/banda_contact_probe/fire_act(exposed_temperature, exposed_volume)
+	contact_fire_calls++
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/contact_state(turf/open/fire_floor, turf/open/safe)
+	var/mob/living/carbon/human/banda_contact_probe/person = new(safe)
+	var/before = person.contact_fire_calls
+	person.forceMove(fire_floor)
+	var/hot = person.contact_fire_calls - before
+	person.forceMove(safe)
+	var/obj/effect/hotspot/spot = fire_floor.active_hotspot
+	var/was_cold = spot?.cold_fire
+	if(spot)
+		spot.cold_fire = TRUE
+	before = person.contact_fire_calls
+	person.forceMove(fire_floor)
+	var/cold = person.contact_fire_calls - before
+	qdel(person)
+	return list("hot" = hot, "cold" = cold, "initial_cold_fire" = was_cold, "hotspot_type" = "[spot?.type]")
+
+/datum/controller/subsystem/atmos_phase_test/proc/contact_world_checks()
+	var/turf/open/fire_floor = floor_at(140, 150)
+	var/turf/open/safe = floor_at(145, 150)
+	fire_floor.air.set_gas(/datum/gas/oxygen, 100)
+	fire_floor.air.set_gas(/datum/gas/plasma, 20)
+	fire_floor.air.temperature = 700
+	var/obj/effect/hotspot/spot = new(fire_floor, 100, 700)
+	var/list/dm = contact_state(fire_floor, safe)
+	qdel(spot)
+
+	fire_floor = floor_at(150, 150)
+	safe = floor_at(155, 150)
+	fire_floor.air.set_gas(/datum/gas/oxygen, 100)
+	fire_floor.air.set_gas(/datum/gas/plasma, 20)
+	fire_floor.air.temperature = 700
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(fire_floor, safe))
+	phase.native(18, list(), list())
+	phase.initializing = FALSE
+	spot = new(fire_floor, 100, 700)
+	SSair.times_fired++
+	phase.run_tick(TRUE)
+	var/list/native = contact_state(fire_floor, safe)
+	qdel(spot)
+	qdel(phase)
+	return list("dm" = dm, "native" = native)

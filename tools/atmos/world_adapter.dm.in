@@ -1,0 +1,123 @@
+// Local full-map integration. Production does not include this test subsystem.
+SUBSYSTEM_DEF(atmos_world_test)
+	name = "Native atmosphere world integration"
+	init_stage = INITSTAGE_LAST
+	ss_flags = SS_NO_FIRE
+	dependencies = list(/datum/controller/subsystem/ticker)
+
+/datum/controller/subsystem/atmos_world_test/PreInit()
+	Master.random_seed = 29051994
+	rand_seed(Master.random_seed)
+
+/datum/controller/subsystem/atmos_world_test/Initialize()
+	Master.sleep_offline_after_initializations = FALSE
+	SSair.can_fire = FALSE
+	SSticker.start_immediately = TRUE
+	SSticker.delay_end = TRUE
+	SSticker.OnRoundstart(CALLBACK(src, PROC_REF(capture)))
+	return SS_INIT_SUCCESS
+
+/datum/controller/subsystem/atmos_world_test/proc/tick()
+	// Exercise the real SSair branch, including its atom phase and MC resume path.
+	SSair.times_fired++
+	SSair.currentpart = SSAIR_ACTIVETURFS
+	SSair.state = SS_RUNNING
+	SSair.fire(FALSE)
+	while(SSair.currentpart != SSAIR_PIPENETS)
+		sleep(world.tick_lag)
+		SSair.state = SS_RUNNING
+		SSair.fire(TRUE)
+
+/datum/controller/subsystem/atmos_world_test/proc/isolated_floor(x, y = 180)
+	for(var/turf/target as anything in block(locate(x - 1, y - 1, 1), locate(x + 1, y + 1, 1)))
+		for(var/atom/movable/occupant in target)
+			qdel(occupant)
+		target.ChangeTurf(/turf/closed/wall)
+	var/turf/open/center = locate(x, y, 1)
+	center = center.ChangeTurf(/turf/open/floor/iron)
+	set_air(center, list(), T20C, TRUE)
+	return center
+
+/datum/controller/subsystem/atmos_world_test/proc/set_air(turf/open/target, list/gases, temperature = T20C, clear = FALSE)
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(set_air), target, gases, temperature, clear))
+	var/datum/gas_mixture/environment = target.return_air()
+	if(clear)
+		environment.moles.Cut()
+		environment.moles_archive.Cut()
+	for(var/gas, amount in gases)
+		environment.set_gas(gas, amount)
+	environment.set_temperature(temperature)
+
+/datum/controller/subsystem/atmos_world_test/proc/capture()
+	var/datum/banda_atmos_phase/world_adapter/phase = SSair.native_atmos
+	if(!phase || phase.initializing)
+		CRASH("Full-world native initialization did not complete")
+	var/list/checks = list()
+	checks["whole_map_registered"] = length(phase.positions) > 10000
+	var/turf/open/target = isolated_floor(180)
+	var/id = target.banda_atmos_id
+	set_air(target, list(/datum/gas/nitrogen = 10))
+	var/datum/gas_mixture/released = new()
+	released.set_gas(/datum/gas/oxygen, 3)
+	released.temperature = T20C
+	target.assume_air(released)
+	var/datum/gas_mixture/removed = target.remove_air(2)
+	var/expected_nitrogen = target.get_readonly_air().moles[/datum/gas/nitrogen]
+	var/expected_oxygen = target.get_readonly_air().moles[/datum/gas/oxygen]
+	tick()
+	checks["source_gas_consumers_survive_tick"] = removed.total_moles() == 2 && target.get_readonly_air().moles[/datum/gas/nitrogen] == expected_nitrogen && target.get_readonly_air().moles[/datum/gas/oxygen] == expected_oxygen
+	checks["world_has_no_dm_air_mirror"] = !target.air
+	for(var/turf/open/registered in phase.positions)
+		if(!registered.blocks_air && registered.air)
+			checks["world_has_no_dm_air_mirror"] = FALSE
+			break
+		CHECK_TICK
+	checks["source_cycle_matches_native"] = target.current_cycle == SSair.times_fired
+	var/datum/banda_atmos_cell/cell = target.banda_atmos_cell
+	var/version = cell.binding_version
+	target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+	checks["floor_keeps_cell_and_gas"] = target.banda_atmos_id == id && cell == target.banda_atmos_cell && cell.binding_version > version && target.get_readonly_air().moles[/datum/gas/nitrogen] == expected_nitrogen
+	set_air(target, list(/datum/gas/water_vapor = 1), 190)
+	SSair.add_to_active(target)
+	tick()
+	checks["native_freeze_reaches_world"] = !!target.GetComponent(/datum/component/wet_floor) && target.get_readonly_air().moles[/datum/gas/water_vapor] == 0.75
+
+	var/turf/open/fire_floor = isolated_floor(185)
+	set_air(fire_floor, list(/datum/gas/oxygen = 100, /datum/gas/plasma = 20), 700)
+	var/obj/effect/hotspot/spot = new(fire_floor, 100, 700)
+	checks["direct_hotspot_adopted"] = spot.binding?.owner == phase && fire_floor.active_hotspot == spot
+	var/plasma = fire_floor.get_readonly_air().moles[/datum/gas/plasma]
+	tick()
+	checks["native_fire_advances"] = fire_floor.get_readonly_air().moles[/datum/gas/plasma] < plasma && fire_floor.active_hotspot?.binding?.owner == phase
+	contact_checks(checks, fire_floor)
+	if(fire_floor.active_hotspot)
+		qdel(fire_floor.active_hotspot)
+	var/list/packet = fire_floor.banda_atmos_cell.read_packet()
+	checks["world_deletion_clears_native_fire"] = !packet[length(packet) - 3]
+	var/turf/open/replaced = isolated_floor(190)
+	set_air(replaced, list(/datum/gas/oxygen = 100, /datum/gas/plasma = 20), 700)
+	var/obj/item/wrench/world_retile/probe = new(replaced)
+	SSair.add_to_active(replaced)
+	var/replaced_id = replaced.banda_atmos_id
+	tick()
+	checks["effect_replacement_keeps_coordinate"] = probe.did_replace && replaced.banda_atmos_id == replaced_id && replaced.banda_atmos_cell == phase.cells[replaced_id]
+	checks["post_replacement_feedback_survives"] = replaced.get_readonly_air().moles[/datum/gas/nitrogen] == 7
+	geometry_checks(checks)
+	var/list/result = list("byond" = "[world.byond_version].[world.byond_build]", "startup_seed" = num2text(Master.random_seed, 9), "dimensions" = list(world.maxx, world.maxy, world.maxz), "registered" = length(phase.positions), "checks" = checks)
+	WRITE_FILE(file("world-adapter-output.json"), json_encode(result))
+	log_world("BANDA_ATMOS_WORLD_INTEGRATION_COMPLETE")
+	shutdown()
+
+/obj/item/wrench/world_retile
+	var/did_replace = FALSE
+
+/obj/item/wrench/world_retile/fire_act(exposed_temperature, exposed_volume)
+	if(!did_replace)
+		did_replace = TRUE
+		var/turf/open/target = get_turf(src)
+		target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+		var/datum/gas_mixture/released = new()
+		released.set_gas(/datum/gas/nitrogen, 7)
+		target.assume_air(released)
+	return ..()

@@ -1,0 +1,145 @@
+/datum/banda_atmos_safe/binding_probe/on_run(turf/open/target)
+	var/datum/gas_mixture/air = get_turf_air(target)
+	if(air)
+		air.adjust_gas(/datum/gas/nitrogen, 7)
+
+/datum/controller/subsystem/atmos_phase_test/proc/binding_checks()
+	var/list/checks = list()
+	var/datum/banda_atmos_phase/phase = new("bandastation_atmos.dll")
+	var/turf/open/target = floor_at(86, 80)
+	target.air.set_gas(/datum/gas/water_vapor, 1)
+	target.air.temperature = 190
+	var/datum/banda_atmos_cell/cell = phase.bind(target)
+	var/id = cell.native_id
+	INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick))
+	var/datum/banda_atmos_safe/binding_probe/old_callback = new()
+	old_callback.invoke_async(phase, target)
+	target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+	target = target.ChangeTurf(/turf/open/floor/iron, flags = CHANGETURF_INHERIT_AIR)
+	var/datum/banda_atmos_safe/binding_probe/current_callback = new()
+	current_callback.invoke_async(phase, target)
+	while(phase.running || phase.processing)
+		stoplag(1)
+	checks["two_replacements_keep_cell"] = target.banda_atmos_cell == cell && cell.native_id == id && cell.binding_version == 3
+	checks["old_callback_ignored_new_callback_runs"] = target.air.moles[/datum/gas/nitrogen] == 7
+	checks["inherited_calculation_not_discarded"] = target.air.moles[/datum/gas/water_vapor] == 0.75
+	checks["old_freeze_does_not_reach_inherited_floor"] = !target.GetComponent(/datum/component/wet_floor)
+	qdel(phase)
+
+	phase = new("bandastation_atmos.dll")
+	target = floor_at(88, 80)
+	target.air.set_gas(/datum/gas/nitrogen, 10)
+	cell = phase.bind(target)
+	INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick))
+	var/datum/gas_mixture/release = new()
+	release.set_gas(/datum/gas/oxygen, 3)
+	target.assume_air(release)
+	target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+	release = new()
+	release.set_gas(/datum/gas/oxygen, 4)
+	target.assume_air(release)
+	while(phase.running || phase.processing)
+		stoplag(1)
+	checks["releases_before_and_after_change_survive"] = target.air.moles[/datum/gas/oxygen] == 7 && target.air.moles[/datum/gas/nitrogen] == 10
+	qdel(phase)
+
+	phase = new("bandastation_atmos.dll")
+	target = floor_at(90, 80)
+	target.air.set_gas(/datum/gas/water_vapor, 1)
+	target.air.temperature = 190
+	cell = phase.bind(target)
+	cell.refresh_context()
+	cell.refresh_neighbors()
+	phase.native(16)
+	var/list/fetched_commands = list()
+	phase.native(5, fetched_commands)
+	target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+	var/datum/banda_atmos_safe/world_commands/executor = new()
+	executor.owner = phase
+	executor.run_args = list(fetched_commands)
+	phase.run_callback(executor)
+	checks["already_fetched_effects_check_binding_version"] = length(fetched_commands) && !target.GetComponent(/datum/component/wet_floor)
+	qdel(phase)
+
+	phase = new("bandastation_atmos.dll")
+	target = floor_at(92, 80)
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	var/turf/open/neighbor = floor_at(93, 80)
+	neighbor.air.set_gas(/datum/gas/oxygen, 100)
+	target.atmos_adjacent_turfs = list(neighbor)
+	neighbor.atmos_adjacent_turfs = list(target)
+	cell = phase.bind(target)
+	phase.bind(neighbor)
+	phase.run_tick()
+	id = cell.native_id
+	var/turf/solid = target.ChangeTurf(/turf/closed/wall)
+	var/datum/gas_mixture/closed_air = cell.read_air()
+	checks["wall_keeps_position_but_clears_group_and_gas"] = solid.banda_atmos_cell == cell && cell.native_id == id && native_group_count(phase) == 0 && !length(closed_air.moles)
+	qdel(phase)
+
+	phase = new("bandastation_atmos.dll")
+	target = floor_at(94, 80)
+	cell = phase.bind(target)
+	target = target.ChangeTurf(/turf/open/space, flags = CHANGETURF_INHERIT_AIR)
+	checks["direct_space_replacement_finishes_binding"] = isspaceturf(target) && target.banda_atmos_cell == cell && !cell.pending_rebind && !cell.change_depth
+	qdel(phase)
+
+	phase = new("bandastation_atmos.dll")
+	target = floor_at(96, 80)
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	cell = phase.bind(target)
+	// Explosions can reach this placeholder when they remove the final floor layer.
+	// The parent resolves it to the level's actual baseturf before constructing it.
+	target = target.ChangeTurf(/turf/baseturf_bottom, flags = CHANGETURF_INHERIT_AIR)
+	checks["resolved_baseturf_replacement_finishes_binding"] = target.banda_atmos_cell == cell && !cell.pending_rebind && !cell.change_depth
+	var/datum/gas_mixture/resolved_air = cell.read_air()
+	checks["resolved_baseturf_keeps_source_space_air"] = isspaceturf(target) && istype(target.air, /datum/gas_mixture/immutable/space) && istype(resolved_air, /datum/gas_mixture/immutable/space) && !resolved_air.total_moles()
+	qdel(phase)
+
+	for(var/list/scenario as anything in list(list("small", 1000, 0.5), list("large", 1000000, 6)))
+		var/list/source_state = no_group_state(FALSE, scenario[2], scenario[3])
+		var/list/native_state = no_group_state(TRUE, scenario[2], scenario[3])
+		checks["run_later_[scenario[1]]_source_finishes"] = source_state["finished"]
+		checks["run_later_[scenario[1]]_native_finishes"] = native_state["finished"]
+		checks["run_later_[scenario[1]]_matches_source"] = json_encode(source_state) == json_encode(native_state)
+	return checks
+
+/// Exercise both LAST_SHARE_CHECK thresholds without inventing an excited group.
+/datum/controller/subsystem/atmos_phase_test/proc/no_group_state(native, amount, delta)
+	var/turf/open/first = floor_at(104, 80)
+	var/turf/open/second = floor_at(105, 80)
+	first.air.set_gas(/datum/gas/oxygen, amount)
+	first.air.set_gas(/datum/gas/nitrogen, amount)
+	second.air.set_gas(/datum/gas/oxygen, amount + delta)
+	second.air.set_gas(/datum/gas/nitrogen, amount - delta)
+	first.air.temperature = T20C
+	second.air.temperature = T20C
+	first.atmos_adjacent_turfs = list(second)
+	second.atmos_adjacent_turfs = list(first)
+	first.run_later = FALSE
+	second.run_later = TRUE
+	for(var/turf/open/target as anything in list(first, second))
+		target.current_cycle = 0
+		target.archived_cycle = 0
+		target.significant_share_ticker = 5
+		target.excited = TRUE
+	var/datum/banda_atmos_phase/phase
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		phase.bind(first)
+		phase.bind(second)
+		phase.run_tick(TRUE)
+	else
+		var/saved_cycle = SSair.times_fired
+		SSair.times_fired = 1
+		second.process_cell(1)
+		first.process_cell(1)
+		SSair.times_fired = saved_cycle
+	var/list/state = list("finished" = !first.excited_group && !second.excited_group && !first.significant_share_ticker && !second.significant_share_ticker && first.current_cycle == 1 && second.current_cycle == 1)
+	state["gases"] = list(first.air.moles[/datum/gas/oxygen], first.air.moles[/datum/gas/nitrogen], second.air.moles[/datum/gas/oxygen], second.air.moles[/datum/gas/nitrogen])
+	state["active"] = list(first.excited, second.excited)
+	if(native)
+		state["finished"] = state["finished"] && native_group_count(phase) == 0
+		qdel(phase)
+	second.run_later = FALSE
+	return state
