@@ -11,6 +11,12 @@ def process_summary(folder, metadata):
     if not samples_path.exists():
         return None
     samples = json.loads(samples_path.read_text(encoding="utf-8-sig"))
+    lifetime_peaks = {
+        name: max(sample[key] for sample in samples if key in sample) / 2**20
+        for name, key in (("observed_lifetime_peak_working_set_mib", "os_peak_working_set_bytes"),
+                          ("observed_lifetime_peak_commit_mib", "os_peak_commit_bytes"))
+        if any(key in sample for sample in samples)
+    }
     start, end = metadata.get("sample_start_unix"), metadata.get("sample_end_unix")
     if start is None or end is None:
         # Compatibility with the first capture, which recorded bounds in its log.
@@ -21,10 +27,21 @@ def process_summary(folder, metadata):
     if len(samples) < 2:
         return None
     elapsed = (datetime.fromisoformat(samples[-1]["utc"]) - datetime.fromisoformat(samples[0]["utc"])).total_seconds()
-    return dict(samples=len(samples), sampled_wall_seconds=elapsed,
-                cpu_one_core_percent=100 * (samples[-1]["cpu_seconds"] - samples[0]["cpu_seconds"]) / elapsed,
+    cpu_seconds = samples[-1]["cpu_seconds"] - samples[0]["cpu_seconds"]
+    result = dict(samples=len(samples), sampled_wall_seconds=elapsed,
+                cpu_seconds=cpu_seconds, cpu_one_core_percent=100 * cpu_seconds / elapsed,
                 working_set_mib=[min(s["working_set_bytes"] for s in samples) / 2**20, max(s["working_set_bytes"] for s in samples) / 2**20],
                 private_mib=[min(s["private_bytes"] for s in samples) / 2**20, max(s["private_bytes"] for s in samples) / 2**20])
+    # OS peak counters retain startup peaks between polls; the final sub-second tail may be missed.
+    result.update(lifetime_peaks)
+    if all("main_thread_cpu_seconds" in s for s in samples) and len({s["main_thread_id"] for s in samples}) == 1:
+        result["main_thread_id"] = samples[0]["main_thread_id"]
+        result["main_thread_cpu_seconds"] = samples[-1]["main_thread_cpu_seconds"] - samples[0]["main_thread_cpu_seconds"]
+        result["main_thread_cpu_one_core_percent"] = 100 * result["main_thread_cpu_seconds"] / elapsed
+        # This residual includes every other thread, not just the Rust worker.
+        result["other_threads_cpu_seconds"] = cpu_seconds - result["main_thread_cpu_seconds"]
+        result["other_threads_cpu_one_core_percent"] = 100 * result["other_threads_cpu_seconds"] / elapsed
+    return result
 
 
 def summarize(folder):
@@ -52,9 +69,17 @@ def summarize(folder):
     if process:
         lines += ["## Процесс во время окна сбора", "",
                   f'CPU: {process["cpu_one_core_percent"]:.2f}% одного логического ядра, по {process["samples"]} отсчётам.',
+                  f'За интервал между этими отсчётами: {process["cpu_seconds"]:.3f} CPU-секунд за {process["sampled_wall_seconds"]:.3f} реальных секунд.',
                   f'Working set: {process["working_set_mib"][0]:.1f}–{process["working_set_mib"][1]:.1f} MiB.',
                   f'Private memory: {process["private_mib"][0]:.1f}–{process["private_mib"][1]:.1f} MiB.', "",
                   "Working set и private memory не складываются. Инициализация и выгрузка мира исключены.", ""]
+        if "observed_lifetime_peak_commit_mib" in process:
+            lines += [f'Наблюдаемый OS peak commit с загрузкой: {process["observed_lifetime_peak_commit_mib"]:.1f} MiB.',
+                      f'Наблюдаемый OS peak working set с загрузкой: {process["observed_lifetime_peak_working_set_mib"]:.1f} MiB.',
+                      "Пики ОС сохраняют всплески между опросами. Последний участок перед выходом процесса может быть пропущен.", ""]
+        if "main_thread_cpu_one_core_percent" in process:
+            lines += [f'CPU главного потока: {process["main_thread_cpu_one_core_percent"]:.2f}% ядра (TID {process["main_thread_id"]}).',
+                      f'CPU всех остальных потоков вместе: {process["other_threads_cpu_one_core_percent"]:.2f}% ядра; это не отдельный счётчик Rust-worker.', ""]
     return "\n".join(lines)
 
 

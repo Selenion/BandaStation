@@ -126,6 +126,7 @@ pub(super) fn apply_rebind(
     replacement.cell.hotspot = None;
     frame.schedule.hotspots.retain(|n| *n != id);
     frame.cells.insert(id, replacement.cell);
-    frame.schedule.tiles.insert(id, replacement.tile);
+    frame.cells.share_previous_page(id, Cell::same_bits);
+    frame.schedule.store_tile(id, replacement.tile);
     frame.schedule.refresh_space_override(id);
 }

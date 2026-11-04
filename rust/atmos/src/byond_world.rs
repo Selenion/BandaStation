@@ -340,7 +340,12 @@ pub(super) unsafe fn dispatch(api: &Api, store: &mut Store, args: &[Value]) -> R
             if detail > 1 {
                 return Err("Invalid debug detail".into());
             }
-            let pending = store.pending_commands().map_err(|e| format!("{e:?}"))?;
+            // A running job starts with no pending effects; expose only its previous published frame.
+            let pending = if store.busy() {
+                &[]
+            } else {
+                store.pending_commands().map_err(|e| format!("{e:?}"))?
+            };
             let frame = store.snapshot();
             let schedule = &frame.schedule;
             let mut output = vec![

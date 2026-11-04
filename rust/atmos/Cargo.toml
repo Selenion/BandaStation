@@ -11,9 +11,19 @@ crate-type = ["rlib", "cdylib"]
 
 [features]
 byond = []
+simd = []
+worker-profile = ["byond"]
 
 [[bin]]
 name = "chemistry"
 path = "src/main.rs"
 
 [dependencies]
+
+[dev-dependencies]
+criterion = { version = "=0.5.1", default-features = false }
+serde_json = "1"
+
+[[bench]]
+name = "atmos_bench"
+harness = false

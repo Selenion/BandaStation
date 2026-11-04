@@ -1,0 +1,332 @@
+// Local integration of the real whole-world worker and synchronous DM consumers.
+var/global/banda_threaded_callback_calls = 0
+
+/mob/living/carbon/human/banda_threaded_probe
+	var/breath_x
+	var/breath_plasma = 0
+
+/mob/living/carbon/human/banda_threaded_probe/check_breath(datum/gas_mixture/breath)
+	var/turf/open/position = loc
+	breath_x = position.x
+	breath_plasma = breath?.moles[/datum/gas/plasma] || 0
+	log_world("BANDA_ATMOS_THREADED_SAMPLE before: [breath ? json_encode(banda_atmos_air_packet(breath)) : "null"], lungs=[!!get_organ_slot(ORGAN_SLOT_LUNGS)], losebreath=[losebreath], loc=[loc.type] [position.x],[position.y],[position.z], id=[position.banda_atmos_id], present=[position.banda_air_present], dm_air=[!!position.air], owner=[!!SSair.native_atmos]")
+	. = ..()
+	log_world("BANDA_ATMOS_THREADED_SAMPLE after: [breath ? json_encode(banda_atmos_air_packet(breath)) : "null"]")
+
+/obj/item/stack/sheet/mineral/coal/banda_threaded_probe
+	var/fire_cycle = -1
+
+/obj/item/stack/sheet/mineral/coal/banda_threaded_probe/fire_act(exposed_temperature, exposed_volume)
+	fire_cycle = SSair.times_fired
+	return ..()
+
+/obj/item/wrench/banda_threaded_exposure
+	resistance_flags = FIRE_PROOF
+	var/exposure_calls = 0
+	var/last_mc_state = -1
+
+/obj/item/wrench/banda_threaded_exposure/should_atmos_process(datum/gas_mixture/air, exposed_temperature)
+	return TRUE
+
+/obj/item/wrench/banda_threaded_exposure/atmos_expose(datum/gas_mixture/air, exposed_temperature)
+	exposure_calls++
+	last_mc_state = SSair.state
+	return ..()
+
+/datum/banda_atmos_phase/world_adapter/threaded_probe/atom_initialized(datum/source, atom/initialized)
+	SIGNAL_HANDLER
+	// This finite graph must not adopt unrelated templates initialized elsewhere on the map.
+	return
+
+/datum/banda_atmos_phase/world_adapter/threaded_probe/ensure_binding(turf/target)
+	// Explicit registration is tested separately; unrelated map activity is outside this finite graph.
+	if(!target?.banda_atmos_id)
+		return null
+	return ..()
+
+/datum/banda_atmos_phase/world_adapter/threaded_probe/flush_topology()
+	. = ..()
+	var/list/graph = list()
+	for(var/turf/target as anything in positions)
+		var/list/neighbors = list()
+		for(var/turf/neighbor as anything in target.atmos_adjacent_turfs)
+			neighbors += "[neighbor.x],[neighbor.y],[neighbor.z]:[neighbor.banda_atmos_id]"
+		graph += list(list("id" = target.banda_atmos_id, "coordinates" = list(target.x, target.y, target.z), "neighbors" = neighbors))
+	log_world("BANDA_ATMOS_THREADED_GRAPH cycle=[SSair.times_fired]: [json_encode(graph)]")
+
+/datum/banda_atmos_safe/threaded_add_oxygen/on_run(turf/open/target)
+	var/datum/gas_mixture/air = get_turf_air(target)
+	if(air)
+		banda_threaded_callback_calls++
+		air.adjust_gas(/datum/gas/oxygen, 7)
+
+/datum/banda_atmos_phase/world_adapter/threaded_unsupported/native(operation, ...)
+	if(operation == 38)
+		throw EXCEPTION("BANDA_ATMOS_EXPECTED_UNSUPPORTED_WORKER")
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/threaded_pair(x, hazardous = FALSE)
+	var/turf/open/left = floor_at(x, 200)
+	var/turf/open/right = floor_at(x + 1, 200)
+	left.air.temperature = T20C
+	right.air.temperature = T20C
+	left.air.set_gas(/datum/gas/nitrogen, 100)
+	right.air.set_gas(/datum/gas/nitrogen, 10)
+	left.atmos_adjacent_turfs = list(right)
+	right.atmos_adjacent_turfs = list(left)
+	var/list/targets = list(left, right)
+	if(hazardous)
+		var/turf/open/third = floor_at(x + 2, 200)
+		third.air.temperature = T20C
+		third.air.set_gas(/datum/gas/plasma, 10)
+		third.atmos_adjacent_turfs = list(right)
+		right.atmos_adjacent_turfs += third
+		targets += third
+	var/datum/banda_atmos_phase/world_adapter/phase = new /datum/banda_atmos_phase/world_adapter/threaded_probe("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(targets)
+	var/list/active = list()
+	for(var/turf/target as anything in targets)
+		phase.mark_topology(target)
+		active += target.banda_atmos_id
+	phase.flush_topology()
+	phase.native(18, active, list())
+	phase.native(30)
+	phase.initializing = FALSE
+	return phase
+
+/datum/controller/subsystem/atmos_phase_test/proc/threaded_world_checks()
+	var/list/checks = list()
+	checks["threaded_default_disabled"] = !CONFIG_GET(flag/rust_atmos_threaded)
+	var/previous_setting = CONFIG_GET(flag/rust_atmos_threaded)
+	CONFIG_SET(flag/rust_atmos_threaded, TRUE)
+	var/datum/banda_atmos_phase/world_adapter/unsupported = new /datum/banda_atmos_phase/world_adapter/threaded_unsupported("bandastation_atmos.dll")
+	CONFIG_SET(flag/rust_atmos_threaded, previous_setting)
+	checks["unsupported_worker_is_rejected_on_opt_in"] = !unsupported.native_ready && findtext(unsupported.startup_error, "BANDA_ATMOS_EXPECTED_UNSUPPORTED_WORKER") > 0
+	qdel(unsupported)
+	var/turf/open/new_idle = floor_at(212, 200)
+	new_idle.air.set_gas(/datum/gas/nitrogen, 17)
+	var/datum/banda_atmos_phase/world_adapter/phase = threaded_pair(215)
+	phase.register_turf(new_idle)
+	var/datum/gas_mixture/idle_air = new_idle.get_readonly_air()
+	checks["registration_without_worker_preserves_air"] = idle_air && idle_air.moles[/datum/gas/nitrogen] == 17 && !new_idle.air
+	var/turf/open/left = phase.positions[1]
+	var/turf/open/right = phase.positions[2]
+	SSair.times_fired++
+	phase.run_tick(TRUE)
+	var/expected_left = json_encode(banda_atmos_full_packet(left.get_readonly_air()))
+	var/expected_right = json_encode(banda_atmos_full_packet(right.get_readonly_air()))
+	var/expected_current = json_encode(banda_atmos_air_packet(left.get_readonly_air()))
+	qdel(phase)
+
+	phase = threaded_pair(218)
+	phase.threaded = TRUE
+	phase.native(38, 0, 0)
+	left = phase.positions[1]
+	right = phase.positions[2]
+	SSair.times_fired += 37
+	INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick), FALSE)
+	checks["worker_starts_without_blocking_dm"] = phase.running && phase.worker_cycle == SSair.times_fired
+	checks["previous_frame_remains_readable"] = left.get_readonly_air().moles[/datum/gas/nitrogen] == 100
+	checks["lazy_binding_during_worker_is_readonly"] = !right.banda_atmos_cell && right.get_readonly_air().moles[/datum/gas/nitrogen] == 10 && phase.running
+	var/list/debug_state = phase.debug_state()
+	checks["debug_reads_published_state_during_worker"] = debug_state[1] == 2
+	while(phase.worker_cycle)
+		stoplag(1)
+	checks["worker_physics_matches_synchronous"] = json_encode(banda_atmos_full_packet(left.get_readonly_air())) == expected_left && json_encode(banda_atmos_full_packet(right.get_readonly_air())) == expected_right
+	checks["worker_keeps_real_ssair_cycle"] = left.current_cycle == SSair.times_fired && phase.air_cycle == SSair.times_fired
+
+	phase.native(18, list(), list())
+	var/before_nitrogen = left.get_readonly_air().moles[/datum/gas/nitrogen]
+	SSair.times_fired++
+	INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick), FALSE)
+	var/datum/banda_atmos_safe/threaded_add_oxygen/callback = new()
+	callback.invoke_async(phase, left)
+	var/datum/gas_mixture/sample = left.remove_air(2)
+	var/expected_oxygen = 2 * 7 / (before_nitrogen + 7)
+	checks["sample_returns_fresh_gas_synchronously"] = sample && abs(sample.total_moles() - 2) < 0.0001
+	checks["earlier_callback_precedes_sample"] = sample && abs(sample.moles[/datum/gas/oxygen] - expected_oxygen) < 0.0001 && banda_threaded_callback_calls == 1
+	checks["sample_write_is_conserved"] = abs(left.get_readonly_air().moles[/datum/gas/oxygen] + sample.moles[/datum/gas/oxygen] - 7) < 0.0001
+	while(phase.worker_cycle)
+		stoplag(1)
+	checks["publication_does_not_replay_callback"] = !length(phase.waiting) && !phase.publication_pending && banda_threaded_callback_calls == 1 && phase.completed_ticks == 2
+	checks["nested_result_returning_api_is_preserved"] = phase.invoke(CALLBACK(src, PROC_REF(api_nested_invoke), phase, left))
+	qdel(phase)
+
+	phase = threaded_pair(221)
+	phase.threaded = TRUE
+	left = phase.positions[1]
+	var/id = left.banda_atmos_id
+	var/datum/banda_atmos_cell/binding = phase.ensure_binding(left)
+	var/version = binding.binding_version
+	SSair.times_fired++
+	INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick), FALSE)
+	left = left.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+	checks["floor_inherits_completed_worker_gas"] = json_encode(banda_atmos_air_packet(left.get_readonly_air())) == expected_current
+	checks["floor_keeps_identity_and_updates_version"] = left.banda_atmos_id == id && left.banda_atmos_cell == binding && binding.binding_version == version + 1 && !binding.pending_rebind
+	while(phase.worker_cycle)
+		stoplag(1)
+	qdel(phase)
+
+	var/turf/open/added = floor_at(226, 200)
+	added.air.temperature = T20C
+	added.air.set_gas(/datum/gas/nitrogen, 17)
+	phase = threaded_pair(229)
+	phase.threaded = TRUE
+	left = phase.positions[1]
+	SSair.times_fired++
+	INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick), FALSE)
+	phase.register_turf(added)
+	var/datum/gas_mixture/added_air = added.get_readonly_air()
+	checks["new_coordinate_registers_at_safe_boundary"] = added.banda_atmos_id && added_air && added_air.moles[/datum/gas/nitrogen] == 17 && !added.air
+	while(phase.worker_cycle)
+		stoplag(1)
+	var/datum/gas_mixture/released = new()
+	released.temperature = T20C
+	released.set_gas(/datum/gas/oxygen, 5)
+	SSair.times_fired++
+	INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick), FALSE)
+	phase.native(3, left.banda_atmos_id, 1, 1, banda_atmos_air_packet(released))
+	qdel(phase)
+	stoplag(2)
+	checks["closing_worker_restores_accepted_external_gas"] = !left.banda_atmos_id && !left.banda_atmos_cell && left.air.moles[/datum/gas/oxygen] == 5
+	var/original_breath = threaded_breathing_result(240, FALSE, FALSE)
+	var/synchronous_breath = threaded_breathing_result(233, FALSE)
+	var/worker_breath = threaded_breathing_result(236, TRUE)
+	checks["whole_breathing_operation_matches_sync"] = synchronous_breath == worker_breath
+	checks["synchronous_breathing_matches_original_dm"] = synchronous_breath == original_breath
+	checks["worker_breathing_matches_original_dm"] = worker_breath == original_breath
+	var/list/synchronous_pressure = json_decode(threaded_breathing_result(201, FALSE, TRUE, TRUE))
+	var/list/worker_pressure = json_decode(threaded_breathing_result(204, TRUE, TRUE, TRUE))
+	checks["safe_breath_precedes_pressure_without_losing_gas_or_movement"] = synchronous_pressure["breath_offset"] == 1 && worker_pressure["breath_offset"] == 0 && synchronous_pressure["final_offset"] == 1 && worker_pressure["final_offset"] == 1 && json_encode(synchronous_pressure["total_gases"]) == json_encode(worker_pressure["total_gases"])
+	var/list/synchronous_hazard = json_decode(threaded_breathing_result(191, FALSE, TRUE, TRUE, TRUE))
+	var/list/worker_hazard = json_decode(threaded_breathing_result(195, TRUE, TRUE, TRUE, TRUE))
+	// The user accepted Paradise's phase order, including one different breath while pressure moves a mob.
+	checks["hazardous_breath_uses_its_safe_phase_location"] = synchronous_hazard["breath_plasma"] > 0 && synchronous_hazard["tox_loss"] > 0 && worker_hazard["breath_plasma"] == 0 && worker_hazard["tox_loss"] == 0 && worker_hazard["final_offset"] == 1
+	var/list/synchronous_mc = threaded_mc_checks(FALSE)
+	checks["synchronous_mc_reference_is_valid"] = synchronous_mc["mc_counts_one_fire_per_completed_job"] && synchronous_mc["native_effect_really_burned_coal"] && synchronous_mc["native_effect_archive_keeps_effect_cycle"]
+	var/list/mc_checks = threaded_mc_checks(TRUE)
+	checks += mc_checks
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/threaded_seed_oxygen(turf/open/target)
+	target.return_air().set_gas(/datum/gas/oxygen, 50)
+
+/datum/controller/subsystem/atmos_phase_test/proc/threaded_breathing_result(x, use_worker, use_native = TRUE, movable = FALSE, hazardous = FALSE)
+	log_world("BANDA_ATMOS_THREADED_BREATH begin native=[use_native] worker=[use_worker] movable=[movable] hazardous=[hazardous]")
+	var/datum/banda_atmos_phase/world_adapter/phase
+	var/turf/open/left
+	if(use_native)
+		phase = threaded_pair(x, hazardous)
+		phase.threaded = use_worker
+		left = phase.positions[1]
+		phase.invoke(CALLBACK(src, PROC_REF(threaded_seed_oxygen), left))
+	else
+		left = floor_at(x, 200)
+		left.air.temperature = T20C
+		left.air.set_gas(/datum/gas/nitrogen, 55)
+		left.air.set_gas(/datum/gas/oxygen, 25)
+	var/mob/living/carbon/human/banda_threaded_probe/person = new(left)
+	// Life must not add a second breath or exchange body heat while this manual comparison awaits.
+	ADD_TRAIT(person, TRAIT_NO_TRANSFORM, "threaded_breath_test")
+	person.bodytemperature = 310
+	// Isolate breathing chemistry; a separate movable case checks its order against pressure.
+	person.anchored = !movable
+	SSair.times_fired++
+	if(use_worker)
+		INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick), FALSE)
+	else if(use_native)
+		phase.run_tick(TRUE)
+	person.breathe(2)
+	if(phase)
+		var/datum/banda_atmos_cell/cell = left.banda_atmos_cell
+		log_world("BANDA_ATMOS_THREADED_CACHES worker=[use_worker]: cached=[json_encode(banda_atmos_air_packet(cell.cached_air))], native=[json_encode(cell.read_packet())], readonly=[cell.readonly_air ? json_encode(banda_atmos_air_packet(cell.readonly_air)) : "null"]")
+	while(phase?.worker_cycle)
+		stoplag(1)
+	var/list/state = list("air" = banda_atmos_air_packet(left.get_readonly_air()), "breath_offset" = person.breath_x - left.x, "final_offset" = person.x - left.x, "breath_plasma" = person.breath_plasma, "tox_loss" = person.get_tox_loss())
+	if(movable)
+		var/datum/gas_mixture/combined = new()
+		for(var/turf/open/position as anything in phase.positions)
+			combined.merge(position.get_readonly_air())
+		var/list/total_gases = list()
+		for(var/gas, amount in combined.moles)
+			total_gases += list(list(GLOB.meta_gas_info[META_GAS_ID][gas], amount))
+		state["total_gases"] = total_gases
+	var/result = json_encode(state)
+	log_world("BANDA_ATMOS_THREADED_BREATH result native=[use_native] worker=[use_worker] movable=[movable] hazardous=[hazardous]: [result]")
+	qdel(person)
+	if(phase)
+		qdel(phase)
+	log_world("BANDA_ATMOS_THREADED_BREATH complete worker=[use_worker]")
+	return result
+
+/datum/controller/subsystem/atmos_phase_test/proc/threaded_mc_checks(use_worker)
+	log_world("BANDA_ATMOS_THREADED_MC begin")
+	var/list/checks = list()
+	var/turf/open/target = floor_at(210, 210)
+	target.air.temperature = 700
+	target.air.set_gas(/datum/gas/oxygen, 100)
+	target.air.set_gas(/datum/gas/plasma, 20)
+	var/obj/item/stack/sheet/mineral/coal/banda_threaded_probe/coal = new(target, 1)
+	var/datum/banda_atmos_phase/world_adapter/phase = new /datum/banda_atmos_phase/world_adapter/threaded_probe("bandastation_atmos.dll")
+	phase.threaded = use_worker
+	SSair.native_atmos = phase
+	phase.register_batch(list(target))
+	phase.native(18, list(target.banda_atmos_id), list())
+	phase.native(29, list(target.banda_atmos_id, 700, CELL_VOLUME, FALSE, TRUE, FALSE))
+	phase.native(30)
+	phase.initializing = FALSE
+	// This fixture uses a closed graph and deliberately disables the ordinary MC scheduling of SSair.
+	var/list/saved_networks = SSair.networks
+	var/list/saved_machines = SSair.atmos_machinery
+	SSair.networks = list()
+	SSair.atmos_machinery = list()
+	SSair.adjacent_rebuild.Cut()
+	SSair.atom_process.Cut()
+	var/obj/item/wrench/banda_threaded_exposure/exposure_probe = new(target)
+	SSair.atom_process |= exposure_probe
+	SSair.native_atoms_pending = FALSE
+	SSair.times_fired++
+	var/cycle = SSair.times_fired
+	SSair.currentpart = SSAIR_ACTIVETURFS
+	var/result = threaded_mc_fire(TRUE)
+	checks["worker_launch_does_not_sleep_mc"] = result == SS_RUNNING && SSair.state == SS_IDLE
+	var/deadline = world.time + 20 SECONDS
+	while(phase.worker_cycle && world.time < deadline)
+		stoplag(1)
+	var/first_archive_cycle = target.archived_cycle
+	checks["worker_defers_atoms_until_normal_mc_phase"] = !use_worker || (SSair.native_atoms_pending && exposure_probe.exposure_calls == 0 && phase.completed_ticks == 1)
+	if(use_worker)
+		// Resume may come from an earlier rebuild, before the atom queue has been copied.
+		result = threaded_mc_fire(TRUE, TRUE)
+		checks["paused_atoms_do_not_start_or_count_next_job"] = result == SS_PAUSED && SSair.native_atoms_pending && !phase.worker_cycle && phase.completed_ticks == 1 && SSair.times_fired == cycle + 1
+		threaded_mc_fire(TRUE)
+	else
+		checks["paused_atoms_do_not_start_or_count_next_job"] = TRUE
+		threaded_mc_fire(FALSE)
+	while(phase.worker_cycle && world.time < deadline)
+		stoplag(1)
+	checks["mc_counts_one_fire_per_completed_job"] = phase.completed_ticks == 2 && SSair.times_fired == cycle + 2 && SSair.state == SS_IDLE
+	checks["atom_exposure_runs_with_mc_budget"] = exposure_probe.exposure_calls > 0 && exposure_probe.last_mc_state == SS_RUNNING
+	checks["native_effect_really_burned_coal"] = !!QDELETED(coal)
+	checks["native_effect_archive_keeps_effect_cycle"] = first_archive_cycle == coal.fire_cycle
+	log_world("BANDA_ATMOS_THREADED_MC: [json_encode(list("worker" = use_worker, "calculation_cycle" = cycle, "ssair_cycle" = SSair.times_fired, "completed_ticks" = phase.completed_ticks, "effect_cycle" = coal.fire_cycle, "first_archive_cycle" = first_archive_cycle, "archived_cycle" = target.archived_cycle, "coal_deleted" = !!QDELETED(coal))) ]")
+	qdel(exposure_probe)
+	qdel(phase)
+	SSair.networks = saved_networks
+	SSair.atmos_machinery = saved_machines
+	SSair.native_atoms_pending = FALSE
+	SSair.currentpart = SSAIR_PIPENETS
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/threaded_mc_fire(resumed, force_pause = FALSE)
+	var/saved_limit = Master.current_ticklimit
+	Master.current_ticklimit = force_pause ? -1 : 100
+	SSair.state = SS_RUNNING
+	var/result = SSair.ignite(resumed)
+	Master.current_ticklimit = saved_limit
+	SSair.state = result == SS_RUNNING ? SS_IDLE : result
+	// The real MC counts a completed/sleeping fire, but never a paused budget continuation.
+	if(result != SS_PAUSED)
+		SSair.times_fired++
+	return result

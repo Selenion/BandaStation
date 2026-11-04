@@ -39,8 +39,10 @@
 /// Callers requesting a result use the synchronous world boundary; no proc may sleep here.
 /datum/banda_atmos_phase/world_adapter/proc/invoke(datum/callback/operation, commit_on_error = FALSE)
 	SHOULD_NOT_SLEEP(TRUE)
-	if(running || closed)
+	if(closed)
 		CRASH("Synchronous atmosphere access while native state is unavailable")
+	// Returning a fake sample would change breathing and gas conservation. Synchronize on demand.
+	enter_safe_phase()
 	// Synchronous callers need no queued wrapper datum or boxed return value.
 	var/previous_safe = in_safe_callback
 	in_safe_callback = TRUE

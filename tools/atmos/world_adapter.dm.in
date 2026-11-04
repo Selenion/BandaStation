@@ -21,6 +21,31 @@ SUBSYSTEM_DEF(atmos_world_test)
 	// Exercise the real SSair branch, including its atom phase and MC resume path.
 	SSair.times_fired++
 	SSair.currentpart = SSAIR_ACTIVETURFS
+	if(SSair.native_atmos?.threaded)
+		var/datum/banda_atmos_phase/world_adapter/phase = SSair.native_atmos
+		var/completed_before = phase.completed_ticks
+		var/deadline = world.time + 60 SECONDS
+		while(phase.completed_ticks == completed_before && world.time < deadline)
+			SSair.state = SS_RUNNING
+			SSair.fire(TRUE)
+			while(phase.worker_cycle && world.time < deadline)
+				sleep(world.tick_lag)
+			if(phase.completed_ticks == completed_before)
+				sleep(world.tick_lag)
+		if(phase.completed_ticks != completed_before + 1)
+			CRASH("World test did not complete exactly one native calculation")
+		// The production MC drains this before its next calculation; this driver needs exactly one job.
+		var/atoms_resumed = FALSE
+		while(TRUE)
+			SSair.state = SS_RUNNING
+			if(SSair.process_atoms_phase(atoms_resumed))
+				break
+			atoms_resumed = TRUE
+			sleep(world.tick_lag)
+		SSair.native_atoms_pending = FALSE
+		SSair.currentpart = SSAIR_PIPENETS
+		log_world("BANDA_ATMOS_WORLD_TEST_TICK [SSair.times_fired] completed=[phase.completed_ticks]")
+		return
 	SSair.state = SS_RUNNING
 	SSair.fire(FALSE)
 	while(SSair.currentpart != SSAIR_PIPENETS)

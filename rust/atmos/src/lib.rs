@@ -12,6 +12,8 @@ pub mod network;
 pub mod phase;
 mod reactions;
 mod results;
+#[cfg(any(feature = "simd", test))]
+mod simd;
 pub mod storage;
 pub use results::ReactionResults;
 pub mod thermal;
@@ -34,7 +36,7 @@ pub enum Holder {
 }
 
 /// Environmental answers supplied by DM, including explicit random outcomes.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Context {
     pub holder: Holder,
     pub freeze_succeeds: bool,
@@ -70,6 +72,11 @@ impl Default for Context {
 }
 
 impl Context {
+    pub(crate) fn same_bits(&self, other: &Self) -> bool {
+        self == other
+            && self.working_power.to_bits() == other.working_power.to_bits()
+            && self.supermatter_power.to_bits() == other.supermatter_power.to_bits()
+    }
     fn turf(self) -> bool {
         matches!(self.holder, Holder::Turf | Holder::OpenTurf)
     }
@@ -126,6 +133,15 @@ pub struct Archive {
 }
 
 impl Archive {
+    pub(crate) fn same_bits(&self, other: &Self) -> bool {
+        self == other
+            && self.temperature.to_bits() == other.temperature.to_bits()
+            && self
+                .moles
+                .iter()
+                .zip(other.moles.iter())
+                .all(|(a, b)| a.to_bits() == b.to_bits())
+    }
     fn copy_from(&mut self, air: &Mixture) {
         self.moles.clone_from(&air.moles);
         self.order.clone_from(&air.order);

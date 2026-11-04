@@ -66,6 +66,10 @@
 
 // Second link in a breath chain, calls [carbon/proc/check_breath()]
 /mob/living/carbon/proc/breathe(seconds_per_tick)
+	// BANDASTATION ADDITION START - Read the environment and remove its sample in the same safe phase.
+	if(SSair.native_atmos?.threaded && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(breathe), seconds_per_tick))
+	// BANDASTATION ADDITION END
 	var/obj/item/organ/lungs = get_organ_slot(ORGAN_SLOT_LUNGS)
 	var/is_on_internals = FALSE
 

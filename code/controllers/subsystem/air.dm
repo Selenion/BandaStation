@@ -124,6 +124,10 @@ SUBSYSTEM_DEF(air)
 
 /datum/controller/subsystem/air/fire(resumed = FALSE)
 	var/timer = TICK_USAGE_REAL
+	// BANDASTATION ADDITION START - A worker completion must not resume MC-budgeted loops.
+	if(native_atmos?.threaded && native_atmos.worker_cycle)
+		return
+	// BANDASTATION ADDITION END
 
 	//Rebuilds can happen at any time, so this needs to be done outside of the normal system
 	cost_rebuilds = 0
@@ -147,6 +151,18 @@ SUBSYSTEM_DEF(air)
 		cost_rebuilds = TICK_USAGE_REAL - timer
 		if(state != SS_RUNNING)
 			return
+
+	// BANDASTATION ADDITION START - Finish the previous worker's exposure in a normal MC context.
+	if(native_atmos?.threaded && native_atoms_pending)
+		// A preceding rebuild can pause before this phase has copied its own currentrun.
+		var/atoms_resumed = resumed && currentpart == SSAIR_PROCESS_ATOMS
+		currentpart = SSAIR_PROCESS_ATOMS
+		if(!process_atoms_phase(atoms_resumed))
+			return
+		native_atoms_pending = FALSE
+		currentpart = SSAIR_PIPENETS
+		resumed = FALSE
+	// BANDASTATION ADDITION END
 
 	if(currentpart == SSAIR_PIPENETS || !resumed)
 		timer = TICK_USAGE_REAL
@@ -176,7 +192,17 @@ SUBSYSTEM_DEF(air)
 		// BANDASTATION ADDITION START - Native tick includes hotspots, groups, pressure and conduction.
 		if(native_atmos)
 			timer = TICK_USAGE_REAL
-			native_atmos.run_tick()
+			var/datum/banda_atmos_phase/world_adapter/native_owner = native_atmos
+			if(native_owner.threaded)
+				native_atoms_pending = TRUE
+				// The previous worker's wall latency is separate from this MC phase's CPU budget.
+				cost_turfs = MC_AVERAGE(cost_turfs, native_owner.last_tick_ms)
+				SStgui.update_uis(SSair)
+				INVOKE_ASYNC(native_owner, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick))
+				return
+			native_owner.run_tick()
+			if(QDELETED(native_owner) || native_atmos != native_owner)
+				return
 			cost_turfs = MC_AVERAGE(cost_turfs, TICK_DELTA_TO_MS(TICK_USAGE_REAL - timer))
 			cost_hotspots = 0
 			cost_groups = 0
@@ -246,23 +272,32 @@ SUBSYSTEM_DEF(air)
 		currentpart = SSAIR_PROCESS_ATOMS
 
 	if(currentpart == SSAIR_PROCESS_ATOMS)
-		timer = TICK_USAGE_REAL
-		if(!resumed)
-			cached_cost = 0
-		process_atoms(resumed)
-		cached_cost += TICK_USAGE_REAL - timer
-		if(state != SS_RUNNING)
+		// BANDASTATION EDIT - Share the same budget/resume rules with the native continuation.
+		if(!process_atoms_phase(resumed))
 			return
-		cost_atoms = MC_AVERAGE(cost_atoms, TICK_DELTA_TO_MS(cached_cost))
 		resumed = FALSE
 
 
 	currentpart = SSAIR_PIPENETS
 	SStgui.update_uis(SSair) //Lightning fast debugging motherfucker
 
+// BANDASTATION ADDITION START - Both backends process exposure only with an active MC budget.
+/datum/controller/subsystem/air/proc/process_atoms_phase(resumed)
+	var/timer = TICK_USAGE_REAL
+	if(!resumed)
+		cached_cost = 0
+	process_atoms(resumed)
+	cached_cost += TICK_USAGE_REAL - timer
+	if(state != SS_RUNNING)
+		return FALSE
+	cost_atoms = MC_AVERAGE(cost_atoms, TICK_DELTA_TO_MS(cached_cost))
+	return TRUE
+// BANDASTATION ADDITION END
+
 /datum/controller/subsystem/air/Recover()
 	// BANDASTATION ADDITION - Retain the coordinate registry across subsystem recovery.
 	native_atmos = SSair.native_atmos
+	native_atoms_pending = SSair.native_atoms_pending // BANDASTATION ADDITION - Preserve pending worker exposure.
 	excited_groups = SSair.excited_groups
 	active_turfs = SSair.active_turfs
 	hotspots = SSair.hotspots

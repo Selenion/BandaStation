@@ -59,9 +59,26 @@
 
 /// All synchronous DLL calls copy numeric packets before returning.
 /datum/banda_atmos_phase/proc/native(operation, ...)
-	var/list/arguments = list(operation, native_id)
-	arguments += args.Copy(2)
-	var/result = call_ext(library, "byond:banda_atmos")(arglist(arguments))
+	// BYOND 516 retains list arguments passed to call_ext through arglist after the call.
+	// Explicit arities let temporary packets be released without clearing callers' lists.
+	var/result
+	switch(length(args))
+		if(0, 1)
+			result = call_ext(library, "byond:banda_atmos")(operation, native_id)
+		if(2)
+			result = call_ext(library, "byond:banda_atmos")(operation, native_id, args[2])
+		if(3)
+			result = call_ext(library, "byond:banda_atmos")(operation, native_id, args[2], args[3])
+		if(4)
+			result = call_ext(library, "byond:banda_atmos")(operation, native_id, args[2], args[3], args[4])
+		if(5)
+			result = call_ext(library, "byond:banda_atmos")(operation, native_id, args[2], args[3], args[4], args[5])
+		if(6)
+			result = call_ext(library, "byond:banda_atmos")(operation, native_id, args[2], args[3], args[4], args[5], args[6])
+		if(7)
+			result = call_ext(library, "byond:banda_atmos")(operation, native_id, args[2], args[3], args[4], args[5], args[6], args[7])
+		else
+			throw EXCEPTION("Native atmosphere operation [operation] failed: Invalid arguments")
 	if(!result)
 		var/error = call_ext(library, "banda_atmos_error")()
 		throw EXCEPTION("Native atmosphere operation [operation] failed: [error]")
@@ -70,7 +87,7 @@
 /datum/banda_atmos_phase/proc/bind(turf/target, active = TRUE, registered_id)
 	if(!native_ready)
 		CRASH("Native atmosphere is unavailable: [startup_error]")
-	if(!target || closed || running || (processing && !world_owned) || target.banda_atmos_cell)
+	if(!target || closed || (running && (!world_owned || !registered_id)) || (processing && !world_owned) || target.banda_atmos_cell)
 		CRASH("Cannot bind this turf to the experimental atmosphere phase")
 	if(isopenturf(target) && target.has_turf_air())
 		var/turf/open/open = target

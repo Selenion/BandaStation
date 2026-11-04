@@ -8,9 +8,12 @@ use crate::{
 };
 #[path = "byond_packets.rs"]
 mod packet;
+#[path = "byond_worker.rs"]
+mod worker;
 #[path = "byond_world.rs"]
 mod world;
 use packet::{context, full_mixture, integer, mixture, terrain, tile};
+use worker::Engine;
 
 use std::{
     collections::BTreeMap,
@@ -139,13 +142,13 @@ impl Api {
 #[derive(Default)]
 struct Registry {
     next: u32,
-    engines: BTreeMap<u32, Arc<Mutex<Store>>>,
+    engines: BTreeMap<u32, Arc<Engine>>,
 }
 fn registry() -> &'static Mutex<Registry> {
     static REGISTRY: OnceLock<Mutex<Registry>> = OnceLock::new();
     REGISTRY.get_or_init(|| Mutex::new(Registry::default()))
 }
-fn engine(id: u32) -> Result<Arc<Mutex<Store>>, String> {
+fn engine(id: u32) -> Result<Arc<Engine>, String> {
     registry()
         .lock()
         .map_err(|_| "Registry poisoned")?
@@ -153,6 +156,18 @@ fn engine(id: u32) -> Result<Arc<Mutex<Store>>, String> {
         .get(&id)
         .cloned()
         .ok_or("Unknown phase owner".into())
+}
+
+#[cfg(feature = "worker-profile")]
+fn simd_enabled() -> bool {
+    #[cfg(all(feature = "simd", any(target_arch = "x86", target_arch = "x86_64")))]
+    {
+        std::is_x86_feature_detected!("avx2")
+    }
+    #[cfg(not(all(feature = "simd", any(target_arch = "x86", target_arch = "x86_64"))))]
+    {
+        false
+    }
 }
 
 fn last_error() -> &'static Mutex<CString> {
@@ -183,9 +198,7 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
             .filter(|v| *v <= 16_777_215)
             .ok_or("Handle exhausted")?;
         let id = registry.next;
-        registry
-            .engines
-            .insert(id, Arc::new(Mutex::new(Store::default())));
+        registry.engines.insert(id, Arc::new(Engine::default()));
         return Ok(id as f32);
     }
     let id = api.integer(args.get(1).ok_or("Missing owner")?)?;
@@ -198,6 +211,7 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
     match (opcode, args.len()) {
         (1, 2) => {
             store.close();
+            owner.notify();
             registry()
                 .lock()
                 .map_err(|_| "Registry poisoned")?
@@ -323,7 +337,10 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
                 CATALOG_SIGNATURE as f32,
             ],
         )?,
-        (10, 2) => store.abort(),
+        (10, 2) => {
+            store.abort();
+            owner.notify();
+        }
         (11, 5) => {
             let neighbors = api.numbers(field(3)?)?;
             if neighbors.len() > 6
@@ -486,6 +503,19 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
                 .map(|v| v as f32)
                 .map_err(|e| format!("{e:?}"))
         }
+        (38, 4) => {
+            let mode = api.integer(field(2)?)?;
+            let cycle = api.integer(field(3)?)?;
+            match mode {
+                0 if cycle == 0 => {} // Additive capability probe; older ABI 11 DLLs reject it.
+                1 => return owner.publish(store, cycle).map(|()| 1.0),
+                _ => return Err("Invalid worker synchronization request".into()),
+            }
+        }
+        #[cfg(feature = "worker-profile")]
+        (39, 3) => {
+            api.output(field(2)?, &owner.profile())?;
+        }
         (23..=37, _) => return world::dispatch(api, &mut store, args),
         _ => return Err("Invalid operation or arity".into()),
     }
@@ -518,58 +548,14 @@ pub unsafe extern "C" fn banda_atmos(count: u32, values: *const Value) -> Value 
     }
 }
 
-/// BYOND's await ABI suspends only the calling DM proc. Work does not hold the main thread.
+/// The isolated-region protocol publishes before notifying the waiting DM proc.
 #[no_mangle]
 pub unsafe extern "C" fn banda_atmos_tick(count: u32, values: *const Value, waiting: Value) {
-    let Ok(api) = api() else {
-        return;
-    };
-    let prepared = catch_unwind(AssertUnwindSafe(|| -> Result<_, String> {
-        if count != 1 || values.is_null() {
-            return Err("Invalid tick arguments".into());
-        }
-        let owner = engine(api.integer(&*values)?)?;
-        let job = owner
-            .lock()
-            .map_err(|_| "Phase owner poisoned")?
-            .begin()
-            .map_err(|e| format!("{e:?}"))?;
-        Ok((owner, job))
-    }))
-    .ok()
-    .and_then(Result::ok);
-    let Some((owner, job)) = prepared else {
-        (api.complete)(&waiting, &api.number(0.0));
-        return;
-    };
-    // BYOND 516 uses persistent API refs. Keep only the sleeping callee until completion.
-    (api.inc)(&waiting);
-    let failed_spawn_owner = owner.clone();
-    let spawned = std::thread::Builder::new()
-        .name("banda-atmos".into())
-        .spawn(move || {
-            let calculated = catch_unwind(AssertUnwindSafe(|| job.calculate()));
-            let success = match owner.lock() {
-                Ok(mut store) => match calculated {
-                    Ok(completed) => store.finish(completed).is_ok(),
-                    Err(_) => {
-                        store.abort();
-                        false
-                    }
-                },
-                Err(_) => false,
-            };
-            // Do not hold a store/registry lock across a call that waits for BYOND's thread.
-            unsafe {
-                (api.complete)(&waiting, &api.number(if success { 1.0 } else { 0.0 }));
-                (api.dec)(&waiting);
-            }
-        });
-    if spawned.is_err() {
-        if let Ok(mut store) = failed_spawn_owner.lock() {
-            store.abort();
-        }
-        (api.complete)(&waiting, &api.number(0.0));
-        (api.dec)(&waiting);
-    }
+    worker::start(count, values, waiting, false);
+}
+
+/// Whole-world work publishes only when DM enters a safe phase, including synchronous consumers.
+#[no_mangle]
+pub unsafe extern "C" fn banda_atmos_world_tick(count: u32, values: *const Value, waiting: Value) {
+    worker::start(count, values, waiting, true);
 }

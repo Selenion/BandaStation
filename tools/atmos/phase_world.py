@@ -46,12 +46,12 @@ def main():
     (output / "phase-cases.json").write_text(json.dumps(inputs), encoding="utf-8")
     (output / "phase-network-cases.json").write_text(json.dumps([c["input"] for c in networks]), encoding="utf-8")
     dme = ROOT / "local-atmos-phase.test.dme"
-    fixtures = ("world_network", "phase_world", "phase_network", "inherit_world", "binding_world", "deferred_world", "api_world", "contact_world", "debug_world", "exchange_world")
+    fixtures = ("world_network", "phase_world", "phase_network", "inherit_world", "binding_world", "deferred_world", "api_world", "contact_world", "debug_world", "exchange_world", "threaded_world", "feedback_world", "threaded_error_world")
     dme.write_text((ROOT / "tgstation.dme").read_text(encoding="utf-8-sig") + "\n" + "".join(
         f'#include "tools/atmos/{fixture}.dm.in"\n' for fixture in fixtures), encoding="utf-8", newline="\n")
     fixture_hashes = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in (
         "tools/atmos/phase_world.dm.in", "tools/atmos/phase_network.dm.in", "tools/atmos/inherit_world.dm.in",
-        "tools/atmos/binding_world.dm.in", "tools/atmos/deferred_world.dm.in", "tools/atmos/api_world.dm.in", "tools/atmos/contact_world.dm.in", "tools/atmos/debug_world.dm.in", "tools/atmos/world_network.dm.in", "tools/atmos/exchange_world.dm.in")}
+        "tools/atmos/binding_world.dm.in", "tools/atmos/deferred_world.dm.in", "tools/atmos/api_world.dm.in", "tools/atmos/contact_world.dm.in", "tools/atmos/debug_world.dm.in", "tools/atmos/world_network.dm.in", "tools/atmos/exchange_world.dm.in", "tools/atmos/threaded_world.dm.in", "tools/atmos/feedback_world.dm.in", "tools/atmos/threaded_error_world.dm.in")}
     print("Compiling native phase integration harness", flush=True)
     defines = ["-DCBT"] + (["-DTRACK_MAX_SHARE"] if args.track_max_share else [])
     if not args.compiled_binary:
@@ -86,7 +86,8 @@ def main():
             failures.append(dict(id=reference["input"]["label"], difference=difference, expected=expected, actual=observed["states"]))
     required = {"concurrent_write_exercised", "release_not_lost", "safe_callback_applied_once", "detached_snapshot_unchanged",
                 "commands_not_replayed", "replacement_not_overwritten", "old_freeze_not_applied", "owner_closed_during_work",
-                "nested_callbacks_share_air", "release_inside_callback_not_lost", "closing_preserves_external_gas"}
+                "nested_callbacks_share_air", "release_inside_callback_not_lost", "closing_preserves_external_gas",
+                "native_output_packet_released", "native_input_packet_released"}
     assert set(checks) == required, "Incomplete lifetime/queue checks"
     for key, value in checks.items():
         if value != 1:
@@ -118,6 +119,36 @@ def main():
     if contacts["native"]["hot"] != contacts["dm"]["hot"] or contacts["native"]["cold"] != contacts["dm"]["cold"]:
         failures.append(dict(id="native_contact_burn", difference="Contact exposure differs from original DM", observed=contacts))
     debug = actual["debug"]
+    threaded = actual["threaded"]
+    assert len(threaded) == 31, "Incomplete threaded world checks"
+    for key, value in threaded.items():
+        if value != 1:
+            failures.append(dict(id=key, difference="Threaded world behavior differs"))
+    feedback = actual["feedback"]
+    threaded_errors = actual["threaded_errors"]
+    assert set(threaded_errors) == {"dm", "sync", "worker"}, "Incomplete item failure comparison"
+    for mode, state in threaded_errors.items():
+        if state["first"].get("error") != "BANDA_EXPECTED_ITEM_FIRE_ERROR" or state["first"]["done"] != 1 or state["fire_calls_before_retry"] != 1:
+            failures.append(dict(id=f"{mode}_item_error_propagates", observed=state))
+        if mode == "dm":
+            if state["second"].get("success") != 1:
+                failures.append(dict(id="dm_continues_after_item_error", observed=state))
+            continue
+        for key in ("released_worker", "retry_keeps_gas", "retry_does_not_replay_effect", "failed_effect_not_counted_successful", "next_mc_tick_completes"):
+            if state[key] != 1:
+                failures.append(dict(id=f"{mode}_{key}", observed=state))
+    difference = transport.difference(threaded_errors["sync"]["published"], threaded_errors["worker"]["published"], "item_error.published")
+    if difference:
+        failures.append(dict(id="item_error_keeps_published_air", difference=difference))
+    for state in feedback.values():
+        assert state["completed_ticks"] == 2 and state["first"]["coal_deleted"] == 1, "Incomplete coal/equipment feedback check"
+    for step in ("first", "final"):
+        synchronous = feedback["sync"] if step == "final" else feedback["sync"]["first"]
+        worker = feedback["worker"] if step == "final" else feedback["worker"]["first"]
+        for side in ("left", "right"):
+            difference = transport.difference(synchronous[side], worker[side], f"feedback.{step}.{side}")
+            if difference:
+                failures.append(dict(id="equipment_after_coal_feedback", difference=difference, observed=feedback))
     exchange = actual["exchange"]
     exchange_error = actual["exchange_error"]
     exchange_effects = actual["exchange_effects"]
@@ -142,10 +173,10 @@ def main():
             failures.append(dict(id=key, difference="Failed native admin panel check"))
     report = dict(policy="DM object feedback between native calculations; approved by user", byond=actual["byond"], startup_seed=actual["startup_seed"], track_max_share=args.track_max_share,
                   dll_sha256=hashlib.sha256((output / "bandastation_atmos.dll").read_bytes()).hexdigest(),
-                  binary_sha256=hashlib.sha256((output / "tgstation.dmb").read_bytes()).hexdigest(),
+                  binary_sha256=hashlib.sha256((output / "tgstation.dmb").read_bytes()).hexdigest(), feedback=feedback, threaded_errors=threaded_errors,
                   harness_sha256=fixture_hashes["tools/atmos/phase_world.dm.in"],
                   fixture_sha256=fixture_hashes,
-                  scenarios=len(pairs), network_scenarios=len(networks), network_ticks=sum(c["input"]["ticks"] for c in networks), checks=checks, inheritance=inheritance, bindings=binding_checks, deferred=deferred, api=api, contacts=contacts, debug=debug, exchange=exchange, exchange_error=exchange_error, exchange_effects=exchange_effects, exchange_spawn=exchange_spawn, failures=failures)
+                  scenarios=len(pairs), network_scenarios=len(networks), network_ticks=sum(c["input"]["ticks"] for c in networks), checks=checks, inheritance=inheritance, bindings=binding_checks, deferred=deferred, api=api, contacts=contacts, debug=debug, exchange=exchange, exchange_error=exchange_error, exchange_effects=exchange_effects, exchange_spawn=exchange_spawn, threaded=threaded, failures=failures)
     (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
     print(f"Native phase: {len(pairs)} world scenarios, {len(networks)} connected graphs, {len(checks)} queue/lifetime checks, {len(failures)} failures")
     for failure in failures:

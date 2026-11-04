@@ -54,6 +54,9 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 // Creates a new turf
 // new_baseturfs can be either a single type or list of types, formated the same as baseturfs. see turf.dm
 /turf/proc/ChangeTurf(path, list/new_baseturfs, flags)
+	// BANDASTATION ADDITION START - Publish worker gas before changing its coordinate binding.
+	SSair.native_atmos?.enter_safe_phase()
+	// BANDASTATION ADDITION END
 	// BANDASTATION ADDITION START - Match the caller's air-restoration branch before resolving baseturf placeholders.
 	var/defer_native_rebind = isopenturf(src) && ispath(path, /turf/open) && (flags & CHANGETURF_INHERIT_AIR)
 	// BANDASTATION ADDITION END
@@ -221,6 +224,9 @@ GLOBAL_LIST_INIT(blacklisted_automated_baseturfs, typecacheof(list(
 	return new_turf
 
 /turf/open/ChangeTurf(path, list/new_baseturfs, flags) //Resist the temptation to make this default to keeping air.
+	// BANDASTATION ADDITION START - Inherited gas must come from the completed worker frame.
+	SSair.native_atmos?.enter_safe_phase()
+	// BANDASTATION ADDITION END
 	if ((flags & CHANGETURF_INHERIT_AIR) && ispath(path, /turf/open))
 		var/datum/gas_mixture/stashed_air = new()
 		stashed_air.copy_from(get_readonly_air()) // BANDASTATION EDIT - The authoritative mixture may be native.

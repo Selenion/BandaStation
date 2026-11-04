@@ -129,13 +129,21 @@ var/global/banda_phase_callback_calls = 0
 	var/list/exchange_error = exchange_error_contract()
 	var/list/exchange_effects = exchange_effect_checks()
 	var/list/exchange_spawn = exchange_spawn_checks()
-	WRITE_FILE(file("phase-output.json"), json_encode(list("byond" = "[world.byond_version].[world.byond_build]", "startup_seed" = num2text(Master.random_seed, 9), "cases" = output, "checks" = checks, "networks" = networks, "inheritance" = inheritance, "bindings" = bindings, "deferred" = deferred, "api" = api, "contacts" = contacts, "debug" = debug, "exchange" = exchange, "exchange_error" = exchange_error, "exchange_effects" = exchange_effects, "exchange_spawn" = exchange_spawn)))
+	var/list/threaded = threaded_world_checks()
+	var/list/feedback = list("sync" = feedback_check(FALSE, 173), "worker" = feedback_check(TRUE, 177))
+	var/list/threaded_errors = threaded_error_checks()
+	WRITE_FILE(file("phase-output.json"), json_encode(list("byond" = "[world.byond_version].[world.byond_build]", "startup_seed" = num2text(Master.random_seed, 9), "cases" = output, "checks" = checks, "networks" = networks, "inheritance" = inheritance, "bindings" = bindings, "deferred" = deferred, "api" = api, "contacts" = contacts, "debug" = debug, "exchange" = exchange, "exchange_error" = exchange_error, "exchange_effects" = exchange_effects, "exchange_spawn" = exchange_spawn, "threaded" = threaded, "feedback" = feedback, "threaded_errors" = threaded_errors)))
 	log_world("BANDA_ATMOS_PHASE_INTEGRATION_COMPLETE")
 	shutdown()
 
 /datum/controller/subsystem/atmos_phase_test/proc/mechanism_checks()
 	var/list/checks = list()
 	var/datum/banda_atmos_phase/phase = new("bandastation_atmos.dll")
+	// Resolve each weak reference before another packet can reuse its released list ID.
+	var/packet_reference = packet_lifetime_reference(phase, FALSE)
+	checks["native_output_packet_released"] = !locate(packet_reference)
+	packet_reference = packet_lifetime_reference(phase, TRUE)
+	checks["native_input_packet_released"] = !locate(packet_reference)
 	var/turf/open/target = floor_at(30)
 	target.air.temperature = T20C
 	target.air.set_gas(/datum/gas/nitrogen, 10)
@@ -196,3 +204,12 @@ var/global/banda_phase_callback_calls = 0
 	checks["owner_closed_during_work"] = !target.banda_atmos_cell
 	checks["closing_preserves_external_gas"] = target.air.moles[/datum/gas/oxygen] == 4
 	return checks
+
+/// Return only a weak list reference; the phase must not retain temporary FFI packets.
+/datum/controller/subsystem/atmos_phase_test/proc/packet_lifetime_reference(datum/banda_atmos_phase/phase, input)
+	var/list/packet = list()
+	if(input)
+		phase.native(18, packet, packet)
+	else
+		phase.native(9, packet)
+	return REF(packet)

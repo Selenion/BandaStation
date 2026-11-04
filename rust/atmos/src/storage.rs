@@ -62,6 +62,28 @@ impl<T> Storage<T> {
 }
 
 impl<T: Clone> Storage<T> {
+    /// Equal pages may belong to different coordinates; every mutation already separates their Arc.
+    pub(crate) fn share_previous_page(&mut self, id: u32, same: impl Fn(&T, &T) -> bool) {
+        let index = id as usize / PAGE_SIZE;
+        if index == 0 {
+            return;
+        }
+        let (Some(previous), Some(current)) = (&self.pages[index - 1], &self.pages[index]) else {
+            return;
+        };
+        if current.iter().all(Option::is_some)
+            && previous
+                .iter()
+                .zip(current.iter())
+                .all(|(a, b)| match (a, b) {
+                    (Some(a), Some(b)) => same(a, b),
+                    _ => false,
+                })
+        {
+            self.pages[index] = Some(previous.clone());
+        }
+    }
+
     pub fn get_mut(&mut self, id: &u32) -> Option<&mut T> {
         // Do not copy a shared page for a missing entry.
         self.get(id)?;
@@ -155,6 +177,45 @@ impl<T: Clone> FromIterator<(u32, T)> for Storage<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn equal_coordinate_pages_separate_for_every_write_path() {
+        let mut store = Storage::new();
+        for id in 0..32 {
+            store.insert(id, id % 8);
+            store.share_previous_page(id, PartialEq::eq);
+        }
+        assert!(Arc::ptr_eq(
+            store.pages[0].as_ref().unwrap(),
+            store.pages[3].as_ref().unwrap()
+        ));
+        let held = store.clone();
+        *store.get_mut(&8).unwrap() = 80;
+        let (a, b) = store.pair_mut(16, 24);
+        *a = 160;
+        *b = 240;
+        let (a, b) = store.pair_mut(17, 18);
+        *a = 170;
+        *b = 180;
+        assert_eq!(store[&0], 0);
+        assert_eq!(store[&8], 80);
+        assert_eq!(store[&16], 160);
+        assert_eq!(store[&24], 240);
+        assert_eq!(store.remove(&25), Some(1));
+        assert_eq!(store[&1], 1);
+        assert_eq!(held[&25], 1);
+        store.values_mut().for_each(|v| *v += 1);
+        assert_eq!(store[&0], 1);
+        assert_eq!(store[&8], 81);
+        assert!((0..32).all(|id| held[&id] == id % 8));
+        let mut spare = held.clone();
+        spare.synchronize(&store, store.keys());
+        assert_eq!(
+            spare.iter().collect::<Vec<_>>(),
+            store.iter().collect::<Vec<_>>()
+        );
+        assert_eq!(spare.get(&25), None);
+    }
 
     #[test]
     fn ordered_holes_replacement_and_zero_id() {

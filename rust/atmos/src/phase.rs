@@ -206,6 +206,7 @@ pub struct Store {
     sync_ids: BTreeSet<CellId>,
     resync_all: bool,
     running: Option<u32>,
+    staged: Option<Completed>,
     next_cell: CellId,
     writes: Vec<PendingWrite>,
     bindings: BTreeMap<CellId, Binding>,
@@ -225,6 +226,7 @@ impl Default for Store {
             sync_ids: BTreeSet::new(),
             resync_all: true,
             running: None,
+            staged: None,
             next_cell: 1,
             writes: Vec::new(),
             bindings: BTreeMap::new(),
@@ -332,6 +334,7 @@ impl Store {
         let frame = Arc::make_mut(&mut self.published);
         frame.schedule.add_tile(id, tile);
         frame.cells.insert(id, cell);
+        frame.cells.share_previous_page(id, Cell::same_bits);
         frame.binding_versions.resize(id as usize + 1, 0);
         frame.binding_versions[id as usize] = 1;
         self.bindings.insert(
@@ -443,7 +446,7 @@ impl Store {
         self.begin_at(cycle)
     }
 
-    /// A synchronous world supplies its real SSair cycle after any initialization pause.
+    /// The world supplies its real SSair cycle after any initialization pause.
     pub fn begin_at(&mut self, cycle: u32) -> Result<Job, Error> {
         if self.closed {
             return Err(Error::Closed);
@@ -479,6 +482,40 @@ impl Store {
             sync_ids: std::mem::take(&mut self.sync_ids),
             resync_all: std::mem::replace(&mut self.resync_all, false),
         })
+    }
+
+    /// Keep the previous frame readable until DM explicitly enters its publication phase.
+    pub fn stage(&mut self, completed: Completed) -> Result<(), Error> {
+        if self.closed {
+            return Err(Error::Closed);
+        }
+        if self.running != Some(completed.epoch) || self.staged.is_some() {
+            return Err(Error::StaleJob);
+        }
+        self.staged = Some(completed);
+        Ok(())
+    }
+
+    pub fn pending_cycle(&self) -> Option<u32> {
+        self.running
+    }
+
+    pub fn ready(&self) -> bool {
+        self.staged.is_some()
+    }
+
+    pub fn publish_ready(&mut self, cycle: u32) -> Result<(), Error> {
+        if self.closed {
+            return Err(Error::Closed);
+        }
+        if self.running.is_none() && self.published.epoch == cycle {
+            return Ok(());
+        }
+        if self.running != Some(cycle) || self.staged.is_none() {
+            return Err(Error::StaleJob);
+        }
+        let completed = self.staged.take().unwrap();
+        self.finish(completed)
     }
 
     pub fn finish(&mut self, completed: Completed) -> Result<(), Error> {
@@ -524,6 +561,7 @@ impl Store {
     }
 
     pub fn abort(&mut self) {
+        self.staged = None;
         if self.running.take().is_some() {
             self.resync_all = true;
             let frame = Arc::make_mut(&mut self.published);
@@ -577,6 +615,7 @@ impl Store {
 
     pub fn close(&mut self) {
         self.closed = true;
+        self.staged = None;
         self.running = None;
         self.commands.clear();
         self.writes.clear();

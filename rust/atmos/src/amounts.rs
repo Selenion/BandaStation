@@ -89,4 +89,14 @@ mod tests {
         let copy = values.clone();
         assert_eq!(copy[0].to_bits(), (-0.0_f32).to_bits());
     }
+
+    #[test]
+    fn sharing_empty_mixtures_does_not_materialize_gas_or_archive_arrays() {
+        use crate::{transport::Sample, Mixture};
+        let mut a = Sample::new(Mixture::new(293.15, 2500.0, true));
+        let mut b = Sample::new(Mixture::new(293.15, 2500.0, true));
+        assert_eq!(a.share(&mut b, 0.2, 0.2), None);
+        assert!(a.air.moles.0.is_none() && b.air.moles.0.is_none());
+        assert!(a.archived.moles.0.is_none() && b.archived.moles.0.is_none());
+    }
 }

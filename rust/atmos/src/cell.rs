@@ -1,6 +1,48 @@
 //! Numerical turf/hotspot lifecycle; game objects are represented by ordered commands.
 use crate::{catalog::*, quantize, Context, Effect, Holder, Mixture, Outcome};
 
+#[cfg(test)]
+mod sharing_tests {
+    use super::*;
+
+    #[test]
+    fn sharing_preserves_float_bits_gas_order_results_and_pending_effects() {
+        let base = Cell::new(Mixture::new(0.0, 2500.0, false), Context::default());
+        assert!(base.same_bits(&base.clone()));
+        let mut other = base.clone();
+        other.air.temperature = -0.0;
+        assert!(!base.same_bits(&other));
+        other = base.clone();
+        other.context.working_power = -0.0;
+        assert!(!base.same_bits(&other));
+        other = base.clone();
+        other.air.results[0] = Some(0.0);
+        assert!(!base.same_bits(&other));
+        let mut first = base.clone();
+        first.air.set(OXYGEN, 1.0);
+        first.air.set(NITROGEN, 1.0);
+        other = base.clone();
+        other.air.set(NITROGEN, 1.0);
+        other.air.set(OXYGEN, 1.0);
+        assert!(!first.same_bits(&other));
+        other = base.clone();
+        other.hotspot = Some(Hotspot {
+            temperature: 1000.0,
+            volume: 100.0,
+            just_spawned: true,
+            bypassing: false,
+            cold_fire: false,
+        });
+        assert!(!other.same_bits(&other.clone()));
+        other = base.clone();
+        other.commands.push(WorldCommand {
+            action: WorldAction::BurnTile,
+            air: base.air.clone(),
+        });
+        assert!(!other.same_bits(&other.clone()));
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Hotspot {
     pub temperature: f32,
@@ -38,6 +80,32 @@ pub struct Cell {
 }
 
 impl Cell {
+    // Numeric equality alone would merge signed zero or absent reaction results visible to DM.
+    pub(crate) fn same_bits(&self, other: &Self) -> bool {
+        self.hotspot.is_none()
+            && other.hotspot.is_none()
+            && self.commands.is_empty()
+            && other.commands.is_empty()
+            && self.flags == other.flags
+            && self.freeze_leaves_permafrost == other.freeze_leaves_permafrost
+            && self.context.same_bits(&other.context)
+            && self.air == other.air
+            && self.air.temperature.to_bits() == other.air.temperature.to_bits()
+            && self.air.volume.to_bits() == other.air.volume.to_bits()
+            && self
+                .air
+                .moles
+                .iter()
+                .zip(other.air.moles.iter())
+                .all(|(a, b)| a.to_bits() == b.to_bits())
+            && self
+                .air
+                .results
+                .iter()
+                .zip(other.air.results.iter())
+                .all(|(a, b)| a.map(f32::to_bits) == b.map(f32::to_bits))
+    }
+
     pub fn new(air: Mixture, context: Context) -> Self {
         Self {
             air,

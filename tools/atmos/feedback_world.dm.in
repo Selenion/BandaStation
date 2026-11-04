@@ -1,0 +1,70 @@
+// Regression: real coal feedback followed by equipment writes before the next native tick.
+/obj/machinery/banda_threaded_writer
+	use_power = NO_POWER_USE
+	resistance_flags = FIRE_PROOF
+	var/turf/open/target
+	var/armed = FALSE
+
+/obj/machinery/banda_threaded_writer/Destroy()
+	target = null
+	return ..()
+
+/obj/machinery/banda_threaded_writer/process_atmos()
+	if(!armed)
+		return
+	armed = FALSE
+	var/datum/gas_mixture/air = target.return_air()
+	air.adjust_gas(/datum/gas/nitrogen, 100)
+	log_world("BANDA_ATMOS_FEEDBACK_MACHINE: [json_encode(list("worker" = SSair.native_atmos.threaded, "cycle" = SSair.times_fired, "archive_cycle" = target.archived_cycle, "current_n2" = air.moles[/datum/gas/nitrogen], "archived_n2" = air.moles_archive[/datum/gas/nitrogen]))]")
+
+/datum/controller/subsystem/atmos_phase_test/proc/feedback_seed(turf/open/target)
+	var/datum/gas_mixture/air = target.return_air()
+	air.temperature = 700
+	air.set_gas(/datum/gas/oxygen, 100)
+	air.set_gas(/datum/gas/plasma, 20)
+
+/datum/controller/subsystem/atmos_phase_test/proc/feedback_check(use_worker, x)
+	var/datum/banda_atmos_phase/world_adapter/phase = threaded_pair(x)
+	phase.threaded = use_worker
+	var/turf/open/left = phase.positions[1]
+	var/turf/open/right = phase.positions[2]
+	left.heat_capacity = 1000000000
+	right.heat_capacity = 1000000000
+	phase.invoke(CALLBACK(src, PROC_REF(feedback_seed), left))
+	var/obj/item/stack/sheet/mineral/coal/coal = new(left, 1)
+	coal.anchored = TRUE
+	var/obj/machinery/banda_threaded_writer/writer = new(left)
+	writer.target = left
+	var/list/saved_networks = SSair.networks
+	var/list/saved_machines = SSair.atmos_machinery
+	SSair.networks = list()
+	SSair.atmos_machinery = list(writer)
+	SSair.rebuild_queue.Cut()
+	SSair.expansion_queue.Cut()
+	SSair.adjacent_rebuild.Cut()
+	SSair.atom_process.Cut()
+	SSair.native_atoms_pending = FALSE
+	phase.native(29, list(left.banda_atmos_id, 700, CELL_VOLUME, FALSE, TRUE, FALSE))
+	phase.native(30)
+	SSair.times_fired++
+	SSair.currentpart = SSAIR_ACTIVETURFS
+	threaded_mc_fire(TRUE)
+	var/deadline = world.time + 20 SECONDS
+	while(phase.worker_cycle && world.time < deadline)
+		sleep(world.tick_lag)
+	var/list/first = list("cycle" = phase.air_cycle, "archive_cycle" = left.archived_cycle, "left" = banda_atmos_full_packet(left.get_readonly_air()), "right" = banda_atmos_full_packet(right.get_readonly_air()), "coal_deleted" = !!QDELETED(coal))
+	writer.armed = TRUE
+	var/resumed = FALSE
+	while(threaded_mc_fire(resumed) == SS_PAUSED && world.time < deadline)
+		resumed = TRUE
+		sleep(world.tick_lag)
+	while(phase.worker_cycle && world.time < deadline)
+		sleep(world.tick_lag)
+	var/list/output = list("first" = first, "cycle" = phase.air_cycle, "archive_cycle" = left.archived_cycle, "completed_ticks" = phase.completed_ticks, "left" = banda_atmos_full_packet(left.get_readonly_air()), "right" = banda_atmos_full_packet(right.get_readonly_air()))
+	qdel(writer)
+	qdel(phase)
+	SSair.networks = saved_networks
+	SSair.atmos_machinery = saved_machines
+	SSair.native_atoms_pending = FALSE
+	SSair.currentpart = SSAIR_PIPENETS
+	return output

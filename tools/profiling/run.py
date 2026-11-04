@@ -15,7 +15,57 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def windows_process_sample(pid):
+def windows_thread_sample(pid, thread_id=None):
+    """The process's oldest thread is its initial BYOND thread; never change its affinity."""
+    from ctypes import wintypes
+
+    class Entry(ctypes.Structure):
+        _fields_ = [(name, wintypes.DWORD) for name in ("size", "usage", "thread_id", "process_id")] + [
+            ("base_priority", wintypes.LONG), ("delta_priority", wintypes.LONG), ("flags", wintypes.DWORD)]
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.OpenThread.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenThread.restype = wintypes.HANDLE
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.GetThreadTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(ctypes.c_uint64)] * 4
+
+    def read(identifier):
+        handle = kernel.OpenThread(0x800, False, identifier)  # QUERY_LIMITED_INFORMATION
+        if not handle:
+            return None
+        try:
+            times = [ctypes.c_uint64() for _ in range(4)]
+            if kernel.GetThreadTimes(handle, *(ctypes.byref(value) for value in times)):
+                return times[0].value, identifier, (times[2].value + times[3].value) / 1e7
+        finally:
+            kernel.CloseHandle(handle)
+
+    if thread_id is not None:
+        return read(thread_id)
+    kernel.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    kernel.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    kernel.Thread32First.argtypes = [wintypes.HANDLE, ctypes.POINTER(Entry)]
+    kernel.Thread32Next.argtypes = [wintypes.HANDLE, ctypes.POINTER(Entry)]
+    snapshot = kernel.CreateToolhelp32Snapshot(4, 0)  # TH32CS_SNAPTHREAD
+    if snapshot == wintypes.HANDLE(-1).value:
+        return None
+    candidates = []
+    try:
+        entry = Entry()
+        entry.size = ctypes.sizeof(entry)
+        more = kernel.Thread32First(snapshot, ctypes.byref(entry))
+        while more:
+            if entry.process_id == pid:
+                value = read(entry.thread_id)
+                if value:
+                    candidates.append(value)
+            more = kernel.Thread32Next(snapshot, ctypes.byref(entry))
+    finally:
+        kernel.CloseHandle(snapshot)
+    return min(candidates) if candidates else None
+
+
+def windows_process_sample(pid, main_thread_id=None):
     """Read counters for this run's console DreamDaemon, without extra packages."""
     from ctypes import wintypes
 
@@ -42,17 +92,23 @@ def windows_process_sample(pid):
             return None
         if not kernel.GetProcessTimes(handle, *(ctypes.byref(t) for t in times)):
             return None
-        return dict(utc=datetime.now(timezone.utc).isoformat(), cpu_seconds=(times[2].value + times[3].value) / 1e7,
-                    working_set_bytes=memory.working, private_bytes=memory.private)
+        sample = dict(utc=datetime.now(timezone.utc).isoformat(), cpu_seconds=(times[2].value + times[3].value) / 1e7,
+                      working_set_bytes=memory.working, private_bytes=memory.private,
+                      os_peak_working_set_bytes=memory.peak_working, os_peak_commit_bytes=memory.peak_pagefile)
+        thread = windows_thread_sample(pid, main_thread_id)
+        if thread:
+            sample.update(main_thread_id=thread[1], main_thread_cpu_seconds=thread[2])
+        return sample
     finally:
         kernel.CloseHandle(handle)
 
 
-def capture(daemon, output, scenario, rust_enabled=False):
+def capture(daemon, output, scenario, rust_enabled=False, rust_threaded=False):
     samples = []
+    main_thread_id = None
     with (output / "launcher.log").open("w", encoding="utf-8") as log:
         process = subprocess.Popen([str(daemon), "tgstation.dmb", "-trusted", "-close", "-invisible", "-ip", "127.0.0.1",
-                                    "-logself", "-params", f"log-directory=local-profile&profile-scenario={scenario}&profile-rust={int(rust_enabled)}"],
+                                    "-logself", "-params", f"log-directory=local-profile&profile-scenario={scenario}&profile-rust={int(rust_enabled)}&profile-threaded={int(rust_threaded)}"],
                                    cwd=output, stdout=log, stderr=subprocess.STDOUT)
         started = time.monotonic()
         try:
@@ -62,8 +118,9 @@ def capture(daemon, output, scenario, rust_enabled=False):
                     process.wait()
                     raise TimeoutError("Local profiling run exceeded 600 seconds")
                 if os.name == "nt":
-                    sample = windows_process_sample(process.pid)
+                    sample = windows_process_sample(process.pid, main_thread_id)
                     if sample:
+                        main_thread_id = sample.get("main_thread_id")
                         samples.append(sample)
                 try:
                     process.wait(timeout=1)
@@ -111,12 +168,15 @@ def main():
     parser.add_argument("--byond", type=Path, required=True)
     parser.add_argument("--map", default="metastation")
     parser.add_argument("--name", default="baseline")
-    parser.add_argument("--scenario", choices=["empty-station", "atmos-fire", "sm-plasma"], default="empty-station")
+    parser.add_argument("--scenario", choices=["empty-station", "atmos-fire", "atmos-flood", "sm-plasma"], default="empty-station")
     parser.add_argument("--source-root", type=Path, default=ROOT)
     parser.add_argument("--compiled-binary", type=Path)
     parser.add_argument("--rust-dll", type=Path)
+    parser.add_argument("--threaded", action="store_true")
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()
+    if args.threaded and not args.rust_dll:
+        parser.error("--threaded requires --rust-dll")
     if not args.name.replace("-", "").replace("_", "").isalnum():
         parser.error("--name must contain letters, digits, hyphens or underscores")
     source_root = args.source_root.resolve()
@@ -136,12 +196,14 @@ def main():
         config.write("\nFORBID_STATION_TRAITS\n")
         if args.rust_dll:
             config.write("RUST_ATMOS_LIBRARY bandastation_atmos.dll\n")
+        if args.threaded:
+            config.write("RUST_ATMOS_THREADED\n")
     if args.rust_dll:
         shutil.copy2(args.rust_dll, output / "bandastation_atmos.dll")
     shutil.copy2(map_source, output / "data/next_map.json")
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     manifest = dict(revision=revision, map=args.map, scenario=args.scenario, warmup_seconds=30,
-                    sample_seconds=60, profiler="BYOND world.Profile", rust_enabled=bool(args.rust_dll), source_root=str(source_root),
+                    sample_seconds=60, profiler="BYOND world.Profile", rust_enabled=bool(args.rust_dll), rust_threaded=args.threaded, source_root=str(source_root),
                     baseline_source=json.loads((source_root / "baseline-source.json").read_text(encoding="utf-8")) if (source_root / "baseline-source.json").exists() else None,
                     harness_sha256=hashlib.sha256((ROOT / "tools/profiling/local_profile.dm.in").read_bytes()).hexdigest(),
                     limitations=["No connected players; SendMaps is not representative of 50+ players.",
@@ -161,7 +223,7 @@ def main():
     for extension in ("dmb", "rsc"):
         shutil.copy2(binary.with_suffix("." + extension), output / ("tgstation." + extension))
     daemon = args.byond / ("dd.exe" if os.name == "nt" else "DreamDaemon")
-    elapsed = capture(daemon, output, args.scenario, bool(args.rust_dll))
+    elapsed = capture(daemon, output, args.scenario, bool(args.rust_dll), args.threaded)
     logs = "\n".join(p.read_text(encoding="utf-8-sig", errors="replace") for p in output.rglob("*") if p.is_file() and (p.suffix == ".log" or p.name.endswith(".log.json")))
     if any(marker in logs.lower() for marker in ("runtime error:", "runtime in ", "infinite loop")):
         raise SystemExit(f"Runtime in profiling run; inspect {output}")

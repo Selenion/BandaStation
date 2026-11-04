@@ -1,0 +1,92 @@
+// An item failure must abort its effect, not permanently stop the atmosphere worker.
+/obj/item/wrench/banda_threaded_failure
+	var/fire_calls = 0
+	var/armed = TRUE
+
+/obj/item/wrench/banda_threaded_failure/fire_act(exposed_temperature, exposed_volume)
+	fire_calls++
+	if(armed)
+		armed = FALSE
+		throw EXCEPTION("BANDA_EXPECTED_ITEM_FIRE_ERROR")
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/threaded_error_checks()
+	var/list/output = list()
+	var/list/saved_networks = SSair.networks
+	var/list/saved_machines = SSair.atmos_machinery
+	SSair.networks = list()
+	SSair.atmos_machinery = list()
+	for(var/mode in list("dm", "sync", "worker"))
+		var/turf/open/target = floor_at(180 + length(output), 210)
+		target.air.temperature = 700
+		target.air.set_gas(/datum/gas/oxygen, 100)
+		target.air.set_gas(/datum/gas/plasma, 20)
+		target.heat_capacity = 1000000000
+		var/datum/banda_atmos_phase/world_adapter/phase
+		if(mode != "dm")
+			phase = new /datum/banda_atmos_phase/world_adapter/threaded_probe("bandastation_atmos.dll")
+			SSair.native_atmos = phase
+			phase.threaded = mode == "worker"
+			phase.register_batch(list(target))
+			phase.native(18, list(target.banda_atmos_id), list())
+			phase.native(29, list(target.banda_atmos_id, 700, CELL_VOLUME, FALSE, TRUE, FALSE))
+			phase.native(30)
+			phase.initializing = FALSE
+		else
+			target.hotspot_expose(700, CELL_VOLUME, TRUE)
+			target.active_hotspot.just_spawned = FALSE
+		var/obj/item/wrench/banda_threaded_failure/probe = new(target)
+		var/list/first = list("done" = FALSE)
+		SSair.times_fired++
+		threaded_failure_launch(phase, target, first)
+		var/deadline = world.time + 5 SECONDS
+		while(!first["done"] && world.time < deadline)
+			sleep(world.tick_lag)
+		var/list/observed = list("first" = first, "fire_calls_before_retry" = probe.fire_calls)
+		if(phase)
+			observed["released_worker"] = !phase.running && !phase.worker_cycle && !phase.processing && !phase.in_safe_callback
+			var/list/published = banda_atmos_full_packet(target.get_readonly_air())
+			observed["published"] = published
+			// A drained effect packet must not run again when publication is retried.
+			phase.finish_publication()
+			observed["retry_keeps_gas"] = json_encode(published) == json_encode(banda_atmos_full_packet(target.get_readonly_air()))
+			observed["retry_does_not_replay_effect"] = probe.fire_calls == observed["fire_calls_before_retry"]
+			observed["failed_effect_not_counted_successful"] = phase.completed_ticks == 0
+			SSair.adjacent_rebuild.Cut()
+			SSair.atom_process.Cut()
+			SSair.native_atoms_pending = FALSE
+			SSair.currentpart = SSAIR_ACTIVETURFS
+			// The first direct call bypassed MC's completion counter.
+			SSair.times_fired++
+			var/result = threaded_mc_fire(TRUE)
+			while(phase.worker_cycle && world.time < deadline)
+				sleep(world.tick_lag)
+			observed["next_mc_tick_completes"] = result == SS_RUNNING && phase.completed_ticks == 1 && !phase.worker_cycle && !phase.publication_pending
+		else
+			var/list/second = list("done" = FALSE)
+			SSair.times_fired++
+			threaded_failure_launch(null, target, second)
+			observed["second"] = second
+		output[mode] = observed
+		qdel(probe)
+		if(phase)
+			qdel(phase)
+	SSair.networks = saved_networks
+	SSair.atmos_machinery = saved_machines
+	SSair.native_atoms_pending = FALSE
+	SSair.currentpart = SSAIR_PIPENETS
+	return output
+
+/datum/controller/subsystem/atmos_phase_test/proc/threaded_failure_launch(datum/banda_atmos_phase/world_adapter/phase, turf/open/target, list/result)
+	set waitfor = FALSE
+	try
+		if(phase)
+			phase.run_tick()
+		else
+			target.process_cell(SSair.times_fired)
+			if(target.active_hotspot)
+				target.active_hotspot.process()
+		result["success"] = TRUE
+	catch(var/exception/error)
+		result["error"] = error.name
+	result["done"] = TRUE

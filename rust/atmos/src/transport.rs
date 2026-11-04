@@ -1,7 +1,7 @@
 //! BandaStation gas/heat exchange. Each operation reads the caller-provided archives.
 use crate::{catalog::*, quantize, Archive, Mixture};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum Boundary {
     #[default]
     Mutable,
@@ -29,7 +29,7 @@ impl Boundary {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Sample {
     pub air: Mixture,
     pub archived: Archive,
@@ -243,16 +243,44 @@ impl SampleView<'_> {
         let mut other_to_own = 0.0;
         let mut moved = 0.0;
         let mut absolute_moved = 0.0;
+        #[cfg(feature = "simd")]
+        // Packing all 20 lanes loses to scalar arithmetic for ordinary two-gas air.
+        let packed = if self.air.order.len() > 2 {
+            crate::simd::calculate(
+                &self.archived.moles,
+                &other.archived.moles,
+                own_coefficient,
+                other_coefficient,
+            )
+        } else {
+            None
+        };
         for &gas in &self.air.order {
-            let mut delta = quantize(self.archived.moles[gas] - other.archived.moles[gas]);
-            if delta == 0.0 {
-                continue;
-            }
-            delta *= if delta > 0.0 {
-                own_coefficient
+            #[cfg(feature = "simd")]
+            let mut delta = if let Some(packed) = &packed {
+                if packed.active & (1 << gas) == 0 {
+                    continue;
+                }
+                packed.deltas[gas]
             } else {
-                other_coefficient
+                quantize(self.archived.moles[gas] - other.archived.moles[gas])
             };
+            #[cfg(not(feature = "simd"))]
+            let mut delta = quantize(self.archived.moles[gas] - other.archived.moles[gas]);
+            #[cfg(feature = "simd")]
+            let needs_coefficient = packed.is_none();
+            #[cfg(not(feature = "simd"))]
+            let needs_coefficient = true;
+            if needs_coefficient {
+                if delta == 0.0 {
+                    continue;
+                }
+                delta *= if delta > 0.0 {
+                    own_coefficient
+                } else {
+                    other_coefficient
+                };
+            }
             if transfer_heat {
                 let capacity = delta * HEATS[gas];
                 if delta > 0.0 {

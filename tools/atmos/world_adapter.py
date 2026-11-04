@@ -21,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--byond", type=Path, required=True)
     parser.add_argument("--name", required=True)
+    parser.add_argument("--threaded", action="store_true")
     parser.add_argument("--dll", type=Path, default=ROOT / "rust/atmos/target/i686-pc-windows-msvc/debug/bandastation_atmos.dll")
     args = parser.parse_args()
     if not args.name.replace("-", "").replace("_", "").isalnum():
@@ -36,6 +37,8 @@ def main():
     shutil.copy2(ROOT / "_maps/map_jsons/metastation.json", output / "data/next_map.json")
     with (output / "config/config.txt").open("a", encoding="utf-8") as config:
         config.write("\nFORBID_STATION_TRAITS\nRUST_ATMOS_LIBRARY bandastation_atmos.dll\n")
+        if args.threaded:
+            config.write("RUST_ATMOS_THREADED\n")
     fixture_hashes = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest()
                       for p in ("tools/atmos/world_adapter.dm.in", "tools/atmos/world_geometry.dm.in")}
     dme = ROOT / "local-atmos-world-adapter.test.dme"
@@ -49,6 +52,7 @@ def main():
                                     "-ip", "127.0.0.1", "-logself", "-params", "log-directory=local-atmos-world-adapter"],
                                    cwd=output, stdout=log, stderr=subprocess.STDOUT)
         samples = []
+        main_thread_id = None
         started = time.monotonic()
         try:
             while process.poll() is None:
@@ -57,8 +61,9 @@ def main():
                     process.wait()
                     raise TimeoutError("World adapter run exceeded 600 seconds")
                 if os.name == "nt":
-                    sample = windows_process_sample(process.pid)
+                    sample = windows_process_sample(process.pid, main_thread_id)
                     if sample:
+                        main_thread_id = sample.get("main_thread_id")
                         samples.append(sample)
                 try:
                     process.wait(timeout=0.5)
@@ -79,7 +84,7 @@ def main():
                 "closed_door_blocks_native_exchange", "opening_door_updates_native_connections", "closing_door_removes_native_connections"}
     assert set(actual["checks"]) == required, "Incomplete world adapter integration"
     failures = [key for key, value in actual["checks"].items() if value != 1]
-    report = dict(actual, failures=failures,
+    report = dict(actual, failures=failures, threaded=args.threaded,
                   memory_scope="Sampled process memory during startup and functional checks; not a DM/Rust performance comparison",
                   peak_sampled_working_set_bytes=max((v["working_set_bytes"] for v in samples), default=None),
                   peak_sampled_private_bytes=max((v["private_bytes"] for v in samples), default=None),

@@ -3,7 +3,7 @@ use crate::storage::Storage;
 use crate::{
     catalog::*,
     cell::{Cell, WorldAction, WorldCommand},
-    network::{pair_mut, Id, Schedule},
+    network::{pair_mut, Id, Schedule, TileState},
     transport::SampleView,
 };
 
@@ -94,6 +94,8 @@ impl Schedule {
                 }
                 let (own, other) = pair_mut(cells, id, neighbor);
                 let (tile, other_tile) = pair_mut(&mut self.tiles, id, neighbor);
+                let tile: &mut TileState = tile;
+                let other_tile: &mut TileState = other_tile;
                 if tile.terrain.closed && other_tile.terrain.closed {
                     let delta = other_tile.terrain.archived - tile.terrain.archived;
                     if delta.abs() > MINIMUM_TEMPERATURE_DELTA_TO_CONSIDER
@@ -165,7 +167,7 @@ impl Schedule {
                 }
                 self.consider_conduction(cells, neighbor, false);
             }
-            let tile = self.tiles.get_mut(&id).unwrap();
+            let tile: &mut TileState = self.tiles.get_mut(&id).unwrap();
             let terrain = &mut tile.terrain;
             let delta = terrain.archived - TCMB;
             if terrain.temperature > T0C

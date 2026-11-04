@@ -23,17 +23,19 @@ SUBSYSTEM_DEF(local_profile)
 	set waitfor = FALSE
 	sleep(30 SECONDS)
 	var/rust_enabled = FALSE
+	var/rust_threaded = FALSE
 	#ifdef BANDA_ATMOS_CATALOG_SIGNATURE
 	rust_enabled = !!SSair.native_atmos && !SSair.native_atmos.initializing
+	rust_threaded = rust_enabled && SSair.native_atmos.threaded
 	#endif
-	if(rust_enabled != (world.params["profile-rust"] == "1"))
+	if(rust_enabled != (world.params["profile-rust"] == "1") || rust_threaded != (world.params["profile-threaded"] == "1"))
 		log_world("LOCAL_PROFILE_WRONG_BACKEND")
 		shutdown()
 		return
 	var/scenario = world.params["profile-scenario"] || "empty-station"
 	var/list/seeded_turfs = list()
-	if(scenario == "atmos-fire")
-		seeded_turfs = seed_fire()
+	if(scenario == "atmos-fire" || scenario == "atmos-flood")
+		seeded_turfs = seed_fire(scenario == "atmos-flood")
 	var/list/incident = list()
 	var/obj/machinery/power/supermatter_crystal/sm
 	if(scenario == "sm-plasma")
@@ -79,6 +81,7 @@ SUBSYSTEM_DEF(local_profile)
 	var/list/metadata = list(
 		"scenario" = scenario,
 		"rust_enabled" = rust_enabled,
+		"rust_threaded" = rust_threaded,
 		"startup_seed" = num2text(Master.random_seed, 9),
 		"incident" = incident,
 		"atmos_start" = start_atmos,
@@ -113,20 +116,34 @@ SUBSYSTEM_DEF(local_profile)
 		state["active_turfs"] = counts[1]
 		state["hotspots"] = counts[2]
 		state["excited_groups"] = counts[3]
+		state["native_completed_ticks"] = SSair.native_atmos.completed_ticks
+		state["native_worker_pending"] = !!SSair.native_atmos.worker_cycle
+		// Optional diagnostic DLLs count CPU on the numerical worker itself, before Byond_Return.
+		var/list/worker_profile = list()
+		try
+			SSair.native_atmos.native(39, worker_profile)
+		catch
+			worker_profile = null
+		if(length(worker_profile) == 5)
+			state["native_worker_cpu_seconds"] = worker_profile[1]
+			state["native_worker_jobs"] = worker_profile[2]
+			state["native_worker_clock_available"] = worker_profile[3]
+			state["native_simd_available"] = worker_profile[4]
+			state["native_worker_mcycles"] = worker_profile[5]
 	#endif
 	return state
 
 /// A fixed local fire incident; the initial cell coordinates are recorded.
-/datum/controller/subsystem/local_profile/proc/seed_fire()
+/datum/controller/subsystem/local_profile/proc/seed_fire(full_level = FALSE)
 	#ifdef BANDA_ATMOS_CATALOG_SIGNATURE
 	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
-		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(seed_fire)))
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(seed_fire), full_level))
 	#endif
 	var/list/station_levels = SSmapping.levels_by_trait(ZTRAIT_STATION)
 	var/station_z = station_levels[1]
 	var/list/seeded = list()
-	for(var/x in 100 to 150)
-		for(var/y in 100 to 150)
+	for(var/x in (full_level ? 1 : 100) to (full_level ? world.maxx : 150))
+		for(var/y in (full_level ? 1 : 100) to (full_level ? world.maxy : 150))
 			var/turf/open/floor/cell = locate(x, y, station_z)
 			if(!isfloorturf(cell) || cell.density)
 				continue
@@ -140,7 +157,7 @@ SUBSYSTEM_DEF(local_profile)
 			air.temperature = 700
 			SSair.add_to_active(cell)
 			seeded += list(list(x, y, station_z))
-			if(length(seeded) >= 64)
+			if(!full_level && length(seeded) >= 64)
 				return seeded
 	return seeded
 

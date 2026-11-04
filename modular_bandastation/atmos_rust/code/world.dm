@@ -1,8 +1,13 @@
 /// Empty by default: deployments opt in with an explicitly installed, matching DLL.
 /datum/config_entry/string/rust_atmos_library
 
+/// Opt in separately: ordinary native atmosphere keeps its synchronous phase.
+/datum/config_entry/flag/rust_atmos_threaded
+
 /datum/controller/subsystem/air
 	var/datum/banda_atmos_phase/world_adapter/native_atmos
+	/// Worker exposure is drained by an ordinary MC phase before the next calculation.
+	var/native_atoms_pending = FALSE
 
 /// Rust owns tile gas. DM consumers borrow only the cells they access between calculations.
 /// No DM object/reference crosses the DLL boundary. Passive cells need no binding datum.
@@ -11,6 +16,13 @@
 	var/initializing = TRUE
 	var/synchronizing = FALSE
 	var/air_cycle = 0
+	var/threaded = FALSE
+	var/worker_cycle = 0
+	var/completed_ticks = 0
+	var/publication_pending = FALSE
+	var/tick_started = 0
+	/// Wall latency, including await; TICK_USAGE_REAL cannot span a suspended proc.
+	var/last_tick_ms = 0
 	var/list/positions = list()
 	var/list/dirty_gas = list()
 	var/list/dirty_topology = list()
@@ -19,6 +31,14 @@
 	..()
 	if(!native_ready)
 		return
+	threaded = CONFIG_GET(flag/rust_atmos_threaded)
+	if(threaded)
+		try
+			native(38, 0, 0)
+		catch(var/exception/error)
+			native_ready = FALSE
+			startup_error = "Threaded atmosphere requires an updated DLL: [error.name]"
+			return
 	#ifdef TRACK_MAX_SHARE
 	native(34, TRUE)
 	#endif
@@ -91,9 +111,10 @@
 		var/datum/banda_atmos_cell/existing = length(cells) >= open.banda_atmos_id ? cells[open.banda_atmos_id] : null
 		if(existing?.pending_rebind)
 			return
-		open.banda_air_present = !!open.air
 		if(!open.air)
 			return
+		// After the first handoff null means Rust owns the mixture, not that air disappeared.
+		open.banda_air_present = TRUE
 		if(open.banda_air_requested)
 			var/datum/banda_atmos_cell/cell = ensure_binding(target)
 			cell.cached_air = open.air
@@ -109,6 +130,8 @@
 	if(closed || !(target.flags_1 & INITIALIZED_1))
 		return
 	if(!target.banda_atmos_id)
+		// New coordinates cannot be inserted into a worker's unfinished graph.
+		enter_safe_phase()
 		var/list/id = list()
 		native(28, list(target.x, target.y, target.z), id)
 		if(id[1])
@@ -209,9 +232,11 @@
 		if(spot.binding?.owner == src && !spot.binding.pending_rebind)
 			import_hotspot(spot)
 
-/datum/banda_atmos_phase/world_adapter/run_tick(synchronous = TRUE)
-	if(!synchronous || initializing || closed || running || processing || in_safe_callback)
-		CRASH("World atmosphere requires an exclusive synchronous phase")
+/datum/banda_atmos_phase/world_adapter/run_tick(synchronous)
+	if(isnull(synchronous))
+		synchronous = !threaded
+	if((!synchronous && !threaded) || initializing || closed || running || worker_cycle || processing || in_safe_callback)
+		CRASH("World atmosphere phase cannot overlap itself")
 	if(length(uninitialized_cells))
 		return FALSE
 	// Source effects queued between calculations must be committed before the next frame.
@@ -226,10 +251,60 @@
 		return FALSE
 	flush_topology()
 	flush_inputs()
+	tick_started = REALTIMEOFDAY
 	running = TRUE
-	native(16, SSair.times_fired)
-	air_cycle = SSair.times_fired
+	var/cycle = SSair.times_fired
+	if(synchronous)
+		try
+			native(16, cycle)
+		catch(var/exception/calculation_error)
+			running = FALSE
+			throw calculation_error
+		running = FALSE
+		air_cycle = cycle
+		publication_pending = TRUE
+	else
+		worker_cycle = cycle
+		var/success = call_ext(library, "byond,await:banda_atmos_world_tick")(native_id, cycle)
+		if(QDELETED(src) || closed)
+			return FALSE
+		if(!success)
+			running = FALSE
+			worker_cycle = 0
+			native(10)
+			CRASH("Native world atmosphere calculation failed")
+	try
+		if(!synchronous)
+			synchronize_calculation()
+		finish_publication()
+	catch(var/exception/publication_error)
+		// A DM effect can throw after Rust has published. Keep its gas, but let the next MC fire run.
+		if(!running)
+			worker_cycle = 0
+		throw publication_error
+	worker_cycle = 0
+	completed_ticks++
+	return TRUE
+
+/// A result-returning API may need fresh gas before SSair resumes. Only wait for numeric work:
+/// joining the thread would deadlock its Byond_Return notification on the calling DM thread.
+/datum/banda_atmos_phase/world_adapter/proc/synchronize_calculation()
+	SHOULD_NOT_SLEEP(TRUE)
+	if(!running)
+		return
+	if(!threaded || !worker_cycle)
+		CRASH("Cannot synchronize this atmosphere phase")
+	native(38, 1, worker_cycle)
 	running = FALSE
+	air_cycle = worker_cycle
+	publication_pending = TRUE
+	// Like Paradise, safe callbacks precede world commands; a breath can precede pressure movement.
+	project_changes()
+
+/datum/banda_atmos_phase/world_adapter/proc/finish_publication()
+	SHOULD_NOT_SLEEP(TRUE)
+	if(!publication_pending)
+		return
 	processing = TRUE
 	try
 		apply_frame()
@@ -237,16 +312,38 @@
 		processing = FALSE
 		throw publication_error
 	processing = FALSE
-	return TRUE
+	publication_pending = FALSE
+	last_tick_ms = (REALTIMEOFDAY - tick_started) * 100
+
+/// Earlier queued work precedes a later synchronous request for a sample or floor replacement.
+/datum/banda_atmos_phase/world_adapter/proc/enter_safe_phase()
+	SHOULD_NOT_SLEEP(TRUE)
+	if(!threaded)
+		return
+	synchronize_calculation()
+	if(processing || in_safe_callback || !length(waiting))
+		return
+	processing = TRUE
+	try
+		run_waiting_callbacks()
+		project_changes()
+	catch(var/exception/error)
+		processing = FALSE
+		throw error
+	processing = FALSE
+
+/datum/banda_atmos_phase/world_adapter/proc/run_waiting_callbacks()
+	SHOULD_NOT_SLEEP(TRUE)
+	while(length(waiting))
+		var/datum/banda_atmos_safe/callback = waiting[1]
+		waiting.Cut(1, 2)
+		run_callback(callback)
 
 /datum/banda_atmos_phase/world_adapter/apply_frame()
 	SHOULD_NOT_SLEEP(TRUE)
 	while(TRUE)
 		project_changes()
-		while(length(waiting))
-			var/datum/banda_atmos_safe/callback = waiting[1]
-			waiting.Cut(1, 2)
-			run_callback(callback)
+		run_waiting_callbacks()
 		project_changes()
 		var/list/commands = list()
 		native(5, commands)
@@ -304,6 +401,7 @@
 	return cell.cached_air
 
 /datum/banda_atmos_phase/world_adapter/Destroy()
+	closed = TRUE
 	UnregisterSignal(SSdcs, COMSIG_GLOB_ATOM_AFTER_POST_INIT)
 	QDEL_LIST(debug_groups)
 	if(native_id)

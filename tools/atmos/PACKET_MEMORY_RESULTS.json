@@ -1,0 +1,330 @@
+{
+  "byond": "516.1688",
+  "platform": "Windows i686",
+  "abi": 11,
+  "dll_sha256": "553671f5656e8462a20df22a2356a281613bf6dcbc633a93e1b76cba2a9dda12",
+  "profiler": {
+    "tool": "heob 4.2, PTRS=8, -p0, explicit CLEAR before native registration",
+    "capture": "tmp/profiling/heob-world-04",
+    "diagnostic_only": true,
+    "snapshots": {
+      "after_native": {
+        "total_bytes": 309513680,
+        "total_allocations": 165486,
+        "callers": [
+          {
+            "module": "E:\\Games\\BYOND\\bin\\byondcore.dll",
+            "function": "void DungPager::DebugIO_Event(char const *)",
+            "address": "0x55D3EDC3",
+            "bytes": 279014720,
+            "allocations": 11626
+          }
+        ],
+        "svg_sha256": "69387cb74772322c68382f40d4c74f9e43c63c7a01db6294bf28a667500a9a4a",
+        "buffer_realloc_bytes": 279014720
+      },
+      "warm": {
+        "total_bytes": 119850448,
+        "total_allocations": 1716648,
+        "callers": [
+          {
+            "module": "E:\\Games\\BYOND\\bin\\byondcore.dll",
+            "function": "void DungPager::DebugIO_Event(char const *)",
+            "address": "0x55D3EDC3",
+            "bytes": 40700200,
+            "allocations": 132680
+          }
+        ],
+        "svg_sha256": "b55fdb4330960bc74739c7190bca130c551897518e758167fec85f3b97ee68dd",
+        "buffer_realloc_bytes": 40700200
+      }
+    }
+  },
+  "microchecks": {
+    "direct": {
+      "read": {
+        "allocated_after_bytes": 66180,
+        "allocated_released_bytes": 70292,
+        "native_live_after_bytes": 1360
+      },
+      "write": {
+        "allocated_after_bytes": 73835,
+        "allocated_released_bytes": 73851,
+        "native_live_after_bytes": 3755
+      }
+    },
+    "arglist": {
+      "read": {
+        "allocated_after_bytes": 131165512,
+        "allocated_released_bytes": 131165535,
+        "native_live_after_bytes": 1360
+      },
+      "write": {
+        "allocated_after_bytes": 138908915,
+        "allocated_released_bytes": 138908938,
+        "native_live_after_bytes": 3755
+      }
+    },
+    "fixed": {
+      "read": {
+        "allocated_after_bytes": 66226,
+        "allocated_released_bytes": 70337,
+        "native_live_after_bytes": 1360
+      },
+      "write": {
+        "allocated_after_bytes": 73881,
+        "allocated_released_bytes": 73897,
+        "native_live_after_bytes": 3755
+      }
+    }
+  },
+  "lifetime": {
+    "arglist": {
+      "direct_alive": 0,
+      "wrapped_alive": 1
+    },
+    "fixed": {
+      "direct_alive": 0,
+      "wrapped_alive": 0
+    }
+  },
+  "clean_captures": [],
+  "behavior_report": "tmp/atmos-phase/integration-packet-lifetime-01/report.json",
+  "limitations": [
+    "One run per whole-map scenario; no players.",
+    "Profiler process overhead excluded from performance claims.",
+    "Original unrelated runtimes are not fixed."
+  ],
+  "behavior": {
+    "byond": "516.1688",
+    "scenarios": 12,
+    "network_scenarios": 49,
+    "network_ticks": 980,
+    "checks": {
+      "native_output_packet_released": 1,
+      "native_input_packet_released": 1,
+      "concurrent_write_exercised": 1,
+      "release_not_lost": 1,
+      "safe_callback_applied_once": 1,
+      "detached_snapshot_unchanged": 1,
+      "commands_not_replayed": 1,
+      "nested_callbacks_share_air": 1,
+      "release_inside_callback_not_lost": 1,
+      "replacement_not_overwritten": 1,
+      "old_freeze_not_applied": 1,
+      "owner_closed_during_work": 1,
+      "closing_preserves_external_gas": 1
+    },
+    "failures": [],
+    "binary_sha256": "0d6d956ad36281538f8efeaa172fcfbf55571a17b16a05f2742e239735395d15",
+    "dll_sha256": "553671f5656e8462a20df22a2356a281613bf6dcbc633a93e1b76cba2a9dda12",
+    "harness_sha256": "ae976088b216bb5d5a25342295c210a0595531253104e216f49c317b8f07d3dc"
+  },
+  "behavior_report_sha256": "a83b23b27e9b2867aee4ece2f295b0df92b9507376c8aefe4b136711401b0c8a",
+  "profiling_protocol": {
+    "warmup_game_seconds": 30,
+    "sample_game_seconds": 60,
+    "process_sampling_interval_seconds": 1,
+    "whole_run_peak_includes_initialization": true,
+    "sample_window_peak_excludes_initialization": true
+  },
+  "full_map": [
+    {
+      "scenario": "empty-station",
+      "dm": {
+        "capture": "compare-dm-packets-idle-01",
+        "clean": true,
+        "cpu_one_core_percent": 14.421334864692426,
+        "window_private_peak_mib": 1680.42578125,
+        "whole_run_private_peak_mib": 1937.0234375,
+        "ssair_passes": 120,
+        "window_wall_seconds": 60.025,
+        "pipenets": 296,
+        "active_turfs": 24
+      },
+      "rust_before": {
+        "capture": "compare-rust-memory-idle-02",
+        "clean": true,
+        "cpu_one_core_percent": 16.39644979977731,
+        "window_private_peak_mib": 2551.71875,
+        "whole_run_private_peak_mib": 2554.8515625,
+        "ssair_passes": 120,
+        "window_wall_seconds": 60.1375,
+        "pipenets": 296,
+        "active_turfs": 29
+      },
+      "rust_after": {
+        "capture": "compare-rust-packets-idle-01",
+        "clean": true,
+        "cpu_one_core_percent": 16.034069933205256,
+        "window_private_peak_mib": 1978.47265625,
+        "whole_run_private_peak_mib": 2239.01171875,
+        "ssair_passes": 120,
+        "window_wall_seconds": 60.028,
+        "pipenets": 332,
+        "active_turfs": 62
+      }
+    },
+    {
+      "scenario": "atmos-fire",
+      "dm": {
+        "capture": "compare-dm-packets-fire-02",
+        "clean": true,
+        "cpu_one_core_percent": 31.085064017853696,
+        "window_private_peak_mib": 1707.00390625,
+        "whole_run_private_peak_mib": 1967.0078125,
+        "ssair_passes": 120,
+        "window_wall_seconds": 60.0439,
+        "pipenets": 331,
+        "active_turfs": 103
+      },
+      "rust_before": {
+        "capture": "compare-rust-memory-fire-02",
+        "clean": true,
+        "cpu_one_core_percent": 28.086867912697677,
+        "window_private_peak_mib": 2261.5703125,
+        "whole_run_private_peak_mib": 2482.00390625,
+        "ssair_passes": 107,
+        "window_wall_seconds": 66.2,
+        "pipenets": 296,
+        "active_turfs": 89
+      },
+      "rust_after": {
+        "capture": "compare-rust-packets-fire-01",
+        "clean": true,
+        "cpu_one_core_percent": 29.909666406403037,
+        "window_private_peak_mib": 2004.9296875,
+        "whole_run_private_peak_mib": 2284.953125,
+        "ssair_passes": 106,
+        "window_wall_seconds": 66.255,
+        "pipenets": 332,
+        "active_turfs": 101
+      }
+    },
+    {
+      "scenario": "sm-plasma",
+      "dm": {
+        "capture": "compare-dm-packets-sm-01",
+        "clean": false,
+        "cpu_one_core_percent": 38.66105768107371,
+        "window_private_peak_mib": 1691.57421875,
+        "whole_run_private_peak_mib": 1968.83984375,
+        "ssair_passes": 109,
+        "window_wall_seconds": 62.886,
+        "pipenets": 296,
+        "active_turfs": 84
+      },
+      "rust_before": {
+        "capture": "compare-rust-memory-sm-02",
+        "clean": false,
+        "cpu_one_core_percent": 39.03735613196699,
+        "window_private_peak_mib": 2285.12109375,
+        "whole_run_private_peak_mib": 2466.7578125,
+        "ssair_passes": 98,
+        "window_wall_seconds": 71.1562,
+        "pipenets": 296,
+        "active_turfs": 54
+      },
+      "rust_after": {
+        "capture": "compare-rust-packets-sm-01",
+        "clean": false,
+        "cpu_one_core_percent": 38.70619363952507,
+        "window_private_peak_mib": 1971.46484375,
+        "whole_run_private_peak_mib": 2246.859375,
+        "ssair_passes": 99,
+        "window_wall_seconds": 69.238,
+        "pipenets": 296,
+        "active_turfs": 63
+      }
+    }
+  ],
+  "runtime_diagnostics": {
+    "compare-dm-packets-fire-01": [
+      "code/game/atoms_movable.dm,1383: Qdeleted thing being thrown around."
+    ],
+    "compare-dm-packets-sm-01": [
+      "code/__HELPERS/levels.dm,15: Cannot read null.z",
+      "code/game/area/areas.dm,561: list index out of bounds",
+      "code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.",
+      "code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot execute null.reset cooldowns()."
+    ],
+    "compare-rust-packets-sm-01": [
+      "code/__HELPERS/levels.dm,15: Cannot read null.z",
+      "code/game/area/areas.dm,561: list index out of bounds",
+      "code/game/atoms_movable.dm,1360: Cannot read null._listen_lookup",
+      "code/game/atoms_movable.dm,1353: Cannot execute null.hitby()."
+    ]
+  },
+  "excluded_capture": "compare-dm-packets-fire-01: initialization fish-tail runtime; repeated control passed",
+  "binary_sha256": {
+    "original_dm": "9401e7c366c21d2a6dee1a5de513be07d148d19433a3fe4e6e23a1546f7b4c5e",
+    "rust_before": "6703ae967c2cd4492191257b6cc136518a56751a2e6c7bfbe005e047f6632b30",
+    "rust_after": "9ea2afc11ff4e91e36d49dd11442cc501435ae06ad487e032fd1ac1b5d177521"
+  },
+  "phase_source_sha256": "9314d1e8c3efef36b32bacb0ba89cf9583242fbf1872a1b1493f2e681ba00dca",
+  "profiler_after": {
+    "capture": "tmp/profiling/heob-world-05",
+    "diagnostic_only": true,
+    "snapshots": {
+      "after_native": {
+        "total_bytes": 43907328,
+        "total_allocations": 145433,
+        "callers": [
+          {
+            "module": "E:\\Games\\BYOND\\bin\\byondcore.dll",
+            "function": "void DungPager::DebugIO_Event(char const *)",
+            "address": "0x55D390F5",
+            "bytes": 27715584,
+            "allocations": 119499
+          },
+          {
+            "module": "E:\\Games\\BYOND\\bin\\byondcore.dll",
+            "function": "void DungPager::DebugIO_Event(char const *)",
+            "address": "0x55D3EDC3",
+            "bytes": 12375584,
+            "allocations": 2872
+          }
+        ],
+        "buffer_realloc_bytes": 12375584,
+        "native_live_bytes": 268829800,
+        "native_peak_bytes": 276508516,
+        "svg_sha256": "3e41349fb3d4fd3c5b6d277c56866a3874116d05ed56ea7e6c2e54253534fe79",
+        "page_storage_requested_bytes": 189882144,
+        "cell_counts": [
+          780300
+        ],
+        "counter_sha256": "6d842896eb331f49a81dfd0111092a8e9669725492378ad2192c968a116b7deb"
+      },
+      "warm": {
+        "total_bytes": 94422272,
+        "total_allocations": 1405264,
+        "callers": [
+          {
+            "module": "E:\\Games\\BYOND\\bin\\byondcore.dll",
+            "function": "void DungPager::DebugIO_Event(char const *)",
+            "address": "0x55D390F5",
+            "bytes": 20706560,
+            "allocations": 85000
+          },
+          {
+            "module": "E:\\Games\\BYOND\\bin\\byondcore.dll",
+            "function": "char DungBuilder::UpdateDB(char const *)",
+            "address": "0x55C2D42B",
+            "bytes": 17490080,
+            "allocations": 546565
+          }
+        ],
+        "buffer_realloc_bytes": 15029872,
+        "native_live_bytes": 258521081,
+        "native_peak_bytes": 276508516,
+        "svg_sha256": "3e80a04409792a861405b424f9dc8cf4a44fc56ec03a15bb1996620f9a1ef3ed",
+        "page_storage_requested_bytes": 190739856,
+        "cell_counts": [
+          780300,
+          780300
+        ],
+        "counter_sha256": "93bc84a4d3cef6316038ab8d3c1e7e31cc393469e04ce07692009949da6c70d7"
+      }
+    }
+  }
+}

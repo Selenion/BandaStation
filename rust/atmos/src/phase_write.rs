@@ -31,7 +31,10 @@ pub(super) fn apply(frame: &mut Frame, write: Write, sync_ids: &mut BTreeSet<Cel
     if let Write::Topology(id, neighbors, thermal) = write {
         if let Some(tile) = frame.schedule.tiles.get_mut(&id) {
             // World scheduling already follows the original adjacency rebuild's activation goal.
-            tile.neighbors = neighbors;
+            // Reassigning an equal vector would separate otherwise shared space state.
+            if tile.neighbors != neighbors {
+                tile.neighbors = neighbors;
+            }
             tile.thermal_neighbors = thermal;
         }
         return true;
@@ -223,6 +226,14 @@ pub(super) fn apply(frame: &mut Frame, write: Write, sync_ids: &mut BTreeSet<Cel
 }
 
 pub(super) fn drain_effects(frame: &mut Frame, id: CellId, binding_version: u32) -> Vec<Command> {
+    // Topology/context writes normally have no effects; borrowing mutably would copy a cold page.
+    if frame
+        .cells
+        .get(&id)
+        .is_none_or(|cell| cell.commands.is_empty())
+    {
+        return Vec::new();
+    }
     frame.cells.get_mut(&id).map_or_else(Vec::new, |cell| {
         cell.commands
             .drain(..)

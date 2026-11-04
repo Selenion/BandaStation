@@ -7,13 +7,87 @@ use crate::{
     transport::{Boundary, Sample, SampleView},
     Archive, Mixture, REACTING_FLAG, STOP_FLAG, VOLATILE_FLAG,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 pub type Id = u32;
+
+#[cfg(test)]
+mod sharing_tests {
+    use super::*;
+
+    fn space(coordinates: [i32; 3]) -> Tile {
+        let air = Mixture::new(TCMB, CELL_VOLUME, true);
+        let mut tile = Tile::new(coordinates, &air, false);
+        tile.boundary = Boundary::Space;
+        tile.excited = false;
+        tile
+    }
+
+    #[test]
+    fn equal_space_state_keeps_coordinates_links_and_snapshot_writes_independent() {
+        let mut schedule = Schedule::default();
+        let first = space([1, 2, 3]);
+        let mut second = space([2, 2, 3]);
+        second.thermal_neighbors[0] = Some(7);
+        schedule.add_tile(1, first);
+        schedule.add_tile(2, second);
+        assert!(Arc::ptr_eq(
+            &schedule.tiles[&1].state,
+            &schedule.tiles[&2].state
+        ));
+        let held = schedule.clone();
+        let tile = schedule.tiles.get_mut(&2).unwrap();
+        tile.group = Some(9);
+        tile.ticker = 23;
+        tile.terrain.temperature = 700.0;
+        assert_eq!(schedule.tiles[&1].group, None);
+        assert_eq!(schedule.tiles[&1].ticker, 0);
+        assert_eq!(held.tiles[&2].terrain.temperature, 293.15);
+        assert_eq!(schedule.tiles[&2].coordinates, [2, 2, 3]);
+        assert_eq!(schedule.tiles[&2].thermal_neighbors[0], Some(7));
+    }
+
+    #[test]
+    fn different_space_metadata_and_signed_zero_never_share() {
+        let base = space([1, 1, 1]);
+        let mut changed = base.clone();
+        changed.pressure = -0.0;
+        assert!(!base.state.same_space_bits(&changed.state));
+        changed = base.clone();
+        changed.terrain.conductivity = -0.0;
+        assert!(!base.state.same_space_bits(&changed.state));
+        changed = base.clone();
+        changed.archived.temperature = -0.0;
+        assert!(!base.state.same_space_bits(&changed.state));
+        changed = base.clone();
+        changed.group = Some(1);
+        assert!(!base.state.same_space_bits(&changed.state));
+        changed = base.clone();
+        changed.ticker = 1;
+        assert!(!base.state.same_space_bits(&changed.state));
+        changed = base.clone();
+        changed.has_air = false;
+        assert!(!base.state.same_space_bits(&changed.state));
+        changed = base.clone();
+        changed.boundary = Boundary::Mutable;
+        assert!(!changed.state.same_space_bits(&changed.state));
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Tile {
     pub coordinates: [i32; 3],
+    pub thermal_neighbors: [Option<Id>; 4],
+    state: Arc<TileState>,
+}
+
+/// Coordinate-independent data can be shared by equal space tiles and separated on first write.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TileState {
     /// DM can temporarily block an open turf without deleting its gas mixture.
     pub has_air: bool,
     pub neighbors: Vec<Id>,
@@ -32,31 +106,63 @@ pub struct Tile {
     pub planetary: Option<Box<Sample>>,
     pub run_later: bool,
     pub terrain: Terrain,
-    pub thermal_neighbors: [Option<Id>; 4],
 }
 
 impl Tile {
     pub fn new(coordinates: [i32; 3], air: &Mixture, thermal_enabled: bool) -> Self {
         Self {
             coordinates,
-            has_air: true,
-            neighbors: Vec::new(),
-            archived: Archive::empty(air.turf_heat_capacity),
-            archived_cycle: 0,
-            current_cycle: 0,
-            ticker: 0,
-            excited: true,
-            group: None,
-            last_share: 0.0,
-            pressure: 0.0,
-            direction: 0,
-            thermal_enabled,
-            boundary: Boundary::Mutable,
-            planetary: None,
-            run_later: false,
-            terrain: Terrain::new(thermal_enabled),
             thermal_neighbors: [None; 4],
+            state: Arc::new(TileState {
+                has_air: true,
+                neighbors: Vec::new(),
+                archived: Archive::empty(air.turf_heat_capacity),
+                archived_cycle: 0,
+                current_cycle: 0,
+                ticker: 0,
+                excited: true,
+                group: None,
+                last_share: 0.0,
+                pressure: 0.0,
+                direction: 0,
+                thermal_enabled,
+                boundary: Boundary::Mutable,
+                planetary: None,
+                run_later: false,
+                terrain: Terrain::new(thermal_enabled),
+            }),
         }
+    }
+}
+
+impl Deref for Tile {
+    type Target = TileState;
+
+    fn deref(&self) -> &TileState {
+        &self.state
+    }
+}
+
+impl DerefMut for Tile {
+    fn deref_mut(&mut self) -> &mut TileState {
+        Arc::make_mut(&mut self.state)
+    }
+}
+
+impl TileState {
+    fn same_space_bits(&self, other: &Self) -> bool {
+        matches!(self.boundary, Boundary::Space)
+            && matches!(other.boundary, Boundary::Space)
+            && self.planetary.is_none()
+            && other.planetary.is_none()
+            && self == other
+            && self.archived.same_bits(&other.archived)
+            && self.last_share.to_bits() == other.last_share.to_bits()
+            && self.pressure.to_bits() == other.pressure.to_bits()
+            && self.terrain.temperature.to_bits() == other.terrain.temperature.to_bits()
+            && self.terrain.archived.to_bits() == other.terrain.archived.to_bits()
+            && self.terrain.capacity.to_bits() == other.terrain.capacity.to_bits()
+            && self.terrain.conductivity.to_bits() == other.terrain.conductivity.to_bits()
     }
 }
 
@@ -111,8 +217,17 @@ impl Schedule {
         if tile.excited && tile.has_air {
             self.active.push(id);
         }
-        self.tiles.insert(id, tile);
+        self.store_tile(id, tile);
         self.refresh_space_override(id);
+    }
+
+    pub(crate) fn store_tile(&mut self, id: Id, mut tile: Tile) {
+        if let Some(previous) = id.checked_sub(1).and_then(|id| self.tiles.get(&id)) {
+            if tile.state.same_space_bits(&previous.state) {
+                tile.state = previous.state.clone();
+            }
+        }
+        self.tiles.insert(id, tile);
     }
 
     pub(crate) fn refresh_space_override(&mut self, id: Id) {
@@ -492,7 +607,7 @@ impl Schedule {
                     let g = self.new_group();
                     self.add_member(g, id);
                 }
-                let tile = self.tiles.get_mut(&id).unwrap();
+                let tile: &mut TileState = self.tiles.get_mut(&id).unwrap();
                 let planet = tile.planetary.as_mut().unwrap();
                 let mut own = SampleView {
                     air: &mut cells.get_mut(&id).unwrap().air,
@@ -601,6 +716,8 @@ impl Schedule {
     ) -> Option<f32> {
         let (own, other) = pair_mut(cells, id, neighbor);
         let (own_tile, other_tile) = pair_mut(&mut self.tiles, id, neighbor);
+        let own_tile: &mut TileState = own_tile;
+        let other_tile: &mut TileState = other_tile;
         let difference = SampleView {
             air: &mut own.air,
             archived: &mut own_tile.archived,

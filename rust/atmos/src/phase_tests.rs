@@ -2,6 +2,59 @@ use super::*;
 use crate::{catalog::*, cell::Hotspot, Holder};
 
 #[test]
+fn staged_worker_keeps_old_snapshot_until_safe_publication_and_merges_external_gas_once() {
+    let mut store = Store::default();
+    let mut air = Mixture::new(T20C, CELL_VOLUME, true);
+    air.set(NITROGEN, 10.0);
+    let mut tile = Tile::new([1, 1, 1], &air, false);
+    tile.excited = false;
+    let id = store
+        .register(Cell::new(air, Context::default()), tile)
+        .unwrap();
+    store.discard_changes().unwrap();
+    let completed = store.begin_at(42).unwrap().calculate();
+    store.stage(completed).unwrap();
+    assert!(store.busy() && store.ready());
+    assert!(matches!(store.begin(), Err(Error::Busy)));
+    assert!(matches!(store.take_commands(), Err(Error::Busy)));
+    assert_eq!(store.snapshot().epoch, 0);
+    let mut added = Mixture::new(T20C, CELL_VOLUME, false);
+    added.set(OXYGEN, 3.0);
+    store.write(Write::Release(id, added)).unwrap();
+    assert_eq!(store.snapshot().cells[&id].air.moles[OXYGEN], 0.0);
+    assert_eq!(store.publish_ready(43), Err(Error::StaleJob));
+    store.publish_ready(42).unwrap();
+    assert!(!store.busy() && !store.ready());
+    assert_eq!(store.snapshot().epoch, 42);
+    assert_eq!(store.snapshot().cells[&id].air.moles[OXYGEN], 3.0);
+    store.publish_ready(42).unwrap();
+    assert_eq!(store.snapshot().cells[&id].air.moles[OXYGEN], 3.0);
+}
+
+#[test]
+fn aborting_a_staged_worker_discards_physics_but_keeps_accepted_external_writes() {
+    let mut store = Store::default();
+    let air = Mixture::new(T20C, CELL_VOLUME, true);
+    let mut tile = Tile::new([1, 1, 1], &air, false);
+    tile.excited = false;
+    let id = store
+        .register(Cell::new(air, Context::default()), tile)
+        .unwrap();
+    let completed = store.begin_at(7).unwrap().calculate();
+    let mut added = Mixture::new(T20C, CELL_VOLUME, false);
+    added.set(NITROGEN, 5.0);
+    store.write(Write::Release(id, added)).unwrap();
+    store.stage(completed).unwrap();
+    store.abort();
+    assert!(!store.ready() && !store.busy());
+    assert_eq!(store.snapshot().epoch, 0);
+    assert_eq!(store.snapshot().cells[&id].air.moles[NITROGEN], 5.0);
+    assert_eq!(store.publish_ready(7), Err(Error::StaleJob));
+    store.close();
+    assert_eq!(store.publish_ready(7), Err(Error::Closed));
+}
+
+#[test]
 fn dm_archive_metadata_keeps_current_terrain_and_gas_until_the_safe_commit() {
     let mut store = Store::default();
     let mut air = Mixture::new(333.0, CELL_VOLUME, true);
@@ -381,4 +434,29 @@ fn inactive_hotspot_and_solid_conduction_are_in_the_work_set() {
     for _ in 0..20 {
         assert_full_scan(&mut store);
     }
+}
+
+#[test]
+fn topology_without_effects_keeps_equal_cell_pages_shared() {
+    let mut store = Store::default();
+    for id in 1..=32 {
+        let air = Mixture::new(TCMB, CELL_VOLUME, false);
+        let mut tile = Tile::new([id, 1, 1], &air, false);
+        tile.boundary = crate::transport::Boundary::Space;
+        tile.excited = false;
+        store
+            .register(Cell::new(air, Context::default()), tile)
+            .unwrap();
+    }
+    let held = store.snapshot();
+    assert!(std::ptr::eq(&held.cells[&8], &held.cells[&16]));
+    store
+        .write(Write::Topology(16, vec![], [Some(17), None, None, None]))
+        .unwrap();
+    let after = store.snapshot();
+    assert!(std::ptr::eq(&after.cells[&8], &after.cells[&16]));
+    assert!(std::ptr::eq(&held.cells[&16], &after.cells[&16]));
+    assert_eq!(after.schedule.tiles[&16].thermal_neighbors[0], Some(17));
+    assert_eq!(held.schedule.tiles[&16].thermal_neighbors[0], None);
+    assert!(store.take_commands().unwrap().is_empty());
 }

@@ -1,0 +1,2954 @@
+{
+  "status": "MC split implemented; no overall resource win established",
+  "platform": "Windows i686 DreamDaemon, BYOND 516.1688",
+  "clients": 0,
+  "caveats": [
+    "One capture per mode and scenario; built-in proc profiler enabled",
+    "No 50+ player or multi-server VM load",
+    "Runtime captures are diagnostic, not accepted performance comparisons",
+    "MC fire and completed native calculation are counted separately",
+    "Exposure can run in the following ordinary SSair phase by user decision"
+  ],
+  "after_mc_split": [
+    {
+      "mode": "original_dm",
+      "scenario": "idle",
+      "folder": "tmp/profiling/threaded-mc-dm-idle-01",
+      "accepted": true,
+      "diagnostic_runtime_stacks": [],
+      "process": {
+        "samples": 60,
+        "sampled_wall_seconds": 59.511024,
+        "cpu_one_core_percent": 17.22369959555729,
+        "working_set_mib": [
+          1686.609375,
+          1686.66796875
+        ],
+        "private_mib": [
+          1710.09765625,
+          1710.25
+        ],
+        "main_thread_id": 5824,
+        "main_thread_cpu_one_core_percent": 17.22369959555729
+      },
+      "ssair": {
+        "type": "/datum/controller/subsystem/air",
+        "name": "Atmospherics",
+        "cost_ms_rolling": 17.0209,
+        "times_fired": 120,
+        "wait_ds": 5,
+        "tick_usage_rolling": 34.0419,
+        "tick_overrun_rolling": 0
+      },
+      "native_completed_ticks": null,
+      "sample_game_seconds": 60,
+      "sample_wall_seconds": 60.0219,
+      "atmos_start": {
+        "active_turfs": 72,
+        "hotspots": 0,
+        "excited_groups": 7,
+        "pipenets": 343,
+        "cost_turfs": 5.53957,
+        "cost_hotspots": 0.00498923,
+        "cost_pipenets": 2.81642,
+        "cost_atmos_machinery": 9.13829
+      },
+      "atmos_end": {
+        "active_turfs": 42,
+        "hotspots": 0,
+        "excited_groups": 9,
+        "pipenets": 343,
+        "cost_turfs": 4.56924,
+        "cost_hotspots": 0.00324175,
+        "cost_pipenets": 1.61239,
+        "cost_atmos_machinery": 9.60099
+      },
+      "incident": [],
+      "binary_sha256": "d406199f058dfd0c6e7ae86ddcf4fb3ed262517d2c623b00b9cef477b343e4af",
+      "dll_sha256": {
+        "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+        "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+        "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+      },
+      "harness_sha256": "1819e0de115c9a72e2127bd41d5b90a58d4e16e5eb0f024340a0d289edfd28d4",
+      "baseline_source": {
+        "revision": "a72025a0480566585ab7cc48a62873581fe3a6a5",
+        "files": 25989
+      },
+      "top_self_procs": [
+        {
+          "name": "/turf/proc/LinkBlockedWithAccess",
+          "self": 0.359,
+          "total": 0.533,
+          "real": 0.556,
+          "over": 0,
+          "calls": 92359
+        },
+        {
+          "name": "/datum/target_source/hearers/collect_candidates",
+          "self": 0.319,
+          "total": 0.333,
+          "real": 0.307,
+          "over": 0,
+          "calls": 1978
+        },
+        {
+          "name": "/datum/controller/master/proc/RunQueue",
+          "self": 0.307,
+          "total": 10.525,
+          "real": 10.471,
+          "over": 0,
+          "calls": 1200
+        },
+        {
+          "name": "/datum/controller/subsystem/radiation/proc/pulse",
+          "self": 0.256,
+          "total": 0.35,
+          "real": 0.342,
+          "over": 0,
+          "calls": 240
+        },
+        {
+          "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+          "self": 0.247,
+          "total": 0.418,
+          "real": 0.45,
+          "over": 0,
+          "calls": 48240
+        },
+        {
+          "name": "/datum/controller/subsystem/machines/fire",
+          "self": 0.23,
+          "total": 0.811,
+          "real": 0.817,
+          "over": 0,
+          "calls": 33
+        },
+        {
+          "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+          "self": 0.213,
+          "total": 1.101,
+          "real": 1.102,
+          "over": 0,
+          "calls": 120
+        },
+        {
+          "name": "/datum/proc/_SendSignal",
+          "self": 0.177,
+          "total": 0.739,
+          "real": 0.709,
+          "over": 0,
+          "calls": 43635
+        },
+        {
+          "name": "/turf/open/process_cell",
+          "self": 0.175,
+          "total": 0.488,
+          "real": 0.487,
+          "over": 0,
+          "calls": 10931
+        },
+        {
+          "name": "/datum/bt_node/composite/parallel/tick",
+          "self": 0.167,
+          "total": 2.525,
+          "real": 2.535,
+          "over": 0,
+          "calls": 26893
+        },
+        {
+          "name": "/datum/controller/master/proc/CheckQueue",
+          "self": 0.154,
+          "total": 0.212,
+          "real": 0.248,
+          "over": 0,
+          "calls": 1200
+        },
+        {
+          "name": "/datum/move_loop/has_target/dist_bound/move_to/move",
+          "self": 0.139,
+          "total": 0.159,
+          "real": 0.159,
+          "over": 0,
+          "calls": 61
+        },
+        {
+          "name": "/datum/bt_node/composite/selector/tick",
+          "self": 0.129,
+          "total": 3.163,
+          "real": 3.117,
+          "over": 0,
+          "calls": 45683
+        },
+        {
+          "name": "/datum/controller/subsystem/ai_controllers/fire",
+          "self": 0.125,
+          "total": 2.412,
+          "real": 2.423,
+          "over": 0,
+          "calls": 480
+        },
+        {
+          "name": "/datum/controller/subsystem/processing/fire",
+          "self": 0.121,
+          "total": 1.121,
+          "real": 1.108,
+          "over": 0,
+          "calls": 7740
+        }
+      ]
+    },
+    {
+      "mode": "rust_sync",
+      "scenario": "idle",
+      "folder": "tmp/profiling/threaded-mc-sync-idle-01",
+      "accepted": true,
+      "diagnostic_runtime_stacks": [],
+      "process": {
+        "samples": 60,
+        "sampled_wall_seconds": 59.321758,
+        "cpu_one_core_percent": 16.541148359089426,
+        "working_set_mib": [
+          1786.80078125,
+          1786.8515625
+        ],
+        "private_mib": [
+          1815.5546875,
+          1816.08203125
+        ],
+        "main_thread_id": 58996,
+        "main_thread_cpu_one_core_percent": 16.514808950874315
+      },
+      "ssair": {
+        "type": "/datum/controller/subsystem/air",
+        "name": "Atmospherics",
+        "cost_ms_rolling": 20.1934,
+        "times_fired": 120,
+        "wait_ds": 5,
+        "tick_usage_rolling": 40.3868,
+        "tick_overrun_rolling": 0
+      },
+      "native_completed_ticks": 120,
+      "sample_game_seconds": 60,
+      "sample_wall_seconds": 60.1188,
+      "atmos_start": {
+        "active_turfs": 22,
+        "hotspots": 2,
+        "excited_groups": 5,
+        "pipenets": 296,
+        "cost_turfs": 7.50481,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.34205,
+        "cost_atmos_machinery": 12.272,
+        "native_completed_ticks": 53,
+        "native_worker_pending": 0
+      },
+      "atmos_end": {
+        "active_turfs": 24,
+        "hotspots": 1,
+        "excited_groups": 6,
+        "pipenets": 296,
+        "cost_turfs": 4.92686,
+        "cost_hotspots": 0,
+        "cost_pipenets": 0.974913,
+        "cost_atmos_machinery": 12.1401,
+        "native_completed_ticks": 173,
+        "native_worker_pending": 0
+      },
+      "incident": [],
+      "binary_sha256": "543d81f3b4d9823a692d35543eee2acc384127eec79819e8f5a24cfd5cacba3d",
+      "dll_sha256": {
+        "bandastation_atmos.dll": "850d53aec04a9a2dfd489605bd02d2e91d926206c663ab3ac63639c94481d49d",
+        "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+        "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+        "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+      },
+      "harness_sha256": "1819e0de115c9a72e2127bd41d5b90a58d4e16e5eb0f024340a0d289edfd28d4",
+      "baseline_source": null,
+      "top_self_procs": [
+        {
+          "name": "/turf/proc/LinkBlockedWithAccess",
+          "self": 0.356,
+          "total": 0.522,
+          "real": 0.524,
+          "over": 0,
+          "calls": 89798
+        },
+        {
+          "name": "/datum/controller/master/proc/RunQueue",
+          "self": 0.306,
+          "total": 9.333,
+          "real": 9.322,
+          "over": 0,
+          "calls": 1200
+        },
+        {
+          "name": "/datum/target_source/hearers/collect_candidates",
+          "self": 0.235,
+          "total": 0.245,
+          "real": 0.237,
+          "over": 0,
+          "calls": 1499
+        },
+        {
+          "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+          "self": 0.226,
+          "total": 0.572,
+          "real": 0.566,
+          "over": 0,
+          "calls": 44280
+        },
+        {
+          "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+          "self": 0.206,
+          "total": 2.874,
+          "real": 2.878,
+          "over": 0,
+          "calls": 240
+        },
+        {
+          "name": "/datum/controller/subsystem/machines/fire",
+          "self": 0.196,
+          "total": 0.777,
+          "real": 0.777,
+          "over": 0,
+          "calls": 31
+        },
+        {
+          "name": "/datum/controller/master/proc/CheckQueue",
+          "self": 0.196,
+          "total": 0.295,
+          "real": 0.312,
+          "over": 0,
+          "calls": 1200
+        },
+        {
+          "name": "/turf/open/get_readonly_air",
+          "self": 0.169,
+          "total": 0.58,
+          "real": 0.565,
+          "over": 0,
+          "calls": 68970
+        },
+        {
+          "name": "/datum/banda_atmos_phase/proc/native",
+          "self": 0.163,
+          "total": 0.164,
+          "real": 0.16,
+          "over": 0,
+          "calls": 21046
+        },
+        {
+          "name": "/datum/bt_node/composite/parallel/tick",
+          "self": 0.157,
+          "total": 2.114,
+          "real": 2.103,
+          "over": 0,
+          "calls": 24307
+        },
+        {
+          "name": "/datum/component/magnet/process",
+          "self": 0.143,
+          "total": 0.143,
+          "real": 0.148,
+          "over": 0,
+          "calls": 1620
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/read_air",
+          "self": 0.14,
+          "total": 0.404,
+          "real": 0.406,
+          "over": 0,
+          "calls": 68970
+        },
+        {
+          "name": "/datum/controller/subsystem/ai_controllers/fire",
+          "self": 0.139,
+          "total": 1.982,
+          "real": 1.989,
+          "over": 0,
+          "calls": 480
+        },
+        {
+          "name": "/datum/controller/subsystem/processing/fire",
+          "self": 0.122,
+          "total": 0.733,
+          "real": 0.713,
+          "over": 0,
+          "calls": 7718
+        },
+        {
+          "name": "/datum/controller/subsystem/radiation/proc/pulse",
+          "self": 0.118,
+          "total": 0.157,
+          "real": 0.163,
+          "over": 0,
+          "calls": 120
+        }
+      ]
+    },
+    {
+      "mode": "rust_worker",
+      "scenario": "idle",
+      "folder": "tmp/profiling/threaded-mc-async-idle-01",
+      "accepted": true,
+      "diagnostic_runtime_stacks": [],
+      "process": {
+        "samples": 60,
+        "sampled_wall_seconds": 59.372996,
+        "cpu_one_core_percent": 16.237390142818462,
+        "working_set_mib": [
+          1789.1796875,
+          1789.328125
+        ],
+        "private_mib": [
+          1821.375,
+          1821.48828125
+        ],
+        "main_thread_id": 45572,
+        "main_thread_cpu_one_core_percent": 16.079490076599807
+      },
+      "ssair": {
+        "type": "/datum/controller/subsystem/air",
+        "name": "Atmospherics",
+        "cost_ms_rolling": 17.3577,
+        "times_fired": 120,
+        "wait_ds": 5,
+        "tick_usage_rolling": 34.7154,
+        "tick_overrun_rolling": 0
+      },
+      "native_completed_ticks": 120,
+      "sample_game_seconds": 60,
+      "sample_wall_seconds": 60.1219,
+      "atmos_start": {
+        "active_turfs": 21,
+        "hotspots": 0,
+        "excited_groups": 3,
+        "pipenets": 296,
+        "cost_turfs": 45.512,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.28912,
+        "cost_atmos_machinery": 12.2383,
+        "native_completed_ticks": 52,
+        "native_worker_pending": 0
+      },
+      "atmos_end": {
+        "active_turfs": 30,
+        "hotspots": 1,
+        "excited_groups": 3,
+        "pipenets": 296,
+        "cost_turfs": 49.0053,
+        "cost_hotspots": 0,
+        "cost_pipenets": 0.950593,
+        "cost_atmos_machinery": 12.3505,
+        "native_completed_ticks": 172,
+        "native_worker_pending": 0
+      },
+      "incident": [],
+      "binary_sha256": "543d81f3b4d9823a692d35543eee2acc384127eec79819e8f5a24cfd5cacba3d",
+      "dll_sha256": {
+        "bandastation_atmos.dll": "850d53aec04a9a2dfd489605bd02d2e91d926206c663ab3ac63639c94481d49d",
+        "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+        "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+        "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+      },
+      "harness_sha256": "1819e0de115c9a72e2127bd41d5b90a58d4e16e5eb0f024340a0d289edfd28d4",
+      "baseline_source": null,
+      "top_self_procs": [
+        {
+          "name": "/datum/controller/master/proc/RunQueue",
+          "self": 0.335,
+          "total": 9.345,
+          "real": 9.363,
+          "over": 0,
+          "calls": 1200
+        },
+        {
+          "name": "/turf/proc/LinkBlockedWithAccess",
+          "self": 0.326,
+          "total": 0.486,
+          "real": 0.505,
+          "over": 0,
+          "calls": 82730
+        },
+        {
+          "name": "/datum/target_source/hearers/collect_candidates",
+          "self": 0.265,
+          "total": 0.273,
+          "real": 0.251,
+          "over": 0,
+          "calls": 1525
+        },
+        {
+          "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+          "self": 0.254,
+          "total": 0.577,
+          "real": 0.55,
+          "over": 0,
+          "calls": 44280
+        },
+        {
+          "name": "/datum/controller/subsystem/machines/fire",
+          "self": 0.22,
+          "total": 0.8,
+          "real": 0.802,
+          "over": 0,
+          "calls": 30
+        },
+        {
+          "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+          "self": 0.217,
+          "total": 2.887,
+          "real": 2.867,
+          "over": 0,
+          "calls": 240
+        },
+        {
+          "name": "/datum/controller/master/proc/CheckQueue",
+          "self": 0.195,
+          "total": 0.287,
+          "real": 0.271,
+          "over": 0,
+          "calls": 1200
+        },
+        {
+          "name": "/turf/open/get_readonly_air",
+          "self": 0.168,
+          "total": 0.511,
+          "real": 0.559,
+          "over": 0,
+          "calls": 69215
+        },
+        {
+          "name": "/datum/bt_node/composite/parallel/tick",
+          "self": 0.148,
+          "total": 2.281,
+          "real": 2.337,
+          "over": 0,
+          "calls": 22770
+        },
+        {
+          "name": "/datum/controller/subsystem/processing/fire",
+          "self": 0.14,
+          "total": 0.675,
+          "real": 0.681,
+          "over": 0,
+          "calls": 7723
+        },
+        {
+          "name": "/datum/banda_atmos_phase/proc/native",
+          "self": 0.128,
+          "total": 0.13,
+          "real": 0.148,
+          "over": 0,
+          "calls": 20900
+        },
+        {
+          "name": "/datum/controller/subsystem/ai_controllers/fire",
+          "self": 0.127,
+          "total": 2.209,
+          "real": 2.225,
+          "over": 0,
+          "calls": 480
+        },
+        {
+          "name": "/datum/bt_node/composite/selector/tick",
+          "self": 0.121,
+          "total": 2.61,
+          "real": 2.58,
+          "over": 0,
+          "calls": 43598
+        },
+        {
+          "name": "/datum/controller/subsystem/radiation/proc/pulse",
+          "self": 0.12,
+          "total": 0.155,
+          "real": 0.172,
+          "over": 0,
+          "calls": 120
+        },
+        {
+          "name": "/mob/living/proc/Life",
+          "self": 0.12,
+          "total": 0.489,
+          "real": 0.469,
+          "over": 0,
+          "calls": 12131
+        }
+      ]
+    },
+    {
+      "mode": "original_dm",
+      "scenario": "fire",
+      "folder": "tmp/profiling/threaded-mc-dm-fire-01",
+      "accepted": true,
+      "diagnostic_runtime_stacks": [],
+      "process": {
+        "samples": 61,
+        "sampled_wall_seconds": 60.478301,
+        "cpu_one_core_percent": 31.31288360762648,
+        "working_set_mib": [
+          1609.6328125,
+          1611.671875
+        ],
+        "private_mib": [
+          1630.5859375,
+          1632.3671875
+        ],
+        "main_thread_id": 31864,
+        "main_thread_cpu_one_core_percent": 31.31288360762648
+      },
+      "ssair": {
+        "type": "/datum/controller/subsystem/air",
+        "name": "Atmospherics",
+        "cost_ms_rolling": 74.0531,
+        "times_fired": 120,
+        "wait_ds": 5,
+        "tick_usage_rolling": 148.106,
+        "tick_overrun_rolling": 0
+      },
+      "native_completed_ticks": null,
+      "sample_game_seconds": 60,
+      "sample_wall_seconds": 61.7938,
+      "atmos_start": {
+        "active_turfs": 92,
+        "hotspots": 0,
+        "excited_groups": 3,
+        "pipenets": 296,
+        "cost_turfs": 1.7287,
+        "cost_hotspots": 0.00343723,
+        "cost_pipenets": 2.52484,
+        "cost_atmos_machinery": 8.54667
+      },
+      "atmos_end": {
+        "active_turfs": 735,
+        "hotspots": 1,
+        "excited_groups": 21,
+        "pipenets": 296,
+        "cost_turfs": 50.6784,
+        "cost_hotspots": 0.187941,
+        "cost_pipenets": 2.20193,
+        "cost_atmos_machinery": 8.09787
+      },
+      "incident": [],
+      "binary_sha256": "d406199f058dfd0c6e7ae86ddcf4fb3ed262517d2c623b00b9cef477b343e4af",
+      "dll_sha256": {
+        "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+        "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+        "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+      },
+      "harness_sha256": "1819e0de115c9a72e2127bd41d5b90a58d4e16e5eb0f024340a0d289edfd28d4",
+      "baseline_source": {
+        "revision": "a72025a0480566585ab7cc48a62873581fe3a6a5",
+        "files": 25989
+      },
+      "top_self_procs": [
+        {
+          "name": "/datum/gas_mixture/proc/share",
+          "self": 1.681,
+          "total": 2.139,
+          "real": 2.147,
+          "over": 0,
+          "calls": 108323
+        },
+        {
+          "name": "/turf/open/process_cell",
+          "self": 1.519,
+          "total": 6.619,
+          "real": 6.674,
+          "over": 0,
+          "calls": 75424
+        },
+        {
+          "name": "/turf/proc/LinkBlockedWithAccess",
+          "self": 0.96,
+          "total": 1.413,
+          "real": 1.548,
+          "over": 0,
+          "calls": 255346
+        },
+        {
+          "name": "/datum/gas_mixture/proc/react",
+          "self": 0.857,
+          "total": 1.437,
+          "real": 1.494,
+          "over": 0,
+          "calls": 81288
+        },
+        {
+          "name": "/datum/gas_mixture/proc/temperature_share",
+          "self": 0.467,
+          "total": 0.607,
+          "real": 0.67,
+          "over": 0,
+          "calls": 158154
+        },
+        {
+          "name": "/turf/open/proc/update_visuals",
+          "self": 0.415,
+          "total": 0.418,
+          "real": 0.423,
+          "over": 0,
+          "calls": 83161
+        },
+        {
+          "name": "/datum/controller/master/proc/RunQueue",
+          "self": 0.347,
+          "total": 19.338,
+          "real": 19.399,
+          "over": 0,
+          "calls": 1200
+        },
+        {
+          "name": "/datum/pathfind/jps/proc/lateral_scan_spec",
+          "self": 0.34,
+          "total": 1.06,
+          "real": 1.111,
+          "over": 0,
+          "calls": 27489
+        },
+        {
+          "name": "/datum/gas_mixture/proc/archive",
+          "self": 0.287,
+          "total": 0.292,
+          "real": 0.347,
+          "over": 0,
+          "calls": 132351
+        },
+        {
+          "name": "/datum/target_source/hearers/collect_candidates",
+          "self": 0.275,
+          "total": 0.283,
+          "real": 0.234,
+          "over": 0,
+          "calls": 1562
+        },
+        {
+          "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+          "self": 0.231,
+          "total": 0.4,
+          "real": 0.388,
+          "over": 0,
+          "calls": 44280
+        },
+        {
+          "name": "/datum/proc/_SendSignal",
+          "self": 0.216,
+          "total": 0.88,
+          "real": 0.923,
+          "over": 0,
+          "calls": 46059
+        },
+        {
+          "name": "/datum/gas_reaction/standard/plasmafire/react",
+          "self": 0.21,
+          "total": 0.483,
+          "real": 0.505,
+          "over": 0,
+          "calls": 42823
+        },
+        {
+          "name": "/turf/proc/super_conduct",
+          "self": 0.207,
+          "total": 0.865,
+          "real": 0.875,
+          "over": 0,
+          "calls": 41297
+        },
+        {
+          "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+          "self": 0.199,
+          "total": 0.997,
+          "real": 0.997,
+          "over": 0,
+          "calls": 121
+        }
+      ]
+    },
+    {
+      "mode": "rust_sync",
+      "scenario": "fire",
+      "folder": "tmp/profiling/threaded-mc-sync-fire-01",
+      "accepted": true,
+      "diagnostic_runtime_stacks": [],
+      "process": {
+        "samples": 67,
+        "sampled_wall_seconds": 66.427151,
+        "cpu_one_core_percent": 30.225780720296136,
+        "working_set_mib": [
+          1838.86328125,
+          1840.43359375
+        ],
+        "private_mib": [
+          1870.34375,
+          1880.94140625
+        ],
+        "main_thread_id": 22788,
+        "main_thread_cpu_one_core_percent": 30.225780720296136
+      },
+      "ssair": {
+        "type": "/datum/controller/subsystem/air",
+        "name": "Atmospherics",
+        "cost_ms_rolling": 96.2174,
+        "times_fired": 107,
+        "wait_ds": 5,
+        "tick_usage_rolling": 192.435,
+        "tick_overrun_rolling": 96.9097
+      },
+      "native_completed_ticks": 107,
+      "sample_game_seconds": 60,
+      "sample_wall_seconds": 66.8719,
+      "atmos_start": {
+        "active_turfs": 114,
+        "hotspots": 0,
+        "excited_groups": 5,
+        "pipenets": 344,
+        "cost_turfs": 7.83225,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.92414,
+        "cost_atmos_machinery": 15.672,
+        "native_completed_ticks": 50,
+        "native_worker_pending": 0
+      },
+      "atmos_end": {
+        "active_turfs": 696,
+        "hotspots": 0,
+        "excited_groups": 18,
+        "pipenets": 344,
+        "cost_turfs": 76.4164,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.65241,
+        "cost_atmos_machinery": 15.318,
+        "native_completed_ticks": 157,
+        "native_worker_pending": 0
+      },
+      "incident": [],
+      "binary_sha256": "543d81f3b4d9823a692d35543eee2acc384127eec79819e8f5a24cfd5cacba3d",
+      "dll_sha256": {
+        "bandastation_atmos.dll": "850d53aec04a9a2dfd489605bd02d2e91d926206c663ab3ac63639c94481d49d",
+        "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+        "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+        "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+      },
+      "harness_sha256": "1819e0de115c9a72e2127bd41d5b90a58d4e16e5eb0f024340a0d289edfd28d4",
+      "baseline_source": null,
+      "top_self_procs": [
+        {
+          "name": "/datum/banda_atmos_phase/proc/native",
+          "self": 0.834,
+          "total": 0.835,
+          "real": 0.817,
+          "over": 0.158,
+          "calls": 30059
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_air",
+          "self": 0.714,
+          "total": 3.296,
+          "real": 3.331,
+          "over": 0.427,
+          "calls": 85835
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.614,
+          "total": 4.254,
+          "real": 4.259,
+          "over": 0.373,
+          "calls": 642
+        },
+        {
+          "name": "/proc/banda_atmos_decode_air",
+          "self": 0.524,
+          "total": 0.553,
+          "real": 0.571,
+          "over": 0.277,
+          "calls": 57288
+        },
+        {
+          "name": "/datum/banda_atmos_safe/world_commands/world/on_run",
+          "self": 0.451,
+          "total": 2.629,
+          "real": 2.629,
+          "over": 0.451,
+          "calls": 107
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/ensure_binding",
+          "self": 0.425,
+          "total": 0.475,
+          "real": 0.567,
+          "over": 0.29,
+          "calls": 324014
+        },
+        {
+          "name": "/turf/open/proc/update_visuals",
+          "self": 0.407,
+          "total": 0.439,
+          "real": 0.404,
+          "over": 0.234,
+          "calls": 87584
+        },
+        {
+          "name": "/turf/proc/LinkBlockedWithAccess",
+          "self": 0.4,
+          "total": 0.592,
+          "real": 0.665,
+          "over": 0,
+          "calls": 107277
+        },
+        {
+          "name": "/proc/banda_atmos_same_gases",
+          "self": 0.357,
+          "total": 0.368,
+          "real": 0.358,
+          "over": 0.336,
+          "calls": 146501
+        },
+        {
+          "name": "/datum/controller/master/proc/RunQueue",
+          "self": 0.335,
+          "total": 20.232,
+          "real": 20.22,
+          "over": 0.001,
+          "calls": 1200
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/execute",
+          "self": 0.315,
+          "total": 1.777,
+          "real": 1.79,
+          "over": 0.315,
+          "calls": 115595
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/flush_inputs",
+          "self": 0.296,
+          "total": 0.814,
+          "real": 0.819,
+          "over": 0,
+          "calls": 107
+        },
+        {
+          "name": "/datum/proc/_SendSignal",
+          "self": 0.287,
+          "total": 1.447,
+          "real": 1.408,
+          "over": 0.124,
+          "calls": 79534
+        },
+        {
+          "name": "/proc/banda_atmos_packet_moles",
+          "self": 0.278,
+          "total": 0.297,
+          "real": 0.328,
+          "over": 0.19,
+          "calls": 85711
+        },
+        {
+          "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+          "self": 0.277,
+          "total": 0.62,
+          "real": 0.584,
+          "over": 0,
+          "calls": 43014
+        }
+      ]
+    },
+    {
+      "mode": "rust_worker",
+      "scenario": "fire",
+      "folder": "tmp/profiling/threaded-mc-async-fire-01",
+      "accepted": true,
+      "diagnostic_runtime_stacks": [],
+      "process": {
+        "samples": 62,
+        "sampled_wall_seconds": 61.465182,
+        "cpu_one_core_percent": 36.09767233748694,
+        "working_set_mib": [
+          1831.78515625,
+          1836.44921875
+        ],
+        "private_mib": [
+          1859.3359375,
+          1872.54296875
+        ],
+        "main_thread_id": 60532,
+        "main_thread_cpu_one_core_percent": 35.0045738089574
+      },
+      "ssair": {
+        "type": "/datum/controller/subsystem/air",
+        "name": "Atmospherics",
+        "cost_ms_rolling": 27.9274,
+        "times_fired": 119,
+        "wait_ds": 5,
+        "tick_usage_rolling": 55.8548,
+        "tick_overrun_rolling": 0
+      },
+      "native_completed_ticks": 119,
+      "sample_game_seconds": 60,
+      "sample_wall_seconds": 62.3063,
+      "atmos_start": {
+        "active_turfs": 106,
+        "hotspots": 0,
+        "excited_groups": 5,
+        "pipenets": 331,
+        "cost_turfs": 44.1257,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.66916,
+        "cost_atmos_machinery": 15.3387,
+        "native_completed_ticks": 50,
+        "native_worker_pending": 0
+      },
+      "atmos_end": {
+        "active_turfs": 609,
+        "hotspots": 0,
+        "excited_groups": 23,
+        "pipenets": 331,
+        "cost_turfs": 100.887,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.42831,
+        "cost_atmos_machinery": 14.6866,
+        "native_completed_ticks": 169,
+        "native_worker_pending": 0
+      },
+      "incident": [],
+      "binary_sha256": "543d81f3b4d9823a692d35543eee2acc384127eec79819e8f5a24cfd5cacba3d",
+      "dll_sha256": {
+        "bandastation_atmos.dll": "850d53aec04a9a2dfd489605bd02d2e91d926206c663ab3ac63639c94481d49d",
+        "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+        "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+        "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+      },
+      "harness_sha256": "1819e0de115c9a72e2127bd41d5b90a58d4e16e5eb0f024340a0d289edfd28d4",
+      "baseline_source": null,
+      "top_self_procs": [
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_air",
+          "self": 0.814,
+          "total": 3.698,
+          "real": 3.707,
+          "over": 0.131,
+          "calls": 96005
+        },
+        {
+          "name": "/turf/proc/LinkBlockedWithAccess",
+          "self": 0.812,
+          "total": 1.212,
+          "real": 1.189,
+          "over": 0,
+          "calls": 210225
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.642,
+          "total": 4.781,
+          "real": 4.775,
+          "over": 0.094,
+          "calls": 833
+        },
+        {
+          "name": "/proc/banda_atmos_decode_air",
+          "self": 0.613,
+          "total": 0.642,
+          "real": 0.645,
+          "over": 0.086,
+          "calls": 63785
+        },
+        {
+          "name": "/datum/banda_atmos_phase/proc/native",
+          "self": 0.578,
+          "total": 0.582,
+          "real": 0.56,
+          "over": 0.092,
+          "calls": 33762
+        },
+        {
+          "name": "/datum/banda_atmos_safe/world_commands/world/on_run",
+          "self": 0.54,
+          "total": 2.917,
+          "real": 2.925,
+          "over": 0.533,
+          "calls": 119
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/ensure_binding",
+          "self": 0.508,
+          "total": 0.56,
+          "real": 0.679,
+          "over": 0.271,
+          "calls": 354706
+        },
+        {
+          "name": "/turf/open/proc/update_visuals",
+          "self": 0.457,
+          "total": 0.498,
+          "real": 0.534,
+          "over": 0.064,
+          "calls": 97794
+        },
+        {
+          "name": "/proc/banda_atmos_same_gases",
+          "self": 0.402,
+          "total": 0.414,
+          "real": 0.44,
+          "over": 0.38,
+          "calls": 156234
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/execute",
+          "self": 0.347,
+          "total": 1.925,
+          "real": 2.003,
+          "over": 0.343,
+          "calls": 125628
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/flush_inputs",
+          "self": 0.344,
+          "total": 0.944,
+          "real": 0.941,
+          "over": 0.005,
+          "calls": 119
+        },
+        {
+          "name": "/datum/controller/master/proc/RunQueue",
+          "self": 0.34,
+          "total": 14.27,
+          "real": 14.26,
+          "over": 0,
+          "calls": 1190
+        },
+        {
+          "name": "/datum/proc/_SendSignal",
+          "self": 0.323,
+          "total": 1.683,
+          "real": 1.704,
+          "over": 0.137,
+          "calls": 82925
+        },
+        {
+          "name": "/proc/banda_atmos_packet_moles",
+          "self": 0.319,
+          "total": 0.337,
+          "real": 0.351,
+          "over": 0.05,
+          "calls": 95607
+        },
+        {
+          "name": "/datum/target_source/hearers/collect_candidates",
+          "self": 0.291,
+          "total": 0.303,
+          "real": 0.317,
+          "over": 0,
+          "calls": 1956
+        }
+      ]
+    },
+    {
+      "mode": "original_dm",
+      "scenario": "sm",
+      "folder": "tmp/profiling/threaded-mc-dm-sm-01",
+      "accepted": false,
+      "diagnostic_runtime_stacks": [
+        "[15:00:06] Runtime in code/game/area/areas.dm,561: list index out of bounds\n  proc name: removeStaticPower (/area/proc/removeStaticPower)\n  src: the Recreational Holodeck (/area/station/holodeck/rec_center)\n  call stack:\n  the Recreational Holodeck (/area/station/holodeck/rec_center): removeStaticPower(40, 4)\n  the holodeck camera (/obj/machinery/camera/directional/south): unset static power()\n  the holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\n  the holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\n  the holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\n  qdel(the holodeck camera (/obj/machinery/camera/directional/south), 0)\n  the holodeck camera (/obj/machinery/camera/directional/south): deconstruct(0)\n  /datum/component/atom_mounted (/datum/component/atom_mounted): drop wallmount()\n  /datum/component/atom_mounted (/datum/component/atom_mounted): on turf changing(the wall (153,171,2) (/turf/closed/wall), /turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null, /list (/list))\n  the wall (153,171,2) (/turf/closed/wall):  SendSignal(\"turf_change\", /list (/list))\n  the wall (153,171,2) (/turf/closed/wall): ChangeTurf(/turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null)\n  the wall (153,171,2) (/turf/closed/wall): ScrapeAway(1, null)\n  the wall (153,171,2) (/turf/closed/wall): dismantle wall(1, 1)\n  the wall (153,171,2) (/turf/closed/wall): ex act(2, null)\n  Explosions (/datum/controller/subsystem/explosions): fire(0)\n  Explosions (/datum/controller/subsystem/explosions): ignite(0)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\n[15:00:18] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (157,147,2) (/turf/open/floor/plating)\n  call stack:",
+        "[15:00:18] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (157,147,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (157,147,2) (/turf/open/floor/plating): process cell(65)\n  Atmospherics (/datum/controller/subsystem/air): process active turfs(1)\n  Atmospherics (/datum/controller/subsystem/air): fire(1)\n  Atmospherics (/datum/controller/subsystem/air): ignite(1)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\n[15:00:18] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (157,147,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (157,147,2) (/turf/open/floor/plating): process cell(66)\n  Atmospherics (/datum/controller/subsystem/air): process active turfs(1)\n  Atmospherics (/datum/controller/subsystem/air): fire(1)\n  Atmospherics (/datum/controller/subsystem/air): ignite(1)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\n[15:00:18] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (155,145,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (155,145,2) (/turf/open/floor/plating): process cell(66)",
+        "[15:00:18] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (157,147,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (157,147,2) (/turf/open/floor/plating): process cell(66)\n  Atmospherics (/datum/controller/subsystem/air): process active turfs(1)\n  Atmospherics (/datum/controller/subsystem/air): fire(1)\n  Atmospherics (/datum/controller/subsystem/air): ignite(1)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\n[15:00:18] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (155,145,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (155,145,2) (/turf/open/floor/plating): process cell(66)\n  Atmospherics (/datum/controller/subsystem/air): process active turfs(1)\n  Atmospherics (/datum/controller/subsystem/air): fire(1)\n  Atmospherics (/datum/controller/subsystem/air): ignite(1)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\n[15:00:18] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (158,167,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (158,167,2) (/turf/open/floor/plating): process cell(66)",
+        "[15:00:18] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (155,145,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (155,145,2) (/turf/open/floor/plating): process cell(66)\n  Atmospherics (/datum/controller/subsystem/air): process active turfs(1)\n  Atmospherics (/datum/controller/subsystem/air): fire(1)\n  Atmospherics (/datum/controller/subsystem/air): ignite(1)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\n[15:00:18] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (158,167,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (158,167,2) (/turf/open/floor/plating): process cell(66)\n  Atmospherics (/datum/controller/subsystem/air): process active turfs(1)\n  Atmospherics (/datum/controller/subsystem/air): fire(1)\n  Atmospherics (/datum/controller/subsystem/air): ignite(1)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\n[15:00:28] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (157,162,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (157,162,2) (/turf/open/floor/plating): process cell(86)",
+        "[15:00:18] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (158,167,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (158,167,2) (/turf/open/floor/plating): process cell(66)\n  Atmospherics (/datum/controller/subsystem/air): process active turfs(1)\n  Atmospherics (/datum/controller/subsystem/air): fire(1)\n  Atmospherics (/datum/controller/subsystem/air): ignite(1)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\n[15:00:28] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (157,162,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (157,162,2) (/turf/open/floor/plating): process cell(86)\n  Atmospherics (/datum/controller/subsystem/air): process active turfs(1)\n  Atmospherics (/datum/controller/subsystem/air): fire(1)\n  Atmospherics (/datum/controller/subsystem/air): ignite(1)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\nLOCAL_PROFILE_SAMPLE_END",
+        "[15:00:28] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.\n  proc name: process cell (/turf/open/process_cell)\n  src: the plating (157,162,2) (/turf/open/floor/plating)\n  call stack:\n  the plating (157,162,2) (/turf/open/floor/plating): process cell(86)\n  Atmospherics (/datum/controller/subsystem/air): process active turfs(1)\n  Atmospherics (/datum/controller/subsystem/air): fire(1)\n  Atmospherics (/datum/controller/subsystem/air): ignite(1)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\nLOCAL_PROFILE_SAMPLE_END"
+      ],
+      "process": {
+        "samples": 64,
+        "sampled_wall_seconds": 63.507917,
+        "cpu_one_core_percent": 43.695339590495465,
+        "working_set_mib": [
+          1668.42578125,
+          1676.1171875
+        ],
+        "private_mib": [
+          1693.88671875,
+          1702.55078125
+        ],
+        "main_thread_id": 9592,
+        "main_thread_cpu_one_core_percent": 43.695339590495465
+      },
+      "ssair": {
+        "type": "/datum/controller/subsystem/air",
+        "name": "Atmospherics",
+        "cost_ms_rolling": 37.2174,
+        "times_fired": 108,
+        "wait_ds": 5,
+        "tick_usage_rolling": 74.4348,
+        "tick_overrun_rolling": 0
+      },
+      "native_completed_ticks": null,
+      "sample_game_seconds": 60,
+      "sample_wall_seconds": 63.8,
+      "atmos_start": {
+        "active_turfs": 70,
+        "hotspots": 0,
+        "excited_groups": 6,
+        "pipenets": 343,
+        "cost_turfs": 2.45798,
+        "cost_hotspots": 0.00306414,
+        "cost_pipenets": 2.78374,
+        "cost_atmos_machinery": 9.10344
+      },
+      "atmos_end": {
+        "active_turfs": 248,
+        "hotspots": 1,
+        "excited_groups": 8,
+        "pipenets": 415,
+        "cost_turfs": 21.4344,
+        "cost_hotspots": 0.0972923,
+        "cost_pipenets": 2.70731,
+        "cost_atmos_machinery": 9.10313
+      },
+      "incident": {
+        "seeded_turfs": [
+          [
+            168,
+            150,
+            2
+          ],
+          [
+            169,
+            150,
+            2
+          ],
+          [
+            170,
+            150,
+            2
+          ],
+          [
+            168,
+            151,
+            2
+          ],
+          [
+            169,
+            151,
+            2
+          ],
+          [
+            170,
+            151,
+            2
+          ],
+          [
+            168,
+            152,
+            2
+          ],
+          [
+            169,
+            152,
+            2
+          ],
+          [
+            170,
+            152,
+            2
+          ],
+          [
+            166,
+            153,
+            2
+          ],
+          [
+            168,
+            153,
+            2
+          ],
+          [
+            169,
+            153,
+            2
+          ],
+          [
+            170,
+            153,
+            2
+          ],
+          [
+            165,
+            154,
+            2
+          ],
+          [
+            166,
+            154,
+            2
+          ],
+          [
+            167,
+            154,
+            2
+          ],
+          [
+            168,
+            154,
+            2
+          ],
+          [
+            169,
+            154,
+            2
+          ],
+          [
+            170,
+            154,
+            2
+          ],
+          [
+            171,
+            154,
+            2
+          ],
+          [
+            166,
+            155,
+            2
+          ],
+          [
+            168,
+            155,
+            2
+          ],
+          [
+            169,
+            155,
+            2
+          ],
+          [
+            170,
+            155,
+            2
+          ],
+          [
+            168,
+            156,
+            2
+          ],
+          [
+            169,
+            156,
+            2
+          ],
+          [
+            170,
+            156,
+            2
+          ],
+          [
+            168,
+            157,
+            2
+          ],
+          [
+            169,
+            157,
+            2
+          ],
+          [
+            170,
+            157,
+            2
+          ],
+          [
+            168,
+            158,
+            2
+          ],
+          [
+            169,
+            158,
+            2
+          ],
+          [
+            170,
+            158,
+            2
+          ]
+        ],
+        "center": [
+          169,
+          154,
+          2
+        ],
+        "plasma_moles_per_turf": 300,
+        "temperature": 1200,
+        "internal_energy": 5000,
+        "gas_heat_power_generation": 1,
+        "strategy": "/datum/sm_delam/explosive",
+        "explosion_radius": 35,
+        "sm_deleted": 1
+      },
+      "binary_sha256": null,
+      "dll_sha256": {
+        "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+        "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+        "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+      },
+      "harness_sha256": "1819e0de115c9a72e2127bd41d5b90a58d4e16e5eb0f024340a0d289edfd28d4",
+      "baseline_source": {
+        "revision": "a72025a0480566585ab7cc48a62873581fe3a6a5",
+        "files": 25989
+      },
+      "top_self_procs": [
+        {
+          "name": "/turf/open/process_cell",
+          "self": 2.132,
+          "total": 6.147,
+          "real": 6.175,
+          "over": 0,
+          "calls": 90268
+        },
+        {
+          "name": "/datum/gas_mixture/proc/share",
+          "self": 1.845,
+          "total": 2.342,
+          "real": 2.427,
+          "over": 0,
+          "calls": 210784
+        },
+        {
+          "name": "/datum/controller/subsystem/air/proc/expand_pipeline",
+          "self": 0.871,
+          "total": 0.914,
+          "real": 0.905,
+          "over": 0,
+          "calls": 162
+        },
+        {
+          "name": "/atom/movable/Move",
+          "self": 0.571,
+          "total": 3.74,
+          "real": 3.819,
+          "over": 0.001,
+          "calls": 57103
+        },
+        {
+          "name": "/datum/proc/_SendSignal",
+          "self": 0.504,
+          "total": 2.449,
+          "real": 2.379,
+          "over": 0.027,
+          "calls": 142182
+        },
+        {
+          "name": "/atom/movable/Move",
+          "self": 0.459,
+          "total": 6.124,
+          "real": 6.253,
+          "over": 0.001,
+          "calls": 71538
+        },
+        {
+          "name": "/turf/proc/LinkBlockedWithAccess",
+          "self": 0.441,
+          "total": 0.65,
+          "real": 0.673,
+          "over": 0,
+          "calls": 119354
+        },
+        {
+          "name": "/datum/proc/UnregisterSignal",
+          "self": 0.338,
+          "total": 0.344,
+          "real": 0.344,
+          "over": 0.099,
+          "calls": 66264
+        },
+        {
+          "name": "/datum/controller/master/proc/RunQueue",
+          "self": 0.327,
+          "total": 27.097,
+          "real": 27.167,
+          "over": 0,
+          "calls": 1193
+        },
+        {
+          "name": "/datum/light_source/proc/update_corners",
+          "self": 0.311,
+          "total": 0.745,
+          "real": 0.746,
+          "over": 0,
+          "calls": 3687
+        },
+        {
+          "name": "/turf/Enter",
+          "self": 0.279,
+          "total": 1.382,
+          "real": 1.453,
+          "over": 0,
+          "calls": 57007
+        },
+        {
+          "name": "/turf/open/proc/high_pressure_movements",
+          "self": 0.277,
+          "total": 0.67,
+          "real": 0.674,
+          "over": 0,
+          "calls": 44049
+        },
+        {
+          "name": "/datum/proc/RegisterSignal",
+          "self": 0.272,
+          "total": 0.277,
+          "real": 0.26,
+          "over": 0.113,
+          "calls": 93066
+        },
+        {
+          "name": "/turf/open/proc/update_visuals",
+          "self": 0.271,
+          "total": 0.276,
+          "real": 0.322,
+          "over": 0.011,
+          "calls": 110050
+        },
+        {
+          "name": "/datum/light_source/proc/impacted_corners",
+          "self": 0.267,
+          "total": 0.274,
+          "real": 0.286,
+          "over": 0,
+          "calls": 2446
+        }
+      ]
+    },
+    {
+      "mode": "rust_sync",
+      "scenario": "sm",
+      "folder": "tmp/profiling/threaded-mc-sync-sm-01",
+      "accepted": false,
+      "diagnostic_runtime_stacks": [
+        "[14:47:35] Runtime in code/game/area/areas.dm,561: list index out of bounds\n  proc name: removeStaticPower (/area/proc/removeStaticPower)\n  src: the Recreational Holodeck (/area/station/holodeck/rec_center)\n  call stack:\n  the Recreational Holodeck (/area/station/holodeck/rec_center): removeStaticPower(40, 4)\n  the holodeck camera (/obj/machinery/camera/directional/south): unset static power()\n  the holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\n  the holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\n  the holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\n  qdel(the holodeck camera (/obj/machinery/camera/directional/south), 0)\n  the holodeck camera (/obj/machinery/camera/directional/south): deconstruct(0)\n  /datum/component/atom_mounted (/datum/component/atom_mounted): drop wallmount()\n  /datum/component/atom_mounted (/datum/component/atom_mounted): on turf changing(the wall (153,171,2) (/turf/closed/wall), /turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null, /list (/list))\n  the wall (153,171,2) (/turf/closed/wall):  SendSignal(\"turf_change\", /list (/list))\n  the wall (153,171,2) (/turf/closed/wall): ChangeTurf(/turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null)\n  the wall (153,171,2) (/turf/closed/wall): ScrapeAway(1, null)\n  the wall (153,171,2) (/turf/closed/wall): dismantle wall(0, 1)\n  the wall (153,171,2) (/turf/closed/wall): ex act(2, null)\n  Explosions (/datum/controller/subsystem/explosions): fire(0)\n  Explosions (/datum/controller/subsystem/explosions): ignite(0)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\nLOCAL_PROFILE_SAMPLE_END"
+      ],
+      "process": {
+        "samples": 71,
+        "sampled_wall_seconds": 70.62994,
+        "cpu_one_core_percent": 42.519149810972515,
+        "working_set_mib": [
+          1816.08984375,
+          1828.78515625
+        ],
+        "private_mib": [
+          1848.51953125,
+          1865.37109375
+        ],
+        "main_thread_id": 62364,
+        "main_thread_cpu_one_core_percent": 42.519149810972515
+      },
+      "ssair": {
+        "type": "/datum/controller/subsystem/air",
+        "name": "Atmospherics",
+        "cost_ms_rolling": 51.79,
+        "times_fired": 95,
+        "wait_ds": 5,
+        "tick_usage_rolling": 103.58,
+        "tick_overrun_rolling": 42.7339
+      },
+      "native_completed_ticks": 95,
+      "sample_game_seconds": 60,
+      "sample_wall_seconds": 71.9875,
+      "atmos_start": {
+        "active_turfs": 90,
+        "hotspots": 0,
+        "excited_groups": 5,
+        "pipenets": 331,
+        "cost_turfs": 8.0002,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.84131,
+        "cost_atmos_machinery": 16.1575,
+        "native_completed_ticks": 50,
+        "native_worker_pending": 0
+      },
+      "atmos_end": {
+        "active_turfs": 88,
+        "hotspots": 0,
+        "excited_groups": 10,
+        "pipenets": 407,
+        "cost_turfs": 39.8663,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.4862,
+        "cost_atmos_machinery": 13.4147,
+        "native_completed_ticks": 145,
+        "native_worker_pending": 0
+      },
+      "incident": {
+        "seeded_turfs": [
+          [
+            168,
+            150,
+            2
+          ],
+          [
+            169,
+            150,
+            2
+          ],
+          [
+            170,
+            150,
+            2
+          ],
+          [
+            168,
+            151,
+            2
+          ],
+          [
+            169,
+            151,
+            2
+          ],
+          [
+            170,
+            151,
+            2
+          ],
+          [
+            168,
+            152,
+            2
+          ],
+          [
+            169,
+            152,
+            2
+          ],
+          [
+            170,
+            152,
+            2
+          ],
+          [
+            166,
+            153,
+            2
+          ],
+          [
+            168,
+            153,
+            2
+          ],
+          [
+            169,
+            153,
+            2
+          ],
+          [
+            170,
+            153,
+            2
+          ],
+          [
+            165,
+            154,
+            2
+          ],
+          [
+            166,
+            154,
+            2
+          ],
+          [
+            167,
+            154,
+            2
+          ],
+          [
+            168,
+            154,
+            2
+          ],
+          [
+            169,
+            154,
+            2
+          ],
+          [
+            170,
+            154,
+            2
+          ],
+          [
+            171,
+            154,
+            2
+          ],
+          [
+            166,
+            155,
+            2
+          ],
+          [
+            168,
+            155,
+            2
+          ],
+          [
+            169,
+            155,
+            2
+          ],
+          [
+            170,
+            155,
+            2
+          ],
+          [
+            168,
+            156,
+            2
+          ],
+          [
+            169,
+            156,
+            2
+          ],
+          [
+            170,
+            156,
+            2
+          ],
+          [
+            168,
+            157,
+            2
+          ],
+          [
+            169,
+            157,
+            2
+          ],
+          [
+            170,
+            157,
+            2
+          ],
+          [
+            168,
+            158,
+            2
+          ],
+          [
+            169,
+            158,
+            2
+          ],
+          [
+            170,
+            158,
+            2
+          ]
+        ],
+        "center": [
+          169,
+          154,
+          2
+        ],
+        "plasma_moles_per_turf": 300,
+        "temperature": 1200,
+        "internal_energy": 5000,
+        "gas_heat_power_generation": 1,
+        "strategy": "/datum/sm_delam/explosive",
+        "explosion_radius": 35,
+        "sm_deleted": 1
+      },
+      "binary_sha256": null,
+      "dll_sha256": {
+        "bandastation_atmos.dll": "850d53aec04a9a2dfd489605bd02d2e91d926206c663ab3ac63639c94481d49d",
+        "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+        "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+        "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+      },
+      "harness_sha256": "1819e0de115c9a72e2127bd41d5b90a58d4e16e5eb0f024340a0d289edfd28d4",
+      "baseline_source": null,
+      "top_self_procs": [
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_air",
+          "self": 0.91,
+          "total": 3.082,
+          "real": 3.123,
+          "over": 0.673,
+          "calls": 113132
+        },
+        {
+          "name": "/datum/banda_atmos_phase/proc/native",
+          "self": 0.884,
+          "total": 0.886,
+          "real": 0.905,
+          "over": 0.31,
+          "calls": 41930
+        },
+        {
+          "name": "/datum/controller/subsystem/air/proc/expand_pipeline",
+          "self": 0.882,
+          "total": 0.913,
+          "real": 0.908,
+          "over": 0,
+          "calls": 173
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.752,
+          "total": 4.189,
+          "real": 4.191,
+          "over": 0.513,
+          "calls": 570
+        },
+        {
+          "name": "/atom/movable/Move",
+          "self": 0.602,
+          "total": 4.39,
+          "real": 4.385,
+          "over": 0.036,
+          "calls": 60526
+        },
+        {
+          "name": "/datum/proc/_SendSignal",
+          "self": 0.535,
+          "total": 2.774,
+          "real": 2.756,
+          "over": 0.13,
+          "calls": 149830
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/ensure_binding",
+          "self": 0.5,
+          "total": 0.59,
+          "real": 0.704,
+          "over": 0.383,
+          "calls": 339288
+        },
+        {
+          "name": "/datum/banda_atmos_safe/world_commands/world/on_run",
+          "self": 0.466,
+          "total": 2.47,
+          "real": 2.467,
+          "over": 0.465,
+          "calls": 95
+        },
+        {
+          "name": "/turf/proc/LinkBlockedWithAccess",
+          "self": 0.462,
+          "total": 0.692,
+          "real": 0.751,
+          "over": 0,
+          "calls": 119507
+        },
+        {
+          "name": "/atom/movable/Move",
+          "self": 0.459,
+          "total": 7.19,
+          "real": 7.26,
+          "over": 0.027,
+          "calls": 76456
+        },
+        {
+          "name": "/proc/banda_atmos_decode_air",
+          "self": 0.412,
+          "total": 0.45,
+          "real": 0.472,
+          "over": 0.281,
+          "calls": 69984
+        },
+        {
+          "name": "/atom/proc/CanPass",
+          "self": 0.369,
+          "total": 0.741,
+          "real": 0.744,
+          "over": 0.041,
+          "calls": 203022
+        },
+        {
+          "name": "/datum/proc/UnregisterSignal",
+          "self": 0.363,
+          "total": 0.369,
+          "real": 0.399,
+          "over": 0.152,
+          "calls": 67897
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/flush_inputs",
+          "self": 0.337,
+          "total": 0.976,
+          "real": 0.965,
+          "over": 0.015,
+          "calls": 95
+        },
+        {
+          "name": "/turf/Enter",
+          "self": 0.324,
+          "total": 1.765,
+          "real": 1.789,
+          "over": 0.052,
+          "calls": 60466
+        }
+      ]
+    },
+    {
+      "mode": "rust_worker",
+      "scenario": "sm",
+      "folder": "tmp/profiling/threaded-mc-async-sm-01",
+      "accepted": false,
+      "diagnostic_runtime_stacks": [
+        "[14:55:34] Runtime in code/game/area/areas.dm,561: list index out of bounds\n  proc name: removeStaticPower (/area/proc/removeStaticPower)\n  src: the Recreational Holodeck (/area/station/holodeck/rec_center)\n  call stack:\n  the Recreational Holodeck (/area/station/holodeck/rec_center): removeStaticPower(40, 4)\n  the holodeck camera (/obj/machinery/camera/directional/south): unset static power()\n  the holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\n  the holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\n  the holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\n  qdel(the holodeck camera (/obj/machinery/camera/directional/south), 0)\n  the holodeck camera (/obj/machinery/camera/directional/south): deconstruct(0)\n  /datum/component/atom_mounted (/datum/component/atom_mounted): drop wallmount()\n  /datum/component/atom_mounted (/datum/component/atom_mounted): on turf changing(the wall (153,171,2) (/turf/closed/wall), /turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null, /list (/list))\n  the wall (153,171,2) (/turf/closed/wall):  SendSignal(\"turf_change\", /list (/list))\n  the wall (153,171,2) (/turf/closed/wall): ChangeTurf(/turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null)\n  the wall (153,171,2) (/turf/closed/wall): ScrapeAway(1, null)\n  the wall (153,171,2) (/turf/closed/wall): dismantle wall(1, 1)\n  the wall (153,171,2) (/turf/closed/wall): ex act(2, null)\n  Explosions (/datum/controller/subsystem/explosions): fire(0)\n  Explosions (/datum/controller/subsystem/explosions): ignite(0)\n  Master (/datum/controller/master): RunQueue()\n  Master (/datum/controller/master): Loop(4)\n  Master (/datum/controller/master): StartProcessing(0)\nLOCAL_PROFILE_SAMPLE_END"
+      ],
+      "process": {
+        "samples": 67,
+        "sampled_wall_seconds": 66.497259,
+        "cpu_one_core_percent": 44.433222428010154,
+        "working_set_mib": [
+          1818.61328125,
+          1828.15625
+        ],
+        "private_mib": [
+          1845.00390625,
+          1868.02734375
+        ],
+        "main_thread_id": 64996,
+        "main_thread_cpu_one_core_percent": 43.70480894558376
+      },
+      "ssair": {
+        "type": "/datum/controller/subsystem/air",
+        "name": "Atmospherics",
+        "cost_ms_rolling": 23.6209,
+        "times_fired": 111,
+        "wait_ds": 5,
+        "tick_usage_rolling": 47.2418,
+        "tick_overrun_rolling": 0
+      },
+      "native_completed_ticks": 110,
+      "sample_game_seconds": 60,
+      "sample_wall_seconds": 67.5813,
+      "atmos_start": {
+        "active_turfs": 61,
+        "hotspots": 0,
+        "excited_groups": 5,
+        "pipenets": 331,
+        "cost_turfs": 36.9199,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.67207,
+        "cost_atmos_machinery": 16.4849,
+        "native_completed_ticks": 53,
+        "native_worker_pending": 0
+      },
+      "atmos_end": {
+        "active_turfs": 143,
+        "hotspots": 0,
+        "excited_groups": 13,
+        "pipenets": 423,
+        "cost_turfs": 74.9507,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.45721,
+        "cost_atmos_machinery": 12.6949,
+        "native_completed_ticks": 163,
+        "native_worker_pending": 0
+      },
+      "incident": {
+        "seeded_turfs": [
+          [
+            168,
+            150,
+            2
+          ],
+          [
+            169,
+            150,
+            2
+          ],
+          [
+            170,
+            150,
+            2
+          ],
+          [
+            168,
+            151,
+            2
+          ],
+          [
+            169,
+            151,
+            2
+          ],
+          [
+            170,
+            151,
+            2
+          ],
+          [
+            168,
+            152,
+            2
+          ],
+          [
+            169,
+            152,
+            2
+          ],
+          [
+            170,
+            152,
+            2
+          ],
+          [
+            166,
+            153,
+            2
+          ],
+          [
+            168,
+            153,
+            2
+          ],
+          [
+            169,
+            153,
+            2
+          ],
+          [
+            170,
+            153,
+            2
+          ],
+          [
+            165,
+            154,
+            2
+          ],
+          [
+            166,
+            154,
+            2
+          ],
+          [
+            167,
+            154,
+            2
+          ],
+          [
+            168,
+            154,
+            2
+          ],
+          [
+            169,
+            154,
+            2
+          ],
+          [
+            170,
+            154,
+            2
+          ],
+          [
+            171,
+            154,
+            2
+          ],
+          [
+            166,
+            155,
+            2
+          ],
+          [
+            168,
+            155,
+            2
+          ],
+          [
+            169,
+            155,
+            2
+          ],
+          [
+            170,
+            155,
+            2
+          ],
+          [
+            168,
+            156,
+            2
+          ],
+          [
+            169,
+            156,
+            2
+          ],
+          [
+            170,
+            156,
+            2
+          ],
+          [
+            168,
+            157,
+            2
+          ],
+          [
+            169,
+            157,
+            2
+          ],
+          [
+            170,
+            157,
+            2
+          ],
+          [
+            168,
+            158,
+            2
+          ],
+          [
+            169,
+            158,
+            2
+          ],
+          [
+            170,
+            158,
+            2
+          ]
+        ],
+        "center": [
+          169,
+          154,
+          2
+        ],
+        "plasma_moles_per_turf": 300,
+        "temperature": 1200,
+        "internal_energy": 5000,
+        "gas_heat_power_generation": 1,
+        "strategy": "/datum/sm_delam/explosive",
+        "explosion_radius": 35,
+        "sm_deleted": 1
+      },
+      "binary_sha256": null,
+      "dll_sha256": {
+        "bandastation_atmos.dll": "850d53aec04a9a2dfd489605bd02d2e91d926206c663ab3ac63639c94481d49d",
+        "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+        "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+        "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+      },
+      "harness_sha256": "1819e0de115c9a72e2127bd41d5b90a58d4e16e5eb0f024340a0d289edfd28d4",
+      "baseline_source": null,
+      "top_self_procs": [
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_air",
+          "self": 1.047,
+          "total": 3.456,
+          "real": 3.53,
+          "over": 0.277,
+          "calls": 131127
+        },
+        {
+          "name": "/datum/controller/subsystem/air/proc/expand_pipeline",
+          "self": 0.869,
+          "total": 0.898,
+          "real": 0.903,
+          "over": 0,
+          "calls": 179
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.816,
+          "total": 4.732,
+          "real": 4.737,
+          "over": 0.211,
+          "calls": 770
+        },
+        {
+          "name": "/datum/banda_atmos_phase/proc/native",
+          "self": 0.601,
+          "total": 0.604,
+          "real": 0.607,
+          "over": 0.169,
+          "calls": 43535
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/ensure_binding",
+          "self": 0.572,
+          "total": 0.658,
+          "real": 0.743,
+          "over": 0.317,
+          "calls": 379059
+        },
+        {
+          "name": "/datum/banda_atmos_safe/world_commands/world/on_run",
+          "self": 0.503,
+          "total": 2.514,
+          "real": 2.513,
+          "over": 0.487,
+          "calls": 110
+        },
+        {
+          "name": "/atom/movable/Move",
+          "self": 0.499,
+          "total": 3.541,
+          "real": 3.619,
+          "over": 0.025,
+          "calls": 53062
+        },
+        {
+          "name": "/datum/proc/_SendSignal",
+          "self": 0.473,
+          "total": 2.469,
+          "real": 2.571,
+          "over": 0.119,
+          "calls": 143492
+        },
+        {
+          "name": "/proc/banda_atmos_decode_air",
+          "self": 0.446,
+          "total": 0.476,
+          "real": 0.539,
+          "over": 0.114,
+          "calls": 79070
+        },
+        {
+          "name": "/atom/movable/Move",
+          "self": 0.438,
+          "total": 5.934,
+          "real": 6.024,
+          "over": 0.016,
+          "calls": 67531
+        },
+        {
+          "name": "/turf/proc/LinkBlockedWithAccess",
+          "self": 0.404,
+          "total": 0.604,
+          "real": 0.632,
+          "over": 0,
+          "calls": 109357
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/flush_inputs",
+          "self": 0.395,
+          "total": 1.05,
+          "real": 1.048,
+          "over": 0.015,
+          "calls": 110
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/execute",
+          "self": 0.374,
+          "total": 1.528,
+          "real": 1.556,
+          "over": 0.354,
+          "calls": 135031
+        },
+        {
+          "name": "/turf/open/proc/update_visuals",
+          "self": 0.371,
+          "total": 0.432,
+          "real": 0.451,
+          "over": 0.086,
+          "calls": 135533
+        },
+        {
+          "name": "/datum/proc/UnregisterSignal",
+          "self": 0.342,
+          "total": 0.344,
+          "real": 0.37,
+          "over": 0.157,
+          "calls": 67238
+        }
+      ]
+    }
+  ],
+  "before_mc_split": {
+    "status": "preliminary; MC double accounting must be resolved before performance conclusions",
+    "scenario": "empty-station",
+    "platform": "Windows i686 DreamDaemon, BYOND 516.1688",
+    "clients": 0,
+    "runs": [
+      {
+        "mode": "original_dm",
+        "folder": "tmp/profiling/threaded-dm-idle-01",
+        "process": {
+          "samples": 59,
+          "sampled_wall_seconds": 58.385462,
+          "cpu_one_core_percent": 14.852798458629993,
+          "working_set_mib": [
+            1661.79296875,
+            1661.90625
+          ],
+          "private_mib": [
+            1691.82421875,
+            1691.83203125
+          ],
+          "main_thread_id": 64668,
+          "main_thread_cpu_one_core_percent": 14.852798458629993
+        },
+        "peak_private_whole_run_mib": 1954.953125,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 13.4946,
+          "times_fired": 120,
+          "wait_ds": 5,
+          "tick_usage_rolling": 26.9891,
+          "tick_overrun_rolling": 0
+        },
+        "native_run_tick_calls": null,
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 60.0406,
+        "atmos_start": {
+          "active_turfs": 30,
+          "hotspots": 0,
+          "excited_groups": 6,
+          "pipenets": 332,
+          "cost_turfs": 2.25773,
+          "cost_hotspots": 0.00304737,
+          "cost_pipenets": 2.49542,
+          "cost_atmos_machinery": 8.81607
+        },
+        "atmos_end": {
+          "active_turfs": 30,
+          "hotspots": 1,
+          "excited_groups": 6,
+          "pipenets": 332,
+          "cost_turfs": 2.14987,
+          "cost_hotspots": 0.0981318,
+          "cost_pipenets": 2.29838,
+          "cost_atmos_machinery": 8.74202
+        },
+        "binary_sha256": "0b008ea57de30756d1a4dc4e1b4f090e07474809a1a22bed1b3a4f80932bdc56",
+        "dll_sha256": null,
+        "harness_sha256": "84a35cd3378b2e3be31213029001858548fc49f3f596b9a2e723f9a185d08d36",
+        "baseline_source": {
+          "revision": "a72025a0480566585ab7cc48a62873581fe3a6a5",
+          "files": 25989
+        }
+      },
+      {
+        "mode": "rust_sync",
+        "folder": "tmp/profiling/threaded-sync-idle-02",
+        "process": {
+          "samples": 59,
+          "sampled_wall_seconds": 58.350158,
+          "cpu_one_core_percent": 15.906126595235612,
+          "working_set_mib": [
+            1789.23046875,
+            1789.6015625
+          ],
+          "private_mib": [
+            1812.9453125,
+            1813.734375
+          ],
+          "main_thread_id": 66440,
+          "main_thread_cpu_one_core_percent": 15.906126595235612
+        },
+        "peak_private_whole_run_mib": 2088.11328125,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 20.3627,
+          "times_fired": 120,
+          "wait_ds": 5,
+          "tick_usage_rolling": 40.7253,
+          "tick_overrun_rolling": 0
+        },
+        "native_run_tick_calls": 120,
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 60.0594,
+        "atmos_start": {
+          "active_turfs": 40,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 5.32565,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.51403,
+          "cost_atmos_machinery": 12.5629
+        },
+        "atmos_end": {
+          "active_turfs": 28,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 4.94216,
+          "cost_hotspots": 0,
+          "cost_pipenets": 0.998314,
+          "cost_atmos_machinery": 12.3347
+        },
+        "binary_sha256": "60914bfcb76a6c2c248e8bb0de5bcffcd1297754c27212fcc6892f54371fb085",
+        "dll_sha256": "850d53aec04a9a2dfd489605bd02d2e91d926206c663ab3ac63639c94481d49d",
+        "harness_sha256": "84a35cd3378b2e3be31213029001858548fc49f3f596b9a2e723f9a185d08d36",
+        "baseline_source": null
+      },
+      {
+        "mode": "rust_worker",
+        "folder": "tmp/profiling/threaded-async-idle-01",
+        "process": {
+          "samples": 60,
+          "sampled_wall_seconds": 59.359162,
+          "cpu_one_core_percent": 13.135082668451417,
+          "working_set_mib": [
+            2096.59375,
+            2098.33984375
+          ],
+          "private_mib": [
+            2118.32421875,
+            2120.01171875
+          ],
+          "main_thread_id": 6476,
+          "main_thread_cpu_one_core_percent": 13.056114235574958
+        },
+        "peak_private_whole_run_mib": 2120.01171875,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 7.77753,
+          "times_fired": 240,
+          "wait_ds": 5,
+          "tick_usage_rolling": 15.5551,
+          "tick_overrun_rolling": 0
+        },
+        "native_run_tick_calls": 120,
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 60.05,
+        "atmos_start": {
+          "active_turfs": 25,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 34.456,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.34789,
+          "cost_atmos_machinery": 12.6922
+        },
+        "atmos_end": {
+          "active_turfs": 40,
+          "hotspots": 1,
+          "excited_groups": 8,
+          "pipenets": 296,
+          "cost_turfs": 6.678,
+          "cost_hotspots": 0,
+          "cost_pipenets": 1.41973,
+          "cost_atmos_machinery": 12.2087
+        },
+        "binary_sha256": "60914bfcb76a6c2c248e8bb0de5bcffcd1297754c27212fcc6892f54371fb085",
+        "dll_sha256": "850d53aec04a9a2dfd489605bd02d2e91d926206c663ab3ac63639c94481d49d",
+        "harness_sha256": "84a35cd3378b2e3be31213029001858548fc49f3f596b9a2e723f9a185d08d36",
+        "baseline_source": null
+      }
+    ],
+    "limitations": [
+      "One run per mode; not representative of 50+ players.",
+      "Native run_tick calls are starts, not a dedicated completed-job counter.",
+      "Worker SSair times_fired counts 240 for 120 run_tick calls; resume bookkeeping is incompatible.",
+      "Source of the worker private-memory increase is not established.",
+      "Fire and SM worker comparisons have not been run."
+    ]
+  },
+  "capture_scope": "After MC split, before the subsequent DM-effect exception cleanup; no exceptions in the six accepted captures. No performance rerun after the cleanup.",
+  "item_failure_before_cleanup": {
+    "folder": "tmp/atmos-phase/error-threaded-01",
+    "observed": {
+      "dm": {
+        "first": {
+          "done": 1,
+          "error": "BANDA_EXPECTED_ITEM_FIRE_ERROR"
+        },
+        "fire_calls": 1,
+        "worker_cycle_after_error": null,
+        "running_after_error": null,
+        "publication_pending": null,
+        "second": {
+          "done": 1,
+          "success": 1
+        },
+        "completed_ticks": null
+      },
+      "sync": {
+        "first": {
+          "done": 1,
+          "error": "BANDA_EXPECTED_ITEM_FIRE_ERROR"
+        },
+        "fire_calls": 1,
+        "worker_cycle_after_error": 0,
+        "running_after_error": 0,
+        "publication_pending": 1,
+        "second": {
+          "done": 1,
+          "success": 1
+        },
+        "completed_ticks": 1
+      },
+      "worker": {
+        "first": {
+          "done": 1,
+          "error": "BANDA_EXPECTED_ITEM_FIRE_ERROR"
+        },
+        "fire_calls": 1,
+        "worker_cycle_after_error": 6,
+        "running_after_error": 0,
+        "publication_pending": 1,
+        "second": {
+          "done": 1,
+          "error": "World atmosphere phase cannot overlap itself"
+        },
+        "completed_ticks": 0
+      }
+    }
+  },
+  "item_failure_after_cleanup": {
+    "report": "tmp/atmos-phase/integration-threaded-20/report.json",
+    "binary_sha256": "d85bcb3c1b706de5a3494f8a4a15044e586e98fa2275b6c51b801839a65c026a",
+    "dll_sha256": "850d53aec04a9a2dfd489605bd02d2e91d926206c663ab3ac63639c94481d49d",
+    "fixture_sha256": {
+      "tools/atmos/phase_world.dm.in": "0859f40b4c84b696684a0b0697449b77b5b06263c0f1327e97f50fdde4c2612d",
+      "tools/atmos/phase_network.dm.in": "877e609a769cdcca8d0f7471a772c4d099afe05e7d1027b8168c4524146bd5fd",
+      "tools/atmos/inherit_world.dm.in": "6634a5ea5a3c88c8b1bb66f29d2a9376531c2c918191e54147ac603a4df6bc35",
+      "tools/atmos/binding_world.dm.in": "aa02b04d8a3dbc11631e75da42ae4d063e50a80d490ed5a727a6c34face03e35",
+      "tools/atmos/deferred_world.dm.in": "26fbe94bae0576ef31a4c050abfe792d906ab2dd3e228a6c7e3ff20203201825",
+      "tools/atmos/api_world.dm.in": "5cf49720cd456fbcbd5908daf3fb812f779ed7ea8fc153c9ec45bf0394d600a2",
+      "tools/atmos/contact_world.dm.in": "7d6639c42b931e8351d15446d84208817554fcbb150b46c772989239ade6eb76",
+      "tools/atmos/debug_world.dm.in": "343fbbef7e765b3ee90f0ec34b41c83eeca89d656b30a971007809154c6a7c1a",
+      "tools/atmos/world_network.dm.in": "5861fa43dad16b03e6c01af7e0ba1c87db306736926d28288285f76124378eba",
+      "tools/atmos/exchange_world.dm.in": "a8590a09921fa92517391eae03dcd2c029cee7e35e7ee5c8623fe3157937438b",
+      "tools/atmos/threaded_world.dm.in": "9246f0112049196b7694e1ddd948da674f2301393aad93e9c4a0dcea29b54bfd",
+      "tools/atmos/feedback_world.dm.in": "c811952ab346d018247e852c1588c7b07d0450f3317d97a5350c86867442dc63",
+      "tools/atmos/threaded_error_world.dm.in": "ce51edc666c88510fa9d57d2cfa2fa47790fbcf28e4935684f2ce9aa58c36cad"
+    },
+    "observed": {
+      "dm": {
+        "first": {
+          "done": 1,
+          "error": "BANDA_EXPECTED_ITEM_FIRE_ERROR"
+        },
+        "fire_calls_before_retry": 1,
+        "second": {
+          "done": 1,
+          "success": 1
+        }
+      },
+      "sync": {
+        "first": {
+          "done": 1,
+          "error": "BANDA_EXPECTED_ITEM_FIRE_ERROR"
+        },
+        "fire_calls_before_retry": 1,
+        "released_worker": 1,
+        "published": [
+          850.698,
+          2500,
+          1,
+          4,
+          0,
+          99.6733,
+          3,
+          19.714,
+          2,
+          0.214469,
+          4,
+          0.0714895,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0.612704,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          700,
+          2500,
+          1,
+          2,
+          0,
+          100,
+          3,
+          20
+        ],
+        "retry_keeps_gas": 1,
+        "retry_does_not_replay_effect": 1,
+        "failed_effect_not_counted_successful": 1,
+        "next_mc_tick_completes": 1
+      },
+      "worker": {
+        "first": {
+          "done": 1,
+          "error": "BANDA_EXPECTED_ITEM_FIRE_ERROR"
+        },
+        "fire_calls_before_retry": 1,
+        "released_worker": 1,
+        "published": [
+          850.698,
+          2500,
+          1,
+          4,
+          0,
+          99.6733,
+          3,
+          19.714,
+          2,
+          0.214469,
+          4,
+          0.0714895,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0.612704,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          700,
+          2500,
+          1,
+          2,
+          0,
+          100,
+          3,
+          20
+        ],
+        "retry_keeps_gas": 1,
+        "retry_does_not_replay_effect": 1,
+        "failed_effect_not_counted_successful": 1,
+        "next_mc_tick_completes": 1
+      }
+    },
+    "failures": []
+  },
+  "normalized_analysis": {
+    "method": "CPU average from in-window OS samples scaled to full sample_wall_seconds; all-server CPU per completed atmosphere tick is an estimate, not isolated solver CPU or latency",
+    "worker_split": "other_threads = process - main_thread; includes all non-main threads, not an isolated Rust-worker counter",
+    "runs": [
+      {
+        "mode": "original_dm",
+        "scenario": "idle",
+        "folder": "tmp/profiling/threaded-mc-dm-idle-01",
+        "process_observed_between_os_samples": {
+          "samples": 60,
+          "sampled_wall_seconds": 59.511024,
+          "cpu_seconds": 10.25,
+          "cpu_one_core_percent": 17.22369959555729,
+          "working_set_mib": [
+            1686.609375,
+            1686.66796875
+          ],
+          "private_mib": [
+            1710.09765625,
+            1710.25
+          ],
+          "main_thread_id": 5824,
+          "main_thread_cpu_seconds": 10.25,
+          "main_thread_cpu_one_core_percent": 17.22369959555729,
+          "other_threads_cpu_seconds": 0.0,
+          "other_threads_cpu_one_core_percent": 0.0
+        },
+        "normalized": {
+          "completed_ticks": 120,
+          "completed_ticks_per_real_second": 1.9992702663527813,
+          "real_ms_per_completed_tick": 500.1825,
+          "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+          "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+          "estimated_process_cpu_seconds": 10.3379917475458,
+          "estimated_process_cpu_ms_per_completed_tick": 86.14993122954834,
+          "estimated_main_thread_cpu_seconds": 10.3379917475458,
+          "estimated_main_thread_cpu_ms_per_completed_tick": 86.14993122954834,
+          "estimated_other_threads_cpu_seconds": 0.0,
+          "estimated_other_threads_cpu_ms_per_completed_tick": 0.0
+        }
+      },
+      {
+        "mode": "rust_sync",
+        "scenario": "idle",
+        "folder": "tmp/profiling/threaded-mc-sync-idle-01",
+        "process_observed_between_os_samples": {
+          "samples": 60,
+          "sampled_wall_seconds": 59.321758,
+          "cpu_seconds": 9.8125,
+          "cpu_one_core_percent": 16.541148359089426,
+          "working_set_mib": [
+            1786.80078125,
+            1786.8515625
+          ],
+          "private_mib": [
+            1815.5546875,
+            1816.08203125
+          ],
+          "main_thread_id": 58996,
+          "main_thread_cpu_seconds": 9.796875,
+          "main_thread_cpu_one_core_percent": 16.514808950874315,
+          "other_threads_cpu_seconds": 0.015625,
+          "other_threads_cpu_one_core_percent": 0.02633940821511055
+        },
+        "normalized": {
+          "completed_ticks": 120,
+          "completed_ticks_per_real_second": 1.9960478253058944,
+          "real_ms_per_completed_tick": 500.99,
+          "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+          "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+          "estimated_process_cpu_seconds": 9.944339899704255,
+          "estimated_process_cpu_ms_per_completed_tick": 82.86949916420213,
+          "estimated_main_thread_cpu_seconds": 9.928504963558229,
+          "estimated_main_thread_cpu_ms_per_completed_tick": 82.73754136298524,
+          "estimated_other_threads_cpu_seconds": 0.01583493614602588,
+          "estimated_other_threads_cpu_ms_per_completed_tick": 0.13195780121688233
+        }
+      },
+      {
+        "mode": "rust_worker",
+        "scenario": "idle",
+        "folder": "tmp/profiling/threaded-mc-async-idle-01",
+        "process_observed_between_os_samples": {
+          "samples": 60,
+          "sampled_wall_seconds": 59.372996,
+          "cpu_seconds": 9.640625,
+          "cpu_one_core_percent": 16.237390142818462,
+          "working_set_mib": [
+            1789.1796875,
+            1789.328125
+          ],
+          "private_mib": [
+            1821.375,
+            1821.48828125
+          ],
+          "main_thread_id": 45572,
+          "main_thread_cpu_seconds": 9.546875,
+          "main_thread_cpu_one_core_percent": 16.079490076599807,
+          "other_threads_cpu_seconds": 0.09375,
+          "other_threads_cpu_one_core_percent": 0.15790006621865604
+        },
+        "normalized": {
+          "completed_ticks": 120,
+          "completed_ticks_per_real_second": 1.9959449052674652,
+          "real_ms_per_completed_tick": 501.01583333333326,
+          "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+          "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+          "estimated_process_cpu_seconds": 9.762227464275172,
+          "estimated_process_cpu_ms_per_completed_tick": 81.35189553562644,
+          "estimated_main_thread_cpu_seconds": 9.667294944363258,
+          "estimated_main_thread_cpu_ms_per_completed_tick": 80.56079120302715,
+          "estimated_other_threads_cpu_seconds": 0.09493251991191416,
+          "estimated_other_threads_cpu_ms_per_completed_tick": 0.7911043325992846
+        }
+      },
+      {
+        "mode": "original_dm",
+        "scenario": "fire",
+        "folder": "tmp/profiling/threaded-mc-dm-fire-01",
+        "process_observed_between_os_samples": {
+          "samples": 61,
+          "sampled_wall_seconds": 60.478301,
+          "cpu_seconds": 18.9375,
+          "cpu_one_core_percent": 31.31288360762648,
+          "working_set_mib": [
+            1609.6328125,
+            1611.671875
+          ],
+          "private_mib": [
+            1630.5859375,
+            1632.3671875
+          ],
+          "main_thread_id": 31864,
+          "main_thread_cpu_seconds": 18.9375,
+          "main_thread_cpu_one_core_percent": 31.31288360762648,
+          "other_threads_cpu_seconds": 0.0,
+          "other_threads_cpu_one_core_percent": 0.0
+        },
+        "normalized": {
+          "completed_ticks": 120,
+          "completed_ticks_per_real_second": 1.9419423955154078,
+          "real_ms_per_completed_tick": 514.9483333333333,
+          "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+          "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+          "estimated_process_cpu_seconds": 19.34942067072949,
+          "estimated_process_cpu_ms_per_completed_tick": 161.2451722560791,
+          "estimated_main_thread_cpu_seconds": 19.34942067072949,
+          "estimated_main_thread_cpu_ms_per_completed_tick": 161.2451722560791,
+          "estimated_other_threads_cpu_seconds": 0.0,
+          "estimated_other_threads_cpu_ms_per_completed_tick": 0.0
+        }
+      },
+      {
+        "mode": "rust_sync",
+        "scenario": "fire",
+        "folder": "tmp/profiling/threaded-mc-sync-fire-01",
+        "process_observed_between_os_samples": {
+          "samples": 67,
+          "sampled_wall_seconds": 66.427151,
+          "cpu_seconds": 20.078125,
+          "cpu_one_core_percent": 30.225780720296136,
+          "working_set_mib": [
+            1838.86328125,
+            1840.43359375
+          ],
+          "private_mib": [
+            1870.34375,
+            1880.94140625
+          ],
+          "main_thread_id": 22788,
+          "main_thread_cpu_seconds": 20.078125,
+          "main_thread_cpu_one_core_percent": 30.225780720296136,
+          "other_threads_cpu_seconds": 0.0,
+          "other_threads_cpu_one_core_percent": 0.0
+        },
+        "normalized": {
+          "completed_ticks": 107,
+          "completed_ticks_per_real_second": 1.600074171662537,
+          "real_ms_per_completed_tick": 624.9710280373831,
+          "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+          "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+          "estimated_process_cpu_seconds": 20.21255385749571,
+          "estimated_process_cpu_ms_per_completed_tick": 188.9023724999599,
+          "estimated_main_thread_cpu_seconds": 20.21255385749571,
+          "estimated_main_thread_cpu_ms_per_completed_tick": 188.9023724999599,
+          "estimated_other_threads_cpu_seconds": 0.0,
+          "estimated_other_threads_cpu_ms_per_completed_tick": 0.0
+        }
+      },
+      {
+        "mode": "rust_worker",
+        "scenario": "fire",
+        "folder": "tmp/profiling/threaded-mc-async-fire-01",
+        "process_observed_between_os_samples": {
+          "samples": 62,
+          "sampled_wall_seconds": 61.465182,
+          "cpu_seconds": 22.1875,
+          "cpu_one_core_percent": 36.09767233748694,
+          "working_set_mib": [
+            1831.78515625,
+            1836.44921875
+          ],
+          "private_mib": [
+            1859.3359375,
+            1872.54296875
+          ],
+          "main_thread_id": 60532,
+          "main_thread_cpu_seconds": 21.515625,
+          "main_thread_cpu_one_core_percent": 35.0045738089574,
+          "other_threads_cpu_seconds": 0.671875,
+          "other_threads_cpu_one_core_percent": 1.093098528529534
+        },
+        "normalized": {
+          "completed_ticks": 119,
+          "completed_ticks_per_real_second": 1.909919221651743,
+          "real_ms_per_completed_tick": 523.5823529411765,
+          "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+          "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+          "estimated_process_cpu_seconds": 22.491124019611625,
+          "estimated_process_cpu_ms_per_completed_tick": 189.0010421816103,
+          "estimated_main_thread_cpu_seconds": 21.810054771130424,
+          "estimated_main_thread_cpu_ms_per_completed_tick": 183.27777118596995,
+          "estimated_other_threads_cpu_seconds": 0.6810692484811971,
+          "estimated_other_threads_cpu_ms_per_completed_tick": 5.723270995640312
+        }
+      }
+    ],
+    "worker_vs_sync_percent_changes": {
+      "idle": {
+        "completed_ticks_per_real_second": -0.005156191005273314,
+        "estimated_process_cpu_seconds": -1.8313174857840342,
+        "estimated_process_cpu_ms_per_completed_tick": -1.8313174857840342,
+        "estimated_main_thread_cpu_ms_per_completed_tick": -2.630909891808697
+      },
+      "fire": {
+        "completed_ticks_per_real_second": 19.36441794240484,
+        "estimated_process_cpu_seconds": 11.273044357385453,
+        "estimated_process_cpu_ms_per_completed_tick": 0.052233161682724294,
+        "estimated_main_thread_cpu_ms_per_completed_tick": -2.9775175608189652
+      }
+    }
+  }
+}

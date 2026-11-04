@@ -1,0 +1,2588 @@
+{
+  "platform": "Windows i686",
+  "byond": "516.1688",
+  "abi": 11,
+  "original_dm_revision": "a72025a0480566585ab7cc48a62873581fe3a6a5",
+  "paradise_revision": "5aca8afbcf00ef1f2bb96e179bf1389289551689",
+  "native_heap": [
+    {
+      "label": "before",
+      "phase": "after_native",
+      "counters": {
+        "heap": {
+          "live_requested_bytes": 269104625,
+          "peak_requested_bytes": 276783341,
+          "allocation_calls": 1754558,
+          "timings": [],
+          "windows_heaps": [
+            {
+              "default": true,
+              "ok": true,
+              "error": 0,
+              "allocated": 1742964707,
+              "committed": 1998786560,
+              "reserved": 2011148288
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 22778,
+              "committed": 110592,
+              "reserved": 1331200
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 786949568,
+              "committed": 984657920,
+              "reserved": 994873344
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 260,
+              "committed": 4096,
+              "reserved": 65536
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 21644,
+              "committed": 110592,
+              "reserved": 1331200
+            }
+          ]
+        },
+        "stores": [
+          {
+            "frames": [
+              {
+                "epoch": 0,
+                "cells": 780300,
+                "tiles": 780300,
+                "space": 676639,
+                "additional_unique_cell_pages": 97538,
+                "additional_unique_tile_pages": 97538
+              }
+            ],
+            "unique_cell_pages": 97538,
+            "unique_tile_pages": 97538,
+            "unique_page_payload_bytes": 187272960,
+            "page_storage_requested_bytes": 189882144,
+            "pointer_table_bytes": 1048576,
+            "bindings": 780300,
+            "coordinates": 780300
+          }
+        ]
+      },
+      "crt_total_bytes": 325497144,
+      "crt_native_bytes": 281755272,
+      "native_callers": [
+        {
+          "function": "bandastation_atmos::network::Schedule::add_tile",
+          "bytes": 127189552,
+          "allocations": 97538
+        },
+        {
+          "function": "bandastation_atmos::phase::Store::register",
+          "bytes": 63984928,
+          "allocations": 97538
+        },
+        {
+          "function": "alloc::collections::btree::node::Handle::insert",
+          "bytes": 25051480,
+          "allocations": 142214
+        },
+        {
+          "function": "leaks",
+          "bytes": 16964544,
+          "allocations": 244029
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<u32,bandastation_atmos::phase::binding::Binding,alloc::alloc::Global>",
+          "bytes": 16944640,
+          "allocations": 111476
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<usize,alloc::collections::btree::set_val::SetValZST,alloc::alloc::Global>",
+          "bytes": 14269504,
+          "allocations": 222952
+        },
+        {
+          "function": "bandastation_atmos::byond::world::Cursor::full_air",
+          "bytes": 6519512,
+          "allocations": 120316
+        },
+        {
+          "function": "bandastation_atmos::byond::world::dispatch",
+          "bytes": 3777240,
+          "allocations": 62954
+        },
+        {
+          "function": "bandastation_atmos::transport::Sample::new",
+          "bytes": 3525424,
+          "allocations": 62954
+        },
+        {
+          "function": "bandastation_atmos::byond::packet::tile",
+          "bytes": 3525424,
+          "allocations": 62954
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<array$<i32,3>,u32,alloc::alloc::Global>",
+          "bytes": 1440,
+          "allocations": 6
+        },
+        {
+          "function": "bandastation_atmos::byond::banda_atmos_audit",
+          "bytes": 984,
+          "allocations": 1
+        },
+        {
+          "function": "std::panic::catch_unwind",
+          "bytes": 312,
+          "allocations": 1
+        },
+        {
+          "function": "bandastation_atmos::byond::dispatch",
+          "bytes": 184,
+          "allocations": 1
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert",
+          "bytes": 104,
+          "allocations": 1
+        }
+      ],
+      "svg_sha256": "fc8a9245e3f71546a75181aa2cbe573a77a9f3461b4a7cc2fef3077d3ec8be34"
+    },
+    {
+      "label": "before",
+      "phase": "warm",
+      "counters": {
+        "heap": {
+          "live_requested_bytes": 258740346,
+          "peak_requested_bytes": 276783341,
+          "allocation_calls": 2611317,
+          "timings": [],
+          "windows_heaps": [
+            {
+              "default": true,
+              "ok": true,
+              "error": 0,
+              "allocated": 1798794615,
+              "committed": 2139373568,
+              "reserved": 2366787584
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 22778,
+              "committed": 110592,
+              "reserved": 1331200
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 798564288,
+              "committed": 1001271296,
+              "reserved": 1011453952
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 260,
+              "committed": 4096,
+              "reserved": 65536
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 21644,
+              "committed": 110592,
+              "reserved": 1331200
+            }
+          ]
+        },
+        "stores": [
+          {
+            "frames": [
+              {
+                "epoch": 44,
+                "cells": 780300,
+                "tiles": 780300,
+                "space": 676236,
+                "additional_unique_cell_pages": 97538,
+                "additional_unique_tile_pages": 97538
+              },
+              {
+                "epoch": 43,
+                "cells": 780300,
+                "tiles": 780300,
+                "space": 676236,
+                "additional_unique_cell_pages": 40,
+                "additional_unique_tile_pages": 51
+              }
+            ],
+            "unique_cell_pages": 97578,
+            "unique_tile_pages": 97589,
+            "unique_page_payload_bytes": 187363840,
+            "page_storage_requested_bytes": 190754056,
+            "pointer_table_bytes": 1828880,
+            "bindings": 780300,
+            "coordinates": 780300
+          }
+        ]
+      },
+      "crt_total_bytes": 104648064,
+      "crt_native_bytes": 9865360,
+      "native_callers": [
+        {
+          "function": "bandastation_atmos::phase::Job::calculate",
+          "bytes": 3920576,
+          "allocations": 4
+        },
+        {
+          "function": "bandastation_atmos::network::Schedule::run_stages",
+          "bytes": 2382816,
+          "allocations": 2258
+        },
+        {
+          "function": "core::clone::impl$0::clone_to_uninit",
+          "bytes": 1682536,
+          "allocations": 34826
+        },
+        {
+          "function": "leaks",
+          "bytes": 988232,
+          "allocations": 7256
+        },
+        {
+          "function": "bandastation_atmos::phase::writes::apply",
+          "bytes": 305576,
+          "allocations": 289
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::pair_mut<bandastation_atmos::cell::Cell>",
+          "bytes": 230912,
+          "allocations": 352
+        },
+        {
+          "function": "core::option::impl$5::clone",
+          "bytes": 205808,
+          "allocations": 4062
+        },
+        {
+          "function": "bandastation_atmos::phase::Store::write",
+          "bytes": 86592,
+          "allocations": 132
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::get_mut<bandastation_atmos::network::Tile>",
+          "bytes": 23472,
+          "allocations": 18
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::get_mut",
+          "bytes": 18256,
+          "allocations": 14
+        },
+        {
+          "function": "bandastation_atmos::network::Schedule::tick",
+          "bytes": 5832,
+          "allocations": 135
+        },
+        {
+          "function": "bandastation_atmos::byond::world::Cursor::full_air",
+          "bytes": 4688,
+          "allocations": 90
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::insert<bandastation_atmos::network::Tile>",
+          "bytes": 2608,
+          "allocations": 2
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<usize,alloc::collections::btree::set_val::SetValZST,alloc::alloc::Global>",
+          "bytes": 1984,
+          "allocations": 28
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::insert<bandastation_atmos::cell::Cell>",
+          "bytes": 1312,
+          "allocations": 2
+        },
+        {
+          "function": "bandastation_atmos::byond::banda_atmos_audit",
+          "bytes": 1112,
+          "allocations": 1
+        },
+        {
+          "function": "alloc::collections::btree::map::impl$2::clone::clone_subtree<u64,bandastation_atmos::network::Group,alloc::alloc::Global>",
+          "bytes": 832,
+          "allocations": 10
+        },
+        {
+          "function": "core::clone::Clone::clone_from",
+          "bytes": 784,
+          "allocations": 9
+        },
+        {
+          "function": "bandastation_atmos::byond::dispatch",
+          "bytes": 424,
+          "allocations": 5
+        },
+        {
+          "function": "alloc::collections::btree::node::Handle::insert",
+          "bytes": 336,
+          "allocations": 3
+        }
+      ],
+      "svg_sha256": "16158c4db313f46e3bb1a3969cb54c73c0f6181d935d19977f7130cada1338e7"
+    },
+    {
+      "label": "after-intermediate",
+      "phase": "after_native",
+      "counters": {
+        "heap": {
+          "live_requested_bytes": 194890980,
+          "peak_requested_bytes": 202569696,
+          "allocation_calls": 2648206,
+          "timings": [],
+          "windows_heaps": [
+            {
+              "default": true,
+              "ok": true,
+              "error": 0,
+              "allocated": 1669258269,
+              "committed": 1916129280,
+              "reserved": 1928060928
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 22777,
+              "committed": 90112,
+              "reserved": 1331200
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 791858366,
+              "committed": 992157696,
+              "reserved": 994922496
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 260,
+              "committed": 4096,
+              "reserved": 65536
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 21642,
+              "committed": 110592,
+              "reserved": 1331200
+            }
+          ]
+        },
+        "stores": [
+          {
+            "frames": [
+              {
+                "epoch": 0,
+                "cells": 780300,
+                "tiles": 780300,
+                "space": 676639,
+                "additional_unique_cell_pages": 97538,
+                "additional_unique_tile_pages": 97538
+              }
+            ],
+            "unique_cell_pages": 97538,
+            "unique_tile_pages": 97538,
+            "unique_page_payload_bytes": 99878912,
+            "page_storage_requested_bytes": 115371656,
+            "pointer_table_bytes": 1048576,
+            "unique_tile_states": 107363,
+            "tile_state_requested_bytes": 12883560,
+            "bindings": 780300,
+            "coordinates": 780300
+          }
+        ]
+      },
+      "crt_total_bytes": 252540056,
+      "crt_native_bytes": 208569048,
+      "native_callers": [
+        {
+          "function": "bandastation_atmos::phase::Store::write",
+          "bytes": 55459552,
+          "allocations": 84542
+        },
+        {
+          "function": "bandastation_atmos::network::Schedule::store_tile",
+          "bytes": 39015200,
+          "allocations": 97538
+        },
+        {
+          "function": "alloc::collections::btree::node::Handle::insert",
+          "bytes": 25051480,
+          "allocations": 142214
+        },
+        {
+          "function": "bandastation_atmos::byond::packet::tile",
+          "bytes": 18000432,
+          "allocations": 170062
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<u32,bandastation_atmos::phase::binding::Binding,alloc::alloc::Global>",
+          "bytes": 16944640,
+          "allocations": 111476
+        },
+        {
+          "function": "leaks",
+          "bytes": 16101472,
+          "allocations": 228993
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<usize,alloc::collections::btree::set_val::SetValZST,alloc::alloc::Global>",
+          "bytes": 14269504,
+          "allocations": 222952
+        },
+        {
+          "function": "bandastation_atmos::phase::Store::register",
+          "bytes": 8525376,
+          "allocations": 12996
+        },
+        {
+          "function": "bandastation_atmos::byond::world::Cursor::full_air",
+          "bytes": 6593704,
+          "allocations": 121634
+        },
+        {
+          "function": "bandastation_atmos::byond::world::dispatch",
+          "bytes": 3846000,
+          "allocations": 64100
+        },
+        {
+          "function": "bandastation_atmos::transport::Sample::new",
+          "bytes": 3589600,
+          "allocations": 64100
+        },
+        {
+          "function": "core::clone::impl$0::clone_to_uninit",
+          "bytes": 978464,
+          "allocations": 18158
+        },
+        {
+          "function": "bandastation_atmos::phase::writes::apply",
+          "bytes": 190536,
+          "allocations": 1401
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<array$<i32,3>,u32,alloc::alloc::Global>",
+          "bytes": 1440,
+          "allocations": 6
+        },
+        {
+          "function": "bandastation_atmos::byond::banda_atmos_audit",
+          "bytes": 1048,
+          "allocations": 1
+        },
+        {
+          "function": "std::panic::catch_unwind",
+          "bytes": 312,
+          "allocations": 1
+        },
+        {
+          "function": "bandastation_atmos::byond::dispatch",
+          "bytes": 184,
+          "allocations": 1
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert",
+          "bytes": 104,
+          "allocations": 1
+        }
+      ],
+      "svg_sha256": "c657875c2a14a07ec141b0f69c53313f39b209d31119f295b7e00f34c7d76cd0"
+    },
+    {
+      "label": "after-intermediate",
+      "phase": "warm",
+      "counters": {
+        "heap": {
+          "live_requested_bytes": 184978130,
+          "peak_requested_bytes": 202569696,
+          "allocation_calls": 3448198,
+          "timings": [],
+          "windows_heaps": [
+            {
+              "default": true,
+              "ok": true,
+              "error": 0,
+              "allocated": 1725831625,
+              "committed": 2064654336,
+              "reserved": 2283544576
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 22777,
+              "committed": 90112,
+              "reserved": 1331200
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 803735998,
+              "committed": 1008369664,
+              "reserved": 1011503104
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 260,
+              "committed": 4096,
+              "reserved": 65536
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 21642,
+              "committed": 110592,
+              "reserved": 1331200
+            }
+          ]
+        },
+        "stores": [
+          {
+            "frames": [
+              {
+                "epoch": 40,
+                "cells": 780300,
+                "tiles": 780300,
+                "space": 676236,
+                "additional_unique_cell_pages": 97538,
+                "additional_unique_tile_pages": 97538
+              },
+              {
+                "epoch": 39,
+                "cells": 780300,
+                "tiles": 780300,
+                "space": 676236,
+                "additional_unique_cell_pages": 42,
+                "additional_unique_tile_pages": 48
+              }
+            ],
+            "unique_cell_pages": 97580,
+            "unique_tile_pages": 97586,
+            "unique_page_payload_bytes": 99924224,
+            "page_storage_requested_bytes": 116694792,
+            "pointer_table_bytes": 1828880,
+            "unique_tile_states": 111503,
+            "tile_state_requested_bytes": 13380360,
+            "bindings": 780300,
+            "coordinates": 780300
+          }
+        ]
+      },
+      "crt_total_bytes": 103551144,
+      "crt_native_bytes": 8448704,
+      "native_callers": [
+        {
+          "function": "bandastation_atmos::phase::Job::calculate",
+          "bytes": 3920320,
+          "allocations": 4
+        },
+        {
+          "function": "bandastation_atmos::network::Schedule::run_stages",
+          "bytes": 1774008,
+          "allocations": 14945
+        },
+        {
+          "function": "leaks",
+          "bytes": 921112,
+          "allocations": 4947
+        },
+        {
+          "function": "core::clone::impl$0::clone_to_uninit",
+          "bytes": 483416,
+          "allocations": 9035
+        },
+        {
+          "function": "bandastation_atmos::network::Schedule::archive",
+          "bytes": 444944,
+          "allocations": 4724
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::get_mut",
+          "bytes": 223200,
+          "allocations": 558
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::pair_mut<bandastation_atmos::cell::Cell>",
+          "bytes": 221072,
+          "allocations": 337
+        },
+        {
+          "function": "bandastation_atmos::phase::writes::apply",
+          "bytes": 161424,
+          "allocations": 598
+        },
+        {
+          "function": "bandastation_atmos::phase::Store::write",
+          "bytes": 114144,
+          "allocations": 174
+        },
+        {
+          "function": "alloc::sync::Arc::make_mut",
+          "bytes": 88464,
+          "allocations": 1746
+        },
+        {
+          "function": "bandastation_atmos::byond::packet::tile",
+          "bytes": 72824,
+          "allocations": 539
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::get_mut<bandastation_atmos::network::Tile>",
+          "bytes": 4400,
+          "allocations": 11
+        },
+        {
+          "function": "bandastation_atmos::byond::world::Cursor::full_air",
+          "bytes": 4280,
+          "allocations": 82
+        },
+        {
+          "function": "bandastation_atmos::network::Schedule::tick",
+          "bytes": 2736,
+          "allocations": 96
+        },
+        {
+          "function": "alloc::collections::btree::map::impl$2::clone::clone_subtree<u64,bandastation_atmos::network::Group,alloc::alloc::Global>",
+          "bytes": 2440,
+          "allocations": 25
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<usize,alloc::collections::btree::set_val::SetValZST,alloc::alloc::Global>",
+          "bytes": 2368,
+          "allocations": 34
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::insert<bandastation_atmos::cell::Cell>",
+          "bytes": 1968,
+          "allocations": 3
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::insert<bandastation_atmos::network::Tile>",
+          "bytes": 1200,
+          "allocations": 3
+        },
+        {
+          "function": "bandastation_atmos::byond::banda_atmos_audit",
+          "bytes": 1176,
+          "allocations": 1
+        },
+        {
+          "function": "core::clone::Clone::clone_from",
+          "bytes": 944,
+          "allocations": 4
+        }
+      ],
+      "svg_sha256": "6e42960f902b6465754011e6c5d535c532a030363184dd01dd378bf0bd77aa5c"
+    },
+    {
+      "label": "after",
+      "phase": "after_native",
+      "counters": {
+        "heap": {
+          "live_requested_bytes": 137564314,
+          "peak_requested_bytes": 145243030,
+          "allocation_calls": 2512819,
+          "timings": [],
+          "windows_heaps": [
+            {
+              "default": true,
+              "ok": true,
+              "error": 0,
+              "allocated": 1607638318,
+              "committed": 1848774656,
+              "reserved": 1861775360
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 22777,
+              "committed": 65536,
+              "reserved": 282624
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 780093886,
+              "committed": 977780736,
+              "reserved": 994902016
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 260,
+              "committed": 4096,
+              "reserved": 65536
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 21642,
+              "committed": 90112,
+              "reserved": 1331200
+            }
+          ]
+        },
+        "stores": [
+          {
+            "frames": [
+              {
+                "epoch": 0,
+                "cells": 780300,
+                "tiles": 780300,
+                "space": 676639,
+                "additional_unique_cell_pages": 12797,
+                "additional_unique_tile_pages": 97538
+              }
+            ],
+            "unique_cell_pages": 12797,
+            "unique_tile_pages": 97538,
+            "unique_page_payload_bytes": 45644672,
+            "page_storage_requested_bytes": 60459968,
+            "pointer_table_bytes": 1048576,
+            "unique_tile_states": 107367,
+            "tile_state_requested_bytes": 12884040,
+            "bindings": 780300,
+            "coordinates": 780300
+          }
+        ]
+      },
+      "crt_total_bytes": 193135304,
+      "crt_native_bytes": 149782440,
+      "native_callers": [
+        {
+          "function": "bandastation_atmos::network::Schedule::store_tile",
+          "bytes": 39015200,
+          "allocations": 97538
+        },
+        {
+          "function": "alloc::collections::btree::node::Handle::insert",
+          "bytes": 25051480,
+          "allocations": 142214
+        },
+        {
+          "function": "bandastation_atmos::byond::packet::tile",
+          "bytes": 17522824,
+          "allocations": 165808
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<u32,bandastation_atmos::phase::binding::Binding,alloc::alloc::Global>",
+          "bytes": 16944640,
+          "allocations": 111476
+        },
+        {
+          "function": "leaks",
+          "bytes": 15594304,
+          "allocations": 218669
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<usize,alloc::collections::btree::set_val::SetValZST,alloc::alloc::Global>",
+          "bytes": 14269504,
+          "allocations": 222952
+        },
+        {
+          "function": "bandastation_atmos::phase::Store::register",
+          "bytes": 8394832,
+          "allocations": 12797
+        },
+        {
+          "function": "bandastation_atmos::byond::world::Cursor::full_air",
+          "bytes": 6092736,
+          "allocations": 117168
+        },
+        {
+          "function": "bandastation_atmos::byond::world::dispatch",
+          "bytes": 3590760,
+          "allocations": 59846
+        },
+        {
+          "function": "bandastation_atmos::transport::Sample::new",
+          "bytes": 3111992,
+          "allocations": 59846
+        },
+        {
+          "function": "bandastation_atmos::phase::writes::apply",
+          "bytes": 191080,
+          "allocations": 1405
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<array$<i32,3>,u32,alloc::alloc::Global>",
+          "bytes": 1440,
+          "allocations": 6
+        },
+        {
+          "function": "bandastation_atmos::byond::banda_atmos_audit",
+          "bytes": 1048,
+          "allocations": 1
+        },
+        {
+          "function": "std::panic::catch_unwind",
+          "bytes": 312,
+          "allocations": 1
+        },
+        {
+          "function": "bandastation_atmos::byond::dispatch",
+          "bytes": 184,
+          "allocations": 1
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert",
+          "bytes": 104,
+          "allocations": 1
+        }
+      ],
+      "svg_sha256": "c3b6434185441ba08ae42c2b18ac075d61bbe42c14b3b4fdc3c3068d0eed6e66"
+    },
+    {
+      "label": "after",
+      "phase": "warm",
+      "counters": {
+        "heap": {
+          "live_requested_bytes": 128231503,
+          "peak_requested_bytes": 145243030,
+          "allocation_calls": 3313057,
+          "timings": [],
+          "windows_heaps": [
+            {
+              "default": true,
+              "ok": true,
+              "error": 0,
+              "allocated": 1655549420,
+              "committed": 1975115776,
+              "reserved": 2217332736
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 22777,
+              "committed": 65536,
+              "reserved": 282624
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 792527294,
+              "committed": 993640448,
+              "reserved": 994902016
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 260,
+              "committed": 4096,
+              "reserved": 65536
+            },
+            {
+              "default": false,
+              "ok": true,
+              "error": 0,
+              "allocated": 21642,
+              "committed": 90112,
+              "reserved": 1331200
+            }
+          ]
+        },
+        "stores": [
+          {
+            "frames": [
+              {
+                "epoch": 47,
+                "cells": 780300,
+                "tiles": 780300,
+                "space": 676236,
+                "additional_unique_cell_pages": 13499,
+                "additional_unique_tile_pages": 97538
+              },
+              {
+                "epoch": 46,
+                "cells": 780300,
+                "tiles": 780300,
+                "space": 676236,
+                "additional_unique_cell_pages": 31,
+                "additional_unique_tile_pages": 46
+              }
+            ],
+            "unique_cell_pages": 13530,
+            "unique_tile_pages": 97584,
+            "unique_page_payload_bytes": 46131456,
+            "page_storage_requested_bytes": 62225888,
+            "pointer_table_bytes": 1828880,
+            "unique_tile_states": 111472,
+            "tile_state_requested_bytes": 13376640,
+            "bindings": 780300,
+            "coordinates": 780300
+          }
+        ]
+      },
+      "crt_total_bytes": 96302392,
+      "crt_native_bytes": 8311976,
+      "native_callers": [
+        {
+          "function": "bandastation_atmos::phase::Job::calculate",
+          "bytes": 3901536,
+          "allocations": 3
+        },
+        {
+          "function": "bandastation_atmos::network::Schedule::run_stages",
+          "bytes": 1725224,
+          "allocations": 14174
+        },
+        {
+          "function": "leaks",
+          "bytes": 1018672,
+          "allocations": 5246
+        },
+        {
+          "function": "core::clone::impl$0::clone_to_uninit",
+          "bytes": 438672,
+          "allocations": 8424
+        },
+        {
+          "function": "bandastation_atmos::network::Schedule::archive",
+          "bytes": 437608,
+          "allocations": 4672
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::get_mut",
+          "bytes": 230000,
+          "allocations": 575
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::pair_mut<bandastation_atmos::cell::Cell>",
+          "bytes": 225008,
+          "allocations": 343
+        },
+        {
+          "function": "bandastation_atmos::phase::writes::apply",
+          "bytes": 153120,
+          "allocations": 599
+        },
+        {
+          "function": "bandastation_atmos::byond::packet::tile",
+          "bytes": 73280,
+          "allocations": 545
+        },
+        {
+          "function": "alloc::sync::Arc::make_mut",
+          "bytes": 68544,
+          "allocations": 1428
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::insert<bandastation_atmos::cell::Cell>",
+          "bytes": 16400,
+          "allocations": 25
+        },
+        {
+          "function": "bandastation_atmos::network::Schedule::tick",
+          "bytes": 7072,
+          "allocations": 100
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::get_mut<bandastation_atmos::network::Tile>",
+          "bytes": 5200,
+          "allocations": 13
+        },
+        {
+          "function": "bandastation_atmos::byond::world::Cursor::full_air",
+          "bytes": 2496,
+          "allocations": 48
+        },
+        {
+          "function": "alloc::collections::btree::map::entry::VacantEntry::insert_entry<usize,alloc::collections::btree::set_val::SetValZST,alloc::alloc::Global>",
+          "bytes": 2096,
+          "allocations": 29
+        },
+        {
+          "function": "bandastation_atmos::storage::Storage::insert<bandastation_atmos::network::Tile>",
+          "bytes": 2000,
+          "allocations": 5
+        },
+        {
+          "function": "core::clone::Clone::clone_from",
+          "bytes": 1248,
+          "allocations": 10
+        },
+        {
+          "function": "bandastation_atmos::byond::banda_atmos_audit",
+          "bytes": 1176,
+          "allocations": 1
+        },
+        {
+          "function": "bandastation_atmos::byond::dispatch",
+          "bytes": 784,
+          "allocations": 11
+        },
+        {
+          "function": "bandastation_atmos::transport::Sample::new",
+          "bytes": 520,
+          "allocations": 10
+        }
+      ],
+      "svg_sha256": "46bb2b4704a0ae22e641b12a9e536e56512fb5986edf00a0413848c63bf1c4a3"
+    }
+  ],
+  "behavior": {
+    "policy": "DM object feedback between native calculations; approved by user",
+    "byond": "516.1688",
+    "startup_seed": "29051994",
+    "track_max_share": false,
+    "dll_sha256": "5b1a798497e424f9522569bcb2436bbea104a709306b09f7fb54584a32f40dad",
+    "binary_sha256": "0d6d956ad36281538f8efeaa172fcfbf55571a17b16a05f2742e239735395d15",
+    "harness_sha256": "ae976088b216bb5d5a25342295c210a0595531253104e216f49c317b8f07d3dc",
+    "fixture_sha256": {
+      "tools/atmos/phase_world.dm.in": "ae976088b216bb5d5a25342295c210a0595531253104e216f49c317b8f07d3dc",
+      "tools/atmos/phase_network.dm.in": "877e609a769cdcca8d0f7471a772c4d099afe05e7d1027b8168c4524146bd5fd",
+      "tools/atmos/inherit_world.dm.in": "6634a5ea5a3c88c8b1bb66f29d2a9376531c2c918191e54147ac603a4df6bc35",
+      "tools/atmos/binding_world.dm.in": "aa02b04d8a3dbc11631e75da42ae4d063e50a80d490ed5a727a6c34face03e35",
+      "tools/atmos/deferred_world.dm.in": "26fbe94bae0576ef31a4c050abfe792d906ab2dd3e228a6c7e3ff20203201825",
+      "tools/atmos/api_world.dm.in": "5cf49720cd456fbcbd5908daf3fb812f779ed7ea8fc153c9ec45bf0394d600a2",
+      "tools/atmos/contact_world.dm.in": "7d6639c42b931e8351d15446d84208817554fcbb150b46c772989239ade6eb76",
+      "tools/atmos/debug_world.dm.in": "343fbbef7e765b3ee90f0ec34b41c83eeca89d656b30a971007809154c6a7c1a",
+      "tools/atmos/world_network.dm.in": "5861fa43dad16b03e6c01af7e0ba1c87db306736926d28288285f76124378eba",
+      "tools/atmos/exchange_world.dm.in": "a8590a09921fa92517391eae03dcd2c029cee7e35e7ee5c8623fe3157937438b"
+    },
+    "scenarios": 12,
+    "network_scenarios": 49,
+    "network_ticks": 980,
+    "checks": {
+      "native_output_packet_released": 1,
+      "native_input_packet_released": 1,
+      "concurrent_write_exercised": 1,
+      "release_not_lost": 1,
+      "safe_callback_applied_once": 1,
+      "detached_snapshot_unchanged": 1,
+      "commands_not_replayed": 1,
+      "nested_callbacks_share_air": 1,
+      "release_inside_callback_not_lost": 1,
+      "replacement_not_overwritten": 1,
+      "old_freeze_not_applied": 1,
+      "owner_closed_during_work": 1,
+      "closing_preserves_external_gas": 1
+    },
+    "inheritance": {
+      "source_keeps_group": 1,
+      "source_keeps_cooldowns": 1,
+      "source_keeps_gas": 1,
+      "native_groups_before": 1,
+      "native_groups_after": 1,
+      "native_keeps_cell": 1,
+      "native_changes_binding_version": 1,
+      "native_keeps_group_state": 1,
+      "native_keeps_gas": 1
+    },
+    "bindings": {
+      "two_replacements_keep_cell": 1,
+      "old_callback_ignored_new_callback_runs": 1,
+      "inherited_calculation_not_discarded": 1,
+      "old_freeze_does_not_reach_inherited_floor": 1,
+      "releases_before_and_after_change_survive": 1,
+      "already_fetched_effects_check_binding_version": 1,
+      "wall_keeps_position_but_clears_group_and_gas": 1,
+      "direct_space_replacement_finishes_binding": 1,
+      "resolved_baseturf_replacement_finishes_binding": 1,
+      "resolved_baseturf_keeps_source_space_air": 1,
+      "run_later_small_source_finishes": 1,
+      "run_later_small_native_finishes": 1,
+      "run_later_small_matches_source": 1,
+      "run_later_large_source_finishes": 1,
+      "run_later_large_native_finishes": 1,
+      "run_later_large_matches_source": 1
+    },
+    "deferred": {
+      "loader_defers_air_and_binding": 1,
+      "unfinished_turf_does_not_enter_calculation": 1,
+      "repeated_deferred_change_keeps_cell": 1,
+      "successful_initialize_finishes_binding": 1,
+      "new_turf_initial_gas_imported": 1,
+      "calculation_resumes_after_initialize": 1,
+      "closing_cancels_initialization_listener": 1
+    },
+    "api": {
+      "temporarily_blocked_turf_still_has_its_mixture": 1,
+      "registration_removes_dm_map_mirror": 1,
+      "initially_blocked_space_keeps_underlying_air_class": 1,
+      "blocked_turf_keeps_presence_without_dm_mirror": 1,
+      "airless_turf_does_not_gain_a_mixture": 1,
+      "shuttle_copy_works_while_both_turfs_are_blocked": 1,
+      "breathing_canister_and_cooling_match_dm": 1,
+      "safe_changes_visible_before_next_tick": 1,
+      "readonly_snapshot_is_separate_from_mutable_air": 1,
+      "nested_invoke_shares_air_and_keeps_outer_state_after_error": 1,
+      "invoke_failure_restores_outer_boundary": 1,
+      "invoke_preserves_numeric_zero_return": 1,
+      "blocked_floor_reactions_and_archive_match_dm": 1,
+      "unblocking_keeps_the_same_gas_class_and_contents": 1,
+      "passive_cells_need_no_dm_gas_cache": 1,
+      "borrow_preserves_held_moles_list": 1,
+      "lazy_air_survives_inherited_floor_change": 1,
+      "full_replacement_keeps_volume_archive_results": 1,
+      "space_current_and_archive_heat_capacity_preserved": 1,
+      "repressurize_replaces_space_mixture_class": 1,
+      "plain_mixture_keeps_zero_vacuum_heat_capacity": 1,
+      "closing_restores_unaccessed_tile_air": 1,
+      "closing_restores_held_mixture_and_binding": 1,
+      "closing_restores_blocked_floor_and_space_types": 1,
+      "sparse_results_keep_the_full_wire_packet": 1,
+      "space_cache_follows_shared_last_share": 1,
+      "vent_idle_matches_dm": 1,
+      "vent_idle_does_not_borrow_native_air": 1,
+      "vent_release_matches_dm": 1,
+      "vent_siphon_matches_dm": 1,
+      "vent_empty_pipe_matches_dm": 1,
+      "vent_empty_pipe_does_not_borrow_native_air": 1
+    },
+    "contacts": {
+      "dm": {
+        "hot": 2,
+        "cold": 0,
+        "initial_cold_fire": 0,
+        "hotspot_type": "/obj/effect/hotspot"
+      },
+      "native": {
+        "hot": 2,
+        "cold": 0,
+        "initial_cold_fire": 0,
+        "hotspot_type": "/obj/effect/hotspot"
+      }
+    },
+    "debug": {
+      "active_count": 1,
+      "hotspot_count": 1,
+      "conducting_count": 1,
+      "group_count": 1,
+      "group_members_and_timers": 1,
+      "max_share_mode": 1,
+      "debug_does_not_create_air_mirror": 1,
+      "view_is_not_a_dm_simulation_group": 1,
+      "show_group": 1,
+      "overlay_on_members": 1,
+      "hide_group": 1,
+      "foreign_reference_rejected": 1,
+      "show_all": 1,
+      "hide_all": 1,
+      "pressure_count": 1,
+      "removed_group_hides_overlay": 1,
+      "stale_reference_rejected": 1,
+      "owner_cleanup": 1,
+      "failed_constructor_rejected": 1,
+      "failed_world_did_not_register": 1,
+      "native_error_propagates": 1
+    },
+    "exchange": {
+      "unchanged_borrow_does_not_commit": 1,
+      "direct_temperature_commits_and_updates_held_readonly": 1,
+      "direct_mole_write_commits": 1,
+      "archive_only_write_commits": 1,
+      "compact_results_keep_present_zero_and_ignore_foreign_null": 1,
+      "zero_values_are_conservatively_written": 1,
+      "key_order_is_observable": 1,
+      "unborrowed_publication_omits_results_and_archive": 1,
+      "passive_cell_still_has_no_dm_mixture": 1,
+      "equipment_shares_one_safe_phase": 1,
+      "equipment_kill_results_and_boundary_are_preserved": 1,
+      "paused_equipment_flushes_before_return": 1,
+      "resumed_equipment_sees_committed_air": 1,
+      "publication_preserves_borrowed_moles_identity": 1,
+      "publication_keeps_archive_result_snapshot_semantics": 1
+    },
+    "exchange_error": {
+      "dm_caught": 1,
+      "dm_moles": 102,
+      "rust_caught": 1,
+      "rust_moles": 102
+    },
+    "exchange_effects": {
+      "bare_turf_exposure_needs_no_dm_air": 1,
+      "turf_signal_receives_live_air_and_keeps_direct_writes": 1,
+      "damaged_turf_still_queues_exposure": 1,
+      "real_coal_can_create_air_without_preborrow": 1,
+      "fire_effect_keeps_direct_writes_to_held_air": 1
+    },
+    "exchange_spawn": {
+      "floor_spawn_full_state_matches_dm": 1,
+      "floor_spawn_archive_cycle_and_activation_match_dm": 1,
+      "space_spawn_full_state_matches_dm": 1,
+      "space_spawn_archive_cycle_and_activation_match_dm": 1,
+      "replacement_spawn_full_state_matches_dm": 1,
+      "replacement_spawn_archive_cycle_and_activation_match_dm": 1
+    },
+    "failures": []
+  },
+  "process_comparisons": [
+    {
+      "scenario": "empty-station",
+      "dm": {
+        "process": {
+          "samples": 60,
+          "sampled_wall_seconds": 59.373838,
+          "cpu_one_core_percent": 14.421334864692426,
+          "working_set_mib": [
+            1652.0625,
+            1652.203125
+          ],
+          "private_mib": [
+            1680.27734375,
+            1680.42578125
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 60.025,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 10.4811,
+          "times_fired": 120,
+          "wait_ds": 5,
+          "tick_usage_rolling": 20.9622,
+          "tick_overrun_rolling": 0
+        },
+        "atmos_start": {
+          "active_turfs": 24,
+          "hotspots": 0,
+          "excited_groups": 5,
+          "pipenets": 296,
+          "cost_turfs": 1.77318,
+          "cost_hotspots": 0.00322954,
+          "cost_pipenets": 2.38673,
+          "cost_atmos_machinery": 7.57867
+        },
+        "atmos_end": {
+          "active_turfs": 28,
+          "hotspots": 0,
+          "excited_groups": 6,
+          "pipenets": 296,
+          "cost_turfs": 1.42111,
+          "cost_hotspots": 0.00292697,
+          "cost_pipenets": 0.995508,
+          "cost_atmos_machinery": 7.43539
+        },
+        "folder": "tmp\\profiling\\compare-dm-packets-idle-01",
+        "full_run_max_private_mib": 1937.0234375,
+        "clean": true,
+        "binary_sha256": "9401e7c366c21d2a6dee1a5de513be07d148d19433a3fe4e6e23a1546f7b4c5e",
+        "dll_sha256": {
+          "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+          "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+          "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+        },
+        "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c",
+        "incident": [],
+        "byond": "516.1688",
+        "runtime_markers": []
+      },
+      "rust_before": {
+        "process": {
+          "samples": 60,
+          "sampled_wall_seconds": 59.346286,
+          "cpu_one_core_percent": 16.034069933205256,
+          "working_set_mib": [
+            1940.86328125,
+            1943.49609375
+          ],
+          "private_mib": [
+            1972.578125,
+            1978.47265625
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 60.028,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 25.0654,
+          "times_fired": 120,
+          "wait_ds": 5,
+          "tick_usage_rolling": 50.1307,
+          "tick_overrun_rolling": 0
+        },
+        "atmos_start": {
+          "active_turfs": 62,
+          "hotspots": 0,
+          "excited_groups": 7,
+          "pipenets": 332,
+          "cost_turfs": 10.2021,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.64795,
+          "cost_atmos_machinery": 15.0094
+        },
+        "atmos_end": {
+          "active_turfs": 93,
+          "hotspots": 1,
+          "excited_groups": 7,
+          "pipenets": 332,
+          "cost_turfs": 8.33545,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.18232,
+          "cost_atmos_machinery": 14.2508
+        },
+        "folder": "tmp\\profiling\\compare-rust-packets-idle-01",
+        "full_run_max_private_mib": 2239.01171875,
+        "clean": true,
+        "binary_sha256": "9ea2afc11ff4e91e36d49dd11442cc501435ae06ad487e032fd1ac1b5d177521",
+        "dll_sha256": {
+          "bandastation_atmos.dll": "553671f5656e8462a20df22a2356a281613bf6dcbc633a93e1b76cba2a9dda12",
+          "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+          "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+          "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+        },
+        "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c",
+        "incident": [],
+        "byond": "516.1688",
+        "runtime_markers": []
+      },
+      "rust_after": {
+        "process": {
+          "samples": 59,
+          "sampled_wall_seconds": 58.383788,
+          "cpu_one_core_percent": 20.79451405242839,
+          "working_set_mib": [
+            954.1875,
+            959.0859375
+          ],
+          "private_mib": [
+            1869.01953125,
+            1873.4296875
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 60.1219,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 24.4353,
+          "times_fired": 120,
+          "wait_ds": 5,
+          "tick_usage_rolling": 48.8706,
+          "tick_overrun_rolling": 0
+        },
+        "atmos_start": {
+          "active_turfs": 32,
+          "hotspots": 0,
+          "excited_groups": 6,
+          "pipenets": 331,
+          "cost_turfs": 7.16715,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.66187,
+          "cost_atmos_machinery": 15.2608
+        },
+        "atmos_end": {
+          "active_turfs": 41,
+          "hotspots": 0,
+          "excited_groups": 7,
+          "pipenets": 331,
+          "cost_turfs": 7.01256,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.33218,
+          "cost_atmos_machinery": 14.8428
+        },
+        "folder": "tmp\\profiling\\compare-rust-shared-space-idle-02",
+        "full_run_max_private_mib": 2149.36328125,
+        "clean": true,
+        "binary_sha256": "9ea2afc11ff4e91e36d49dd11442cc501435ae06ad487e032fd1ac1b5d177521",
+        "dll_sha256": {
+          "bandastation_atmos.dll": "5b1a798497e424f9522569bcb2436bbea104a709306b09f7fb54584a32f40dad",
+          "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+          "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+          "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+        },
+        "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c",
+        "incident": [],
+        "byond": "516.1688",
+        "runtime_markers": []
+      }
+    },
+    {
+      "scenario": "atmos-fire",
+      "dm": {
+        "process": {
+          "samples": 60,
+          "sampled_wall_seconds": 59.413582,
+          "cpu_one_core_percent": 31.085064017853696,
+          "working_set_mib": [
+            1676.2421875,
+            1678.2265625
+          ],
+          "private_mib": [
+            1705.0390625,
+            1707.00390625
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 60.0439,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 71.1787,
+          "times_fired": 120,
+          "wait_ds": 5,
+          "tick_usage_rolling": 142.357,
+          "tick_overrun_rolling": 0
+        },
+        "atmos_start": {
+          "active_turfs": 103,
+          "hotspots": 0,
+          "excited_groups": 6,
+          "pipenets": 331,
+          "cost_turfs": 2.38341,
+          "cost_hotspots": 0.0028629,
+          "cost_pipenets": 2.54091,
+          "cost_atmos_machinery": 8.50913
+        },
+        "atmos_end": {
+          "active_turfs": 680,
+          "hotspots": 1,
+          "excited_groups": 24,
+          "pipenets": 331,
+          "cost_turfs": 49.0194,
+          "cost_hotspots": 0.117739,
+          "cost_pipenets": 2.41048,
+          "cost_atmos_machinery": 8.66323
+        },
+        "folder": "tmp\\profiling\\compare-dm-packets-fire-02",
+        "full_run_max_private_mib": 1967.0078125,
+        "clean": true,
+        "binary_sha256": "9401e7c366c21d2a6dee1a5de513be07d148d19433a3fe4e6e23a1546f7b4c5e",
+        "dll_sha256": {
+          "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+          "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+          "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+        },
+        "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c",
+        "incident": [],
+        "byond": "516.1688",
+        "runtime_markers": []
+      },
+      "rust_before": {
+        "process": {
+          "samples": 66,
+          "sampled_wall_seconds": 65.614239,
+          "cpu_one_core_percent": 29.909666406403037,
+          "working_set_mib": [
+            1965.89453125,
+            1967.65625
+          ],
+          "private_mib": [
+            1999.26953125,
+            2004.9296875
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 66.255,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 97.8721,
+          "times_fired": 106,
+          "wait_ds": 5,
+          "tick_usage_rolling": 195.744,
+          "tick_overrun_rolling": 87.8102
+        },
+        "atmos_start": {
+          "active_turfs": 101,
+          "hotspots": 0,
+          "excited_groups": 5,
+          "pipenets": 332,
+          "cost_turfs": 7.42158,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.7496,
+          "cost_atmos_machinery": 14.9097
+        },
+        "atmos_end": {
+          "active_turfs": 684,
+          "hotspots": 0,
+          "excited_groups": 25,
+          "pipenets": 332,
+          "cost_turfs": 78.5899,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.42617,
+          "cost_atmos_machinery": 15.1694
+        },
+        "folder": "tmp\\profiling\\compare-rust-packets-fire-01",
+        "full_run_max_private_mib": 2284.953125,
+        "clean": true,
+        "binary_sha256": "9ea2afc11ff4e91e36d49dd11442cc501435ae06ad487e032fd1ac1b5d177521",
+        "dll_sha256": {
+          "bandastation_atmos.dll": "553671f5656e8462a20df22a2356a281613bf6dcbc633a93e1b76cba2a9dda12",
+          "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+          "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+          "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+        },
+        "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c",
+        "incident": [],
+        "byond": "516.1688",
+        "runtime_markers": []
+      },
+      "rust_after": {
+        "process": {
+          "samples": 68,
+          "sampled_wall_seconds": 67.626092,
+          "cpu_one_core_percent": 31.237942893402742,
+          "working_set_mib": [
+            1825.40234375,
+            1828.63671875
+          ],
+          "private_mib": [
+            1851.09375,
+            1863.07421875
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 68.0813,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 100.716,
+          "times_fired": 103,
+          "wait_ds": 5,
+          "tick_usage_rolling": 201.433,
+          "tick_overrun_rolling": 86.3506
+        },
+        "atmos_start": {
+          "active_turfs": 165,
+          "hotspots": 0,
+          "excited_groups": 7,
+          "pipenets": 344,
+          "cost_turfs": 9.35245,
+          "cost_hotspots": 0,
+          "cost_pipenets": 3.01904,
+          "cost_atmos_machinery": 16.015
+        },
+        "atmos_end": {
+          "active_turfs": 722,
+          "hotspots": 2,
+          "excited_groups": 19,
+          "pipenets": 344,
+          "cost_turfs": 80.4918,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.91364,
+          "cost_atmos_machinery": 16.4955
+        },
+        "folder": "tmp\\profiling\\compare-rust-shared-space-fire-02",
+        "full_run_max_private_mib": 2143.73828125,
+        "clean": true,
+        "binary_sha256": "9ea2afc11ff4e91e36d49dd11442cc501435ae06ad487e032fd1ac1b5d177521",
+        "dll_sha256": {
+          "bandastation_atmos.dll": "5b1a798497e424f9522569bcb2436bbea104a709306b09f7fb54584a32f40dad",
+          "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+          "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+          "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+        },
+        "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c",
+        "incident": [],
+        "byond": "516.1688",
+        "runtime_markers": []
+      }
+    },
+    {
+      "scenario": "sm-plasma",
+      "dm": {
+        "process": {
+          "samples": 63,
+          "sampled_wall_seconds": 62.482124,
+          "cpu_one_core_percent": 38.66105768107371,
+          "working_set_mib": [
+            1663.875,
+            1667.05859375
+          ],
+          "private_mib": [
+            1687.05078125,
+            1691.57421875
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 62.886,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 49.06,
+          "times_fired": 109,
+          "wait_ds": 5,
+          "tick_usage_rolling": 98.12,
+          "tick_overrun_rolling": 0
+        },
+        "atmos_start": {
+          "active_turfs": 84,
+          "hotspots": 0,
+          "excited_groups": 19,
+          "pipenets": 296,
+          "cost_turfs": 4.91866,
+          "cost_hotspots": 0.34547,
+          "cost_pipenets": 2.29148,
+          "cost_atmos_machinery": 7.51879
+        },
+        "atmos_end": {
+          "active_turfs": 1210,
+          "hotspots": 1,
+          "excited_groups": 10,
+          "pipenets": 379,
+          "cost_turfs": 38.9411,
+          "cost_hotspots": 0.0687193,
+          "cost_pipenets": 2.07627,
+          "cost_atmos_machinery": 6.61895
+        },
+        "folder": "tmp\\profiling\\compare-dm-packets-sm-01",
+        "full_run_max_private_mib": 1968.83984375,
+        "clean": false,
+        "binary_sha256": "9401e7c366c21d2a6dee1a5de513be07d148d19433a3fe4e6e23a1546f7b4c5e",
+        "dll_sha256": {
+          "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+          "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+          "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+        },
+        "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c",
+        "incident": {
+          "seeded_turfs": [
+            [
+              168,
+              150,
+              2
+            ],
+            [
+              169,
+              150,
+              2
+            ],
+            [
+              170,
+              150,
+              2
+            ],
+            [
+              168,
+              151,
+              2
+            ],
+            [
+              169,
+              151,
+              2
+            ],
+            [
+              170,
+              151,
+              2
+            ],
+            [
+              168,
+              152,
+              2
+            ],
+            [
+              169,
+              152,
+              2
+            ],
+            [
+              170,
+              152,
+              2
+            ],
+            [
+              166,
+              153,
+              2
+            ],
+            [
+              168,
+              153,
+              2
+            ],
+            [
+              169,
+              153,
+              2
+            ],
+            [
+              170,
+              153,
+              2
+            ],
+            [
+              165,
+              154,
+              2
+            ],
+            [
+              166,
+              154,
+              2
+            ],
+            [
+              167,
+              154,
+              2
+            ],
+            [
+              168,
+              154,
+              2
+            ],
+            [
+              169,
+              154,
+              2
+            ],
+            [
+              170,
+              154,
+              2
+            ],
+            [
+              171,
+              154,
+              2
+            ],
+            [
+              166,
+              155,
+              2
+            ],
+            [
+              168,
+              155,
+              2
+            ],
+            [
+              169,
+              155,
+              2
+            ],
+            [
+              170,
+              155,
+              2
+            ],
+            [
+              168,
+              156,
+              2
+            ],
+            [
+              169,
+              156,
+              2
+            ],
+            [
+              170,
+              156,
+              2
+            ],
+            [
+              168,
+              157,
+              2
+            ],
+            [
+              169,
+              157,
+              2
+            ],
+            [
+              170,
+              157,
+              2
+            ],
+            [
+              168,
+              158,
+              2
+            ],
+            [
+              169,
+              158,
+              2
+            ],
+            [
+              170,
+              158,
+              2
+            ]
+          ],
+          "center": [
+            169,
+            154,
+            2
+          ],
+          "plasma_moles_per_turf": 300,
+          "temperature": 1200,
+          "internal_energy": 5000,
+          "gas_heat_power_generation": 1,
+          "strategy": "/datum/sm_delam/explosive",
+          "explosion_radius": 35,
+          "sm_deleted": 1
+        },
+        "byond": "516.1688",
+        "runtime_markers": [
+          "[00:19:53] Runtime in code/__HELPERS/levels.dm,15: Cannot read null.z",
+          "[00:19:53] Runtime in code/game/area/areas.dm,561: list index out of bounds",
+          "[00:20:05] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.",
+          "[00:20:05] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot execute null.reset cooldowns().",
+          "[00:20:05] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.",
+          "[00:20:05] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.",
+          "[00:20:05] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.",
+          "[00:20:05] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.",
+          "[00:20:05] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.",
+          "[00:20:05] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot modify null.dismantle_cooldown.",
+          "[00:20:05] Runtime in code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353: Cannot execute null.reset cooldowns().",
+          "{\"ts\":\"2026-11-04 03:19:53.241\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot read null.z\\nproc name: is valid z level (/proc/is_valid_z_level)\\n  source file: code/__HELPERS/levels.dm,15\\n  usr: (src)\\n  src: null\\n  call stack:\\nis valid z level(null, the reinforced floor (169,154,2) (/turf/open/floor/engine))\\nexplosive delamination (/datum/sm_delam/explosive): effect demoralize(the supermatter crystal (/obj/machinery/power/supermatter_crystal/engine))\\nexplosive delamination (/datum/sm_delam/explosive): delaminate(the supermatter crystal (/obj/machinery/power/supermatter_crystal/engine))\\nthe supermatter crystal (/obj/machinery/power/supermatter_crystal/engine): force delam()\\nthe supermatter crystal (/obj/machinery/power/supermatter_crystal/engine): force delam()\\nLocal profiling harness (/datum/controller/subsystem/local_profile): measure()\\n\",\"data\":null,\"w-state\":{\"tick_usage\":17.1468,\"tick_lag\":0.5,\"time\":595.5,\"timestamp\":\"1793751593.242261\"},\"s-store\":null,\"id\":908,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:19:53.550\",\"cat\":\"runtime\",\"msg\":\"runtime error: list index out of bounds\\nproc name: removeStaticPower (/area/proc/removeStaticPower)\\n  source file: code/game/area/areas.dm,561\\n  usr: null\\n  src: the Recreational Holodeck (/area/station/holodeck/rec_center)\\n  call stack:\\nthe Recreational Holodeck (/area/station/holodeck/rec_center): removeStaticPower(40, 4)\\nthe holodeck camera (/obj/machinery/camera/directional/south): unset static power()\\nthe holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\\nthe holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\\nthe holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\\nqdel(the holodeck camera (/obj/machinery/camera/directional/south), 0)\\nthe holodeck camera (/obj/machinery/camera/directional/south): deconstruct(0)\\n/datum/component/atom_mounted (/datum/component/atom_mounted): drop wallmount()\\n/datum/component/atom_mounted (/datum/component/atom_mounted): on turf changing(the wall (153,171,2) (/turf/closed/wall), /turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null, /list (/list))\\nthe wall (153,171,2) (/turf/closed/wall):  SendSignal(\\\"turf_change\\\", /list (/list))\\nthe wall (153,171,2) (/turf/closed/wall): ChangeTurf(/turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null)\\nthe wall (153,171,2) (/turf/closed/wall): ScrapeAway(1, null)\\nthe wall (153,171,2) (/turf/closed/wall): dismantle wall(1, 1)\\nthe wall (153,171,2) (/turf/closed/wall): ex act(2, null)\\nExplosions (/datum/controller/subsystem/explosions): fire(0)\\nExplosions (/datum/controller/subsystem/explosions): ignite(0)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":437.609,\"tick_lag\":0.5,\"time\":596.5,\"timestamp\":\"1793751593.551024\"},\"s-store\":null,\"id\":910,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:20:05.206\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot modify null.dismantle_cooldown.\\nproc name: process cell (/turf/open/process_cell)\\n  source file: code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353\\n  usr: null\\n  src: the floor (168,175,2) (/turf/open/floor/iron/dark)\\n  call stack:\\nthe floor (168,175,2) (/turf/open/floor/iron/dark): process cell(63)\\nAtmospherics (/datum/controller/subsystem/air): process active turfs(1)\\nAtmospherics (/datum/controller/subsystem/air): fire(1)\\nAtmospherics (/datum/controller/subsystem/air): ignite(1)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":36.8064,\"tick_lag\":0.5,\"time\":686.5,\"timestamp\":\"1793751605.207369\"},\"s-store\":null,\"id\":939,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:20:05.209\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot execute null.reset cooldowns().\\nproc name: process cell (/turf/open/process_cell)\\n  source file: code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353\\n  usr: null\\n  src: the floor (149,139,2) (/turf/open/floor/iron)\\n  call stack:\\nthe floor (149,139,2) (/turf/open/floor/iron): process cell(63)\\nAtmospherics (/datum/controller/subsystem/air): process active turfs(1)\\nAtmospherics (/datum/controller/subsystem/air): fire(1)\\nAtmospherics (/datum/controller/subsystem/air): ignite(1)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":41.4388,\"tick_lag\":0.5,\"time\":686.5,\"timestamp\":\"1793751605.209685\"},\"s-store\":null,\"id\":940,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:20:05.211\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot modify null.dismantle_cooldown.\\nproc name: process cell (/turf/open/process_cell)\\n  source file: code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353\\n  usr: null\\n  src: the plating (151,170,2) (/turf/open/floor/plating)\\n  call stack:\\nthe plating (151,170,2) (/turf/open/floor/plating): process cell(63)\\nAtmospherics (/datum/controller/subsystem/air): process active turfs(1)\\nAtmospherics (/datum/controller/subsystem/air): fire(1)\\nAtmospherics (/datum/controller/subsystem/air): ignite(1)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":46.3936,\"tick_lag\":0.5,\"time\":686.5,\"timestamp\":\"1793751605.212163\"},\"s-store\":null,\"id\":941,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:20:05.215\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot modify null.dismantle_cooldown.\\nproc name: process cell (/turf/open/process_cell)\\n  source file: code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353\\n  usr: null\\n  src: the plating (152,169,2) (/turf/open/floor/plating)\\n  call stack:\\nthe plating (152,169,2) (/turf/open/floor/plating): process cell(63)\\nAtmospherics (/datum/controller/subsystem/air): process active turfs(1)\\nAtmospherics (/datum/controller/subsystem/air): fire(1)\\nAtmospherics (/datum/controller/subsystem/air): ignite(1)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":53.841,\"tick_lag\":0.5,\"time\":686.5,\"timestamp\":\"1793751605.215887\"},\"s-store\":null,\"id\":942,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:20:05.218\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot modify null.dismantle_cooldown.\\nproc name: process cell (/turf/open/process_cell)\\n  source file: code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353\\n  usr: null\\n  src: the plating (153,154,2) (/turf/open/floor/plating)\\n  call stack:\\nthe plating (153,154,2) (/turf/open/floor/plating): process cell(63)\\nAtmospherics (/datum/controller/subsystem/air): process active turfs(1)\\nAtmospherics (/datum/controller/subsystem/air): fire(1)\\nAtmospherics (/datum/controller/subsystem/air): ignite(1)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":60.176,\"tick_lag\":0.5,\"time\":686.5,\"timestamp\":\"1793751605.219054\"},\"s-store\":null,\"id\":943,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:20:05.219\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot modify null.dismantle_cooldown.\\nproc name: process cell (/turf/open/process_cell)\\n  source file: code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353\\n  usr: null\\n  src: the plating (154,153,2) (/turf/open/floor/plating)\\n  call stack:\\nthe plating (154,153,2) (/turf/open/floor/plating): process cell(63)\\nAtmospherics (/datum/controller/subsystem/air): process active turfs(1)\\nAtmospherics (/datum/controller/subsystem/air): fire(1)\\nAtmospherics (/datum/controller/subsystem/air): ignite(1)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":61.9136,\"tick_lag\":0.5,\"time\":686.5,\"timestamp\":\"1793751605.219923\"},\"s-store\":null,\"id\":944,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:20:05.222\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot modify null.dismantle_cooldown.\\nproc name: process cell (/turf/open/process_cell)\\n  source file: code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353\\n  usr: null\\n  src: the plating (155,156,2) (/turf/open/floor/plating)\\n  call stack:\\nthe plating (155,156,2) (/turf/open/floor/plating): process cell(63)\\nAtmospherics (/datum/controller/subsystem/air): process active turfs(1)\\nAtmospherics (/datum/controller/subsystem/air): fire(1)\\nAtmospherics (/datum/controller/subsystem/air): ignite(1)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":66.8644,\"tick_lag\":0.5,\"time\":686.5,\"timestamp\":\"1793751605.222398\"},\"s-store\":null,\"id\":945,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:20:05.222\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot modify null.dismantle_cooldown.\\nproc name: process cell (/turf/open/process_cell)\\n  source file: code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353\\n  usr: null\\n  src: the plating (154,155,2) (/turf/open/floor/plating)\\n  call stack:\\nthe plating (154,155,2) (/turf/open/floor/plating): process cell(63)\\nAtmospherics (/datum/controller/subsystem/air): process active turfs(1)\\nAtmospherics (/datum/controller/subsystem/air): fire(1)\\nAtmospherics (/datum/controller/subsystem/air): ignite(1)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":68.5808,\"tick_lag\":0.5,\"time\":686.5,\"timestamp\":\"1793751605.223257\"},\"s-store\":null,\"id\":946,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:20:05.718\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot execute null.reset cooldowns().\\nproc name: process cell (/turf/open/process_cell)\\n  source file: code/modules/atmospherics/environmental/LINDA_turf_tile.dm,353\\n  usr: null\\n  src: the plating (148,147,2) (/turf/open/floor/plating)\\n  call stack:\\nthe plating (148,147,2) (/turf/open/floor/plating): process cell(64)\\nAtmospherics (/datum/controller/subsystem/air): process active turfs(1)\\nAtmospherics (/datum/controller/subsystem/air): fire(1)\\nAtmospherics (/datum/controller/subsystem/air): ignite(1)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":59.8976,\"tick_lag\":0.5,\"time\":691.5,\"timestamp\":\"1793751605.719323\"},\"s-store\":null,\"id\":947,\"s-ver\":\"1.0.0\"}",
+          "[2026-11-04 00:19:53.241] DEBUG: runtime error: Cannot read null.z",
+          "[2026-11-04 00:19:53.550] DEBUG: runtime error: list index out of bounds",
+          "[2026-11-04 00:20:05.207] DEBUG: runtime error: Cannot modify null.dismantle_cooldown.",
+          "[2026-11-04 00:20:05.209] DEBUG: runtime error: Cannot execute null.reset cooldowns().",
+          "[2026-11-04 00:20:05.211] DEBUG: runtime error: Cannot modify null.dismantle_cooldown.",
+          "[2026-11-04 00:20:05.215] DEBUG: runtime error: Cannot modify null.dismantle_cooldown.",
+          "[2026-11-04 00:20:05.218] DEBUG: runtime error: Cannot modify null.dismantle_cooldown.",
+          "[2026-11-04 00:20:05.219] DEBUG: runtime error: Cannot modify null.dismantle_cooldown.",
+          "[2026-11-04 00:20:05.222] DEBUG: runtime error: Cannot modify null.dismantle_cooldown.",
+          "[2026-11-04 00:20:05.223] DEBUG: runtime error: Cannot modify null.dismantle_cooldown.",
+          "[2026-11-04 00:20:05.719] DEBUG: runtime error: Cannot execute null.reset cooldowns()."
+        ]
+      },
+      "rust_before": {
+        "process": {
+          "samples": 68,
+          "sampled_wall_seconds": 67.536026,
+          "cpu_one_core_percent": 38.70619363952507,
+          "working_set_mib": [
+            1939.04296875,
+            1943.09375
+          ],
+          "private_mib": [
+            1967.64453125,
+            1971.46484375
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 69.238,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 53.5232,
+          "times_fired": 99,
+          "wait_ds": 5,
+          "tick_usage_rolling": 107.046,
+          "tick_overrun_rolling": 39.0009
+        },
+        "atmos_start": {
+          "active_turfs": 63,
+          "hotspots": 0,
+          "excited_groups": 4,
+          "pipenets": 296,
+          "cost_turfs": 6.32403,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.34104,
+          "cost_atmos_machinery": 12.2646
+        },
+        "atmos_end": {
+          "active_turfs": 157,
+          "hotspots": 0,
+          "excited_groups": 6,
+          "pipenets": 386,
+          "cost_turfs": 40.8658,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.1707,
+          "cost_atmos_machinery": 10.4337
+        },
+        "folder": "tmp\\profiling\\compare-rust-packets-sm-01",
+        "full_run_max_private_mib": 2246.859375,
+        "clean": false,
+        "binary_sha256": "9ea2afc11ff4e91e36d49dd11442cc501435ae06ad487e032fd1ac1b5d177521",
+        "dll_sha256": {
+          "bandastation_atmos.dll": "553671f5656e8462a20df22a2356a281613bf6dcbc633a93e1b76cba2a9dda12",
+          "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+          "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+          "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+        },
+        "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c",
+        "incident": {
+          "seeded_turfs": [
+            [
+              168,
+              150,
+              2
+            ],
+            [
+              169,
+              150,
+              2
+            ],
+            [
+              170,
+              150,
+              2
+            ],
+            [
+              168,
+              151,
+              2
+            ],
+            [
+              169,
+              151,
+              2
+            ],
+            [
+              170,
+              151,
+              2
+            ],
+            [
+              168,
+              152,
+              2
+            ],
+            [
+              169,
+              152,
+              2
+            ],
+            [
+              170,
+              152,
+              2
+            ],
+            [
+              166,
+              153,
+              2
+            ],
+            [
+              168,
+              153,
+              2
+            ],
+            [
+              169,
+              153,
+              2
+            ],
+            [
+              170,
+              153,
+              2
+            ],
+            [
+              165,
+              154,
+              2
+            ],
+            [
+              166,
+              154,
+              2
+            ],
+            [
+              167,
+              154,
+              2
+            ],
+            [
+              168,
+              154,
+              2
+            ],
+            [
+              169,
+              154,
+              2
+            ],
+            [
+              170,
+              154,
+              2
+            ],
+            [
+              171,
+              154,
+              2
+            ],
+            [
+              166,
+              155,
+              2
+            ],
+            [
+              168,
+              155,
+              2
+            ],
+            [
+              169,
+              155,
+              2
+            ],
+            [
+              170,
+              155,
+              2
+            ],
+            [
+              168,
+              156,
+              2
+            ],
+            [
+              169,
+              156,
+              2
+            ],
+            [
+              170,
+              156,
+              2
+            ],
+            [
+              168,
+              157,
+              2
+            ],
+            [
+              169,
+              157,
+              2
+            ],
+            [
+              170,
+              157,
+              2
+            ],
+            [
+              168,
+              158,
+              2
+            ],
+            [
+              169,
+              158,
+              2
+            ],
+            [
+              170,
+              158,
+              2
+            ]
+          ],
+          "center": [
+            169,
+            154,
+            2
+          ],
+          "plasma_moles_per_turf": 300,
+          "temperature": 1200,
+          "internal_energy": 5000,
+          "gas_heat_power_generation": 1,
+          "strategy": "/datum/sm_delam/explosive",
+          "explosion_radius": 35,
+          "sm_deleted": 1
+        },
+        "byond": "516.1688",
+        "runtime_markers": [
+          "[00:26:22] Runtime in code/__HELPERS/levels.dm,15: Cannot read null.z",
+          "[00:26:22] Runtime in code/game/area/areas.dm,561: list index out of bounds",
+          "[00:26:31] Runtime in code/game/atoms_movable.dm,1360: Cannot read null._listen_lookup",
+          "[00:26:31] Runtime in code/game/atoms_movable.dm,1353: Cannot execute null.hitby().",
+          "{\"ts\":\"2026-11-04 03:26:22.183\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot read null.z\\nproc name: is valid z level (/proc/is_valid_z_level)\\n  source file: code/__HELPERS/levels.dm,15\\n  usr: (src)\\n  src: null\\n  call stack:\\nis valid z level(null, the reinforced floor (169,154,2) (/turf/open/floor/engine))\\nexplosive delamination (/datum/sm_delam/explosive): effect demoralize(the supermatter crystal (/obj/machinery/power/supermatter_crystal/engine))\\nexplosive delamination (/datum/sm_delam/explosive): delaminate(the supermatter crystal (/obj/machinery/power/supermatter_crystal/engine))\\nthe supermatter crystal (/obj/machinery/power/supermatter_crystal/engine): force delam()\\nthe supermatter crystal (/obj/machinery/power/supermatter_crystal/engine): force delam()\\nLocal profiling harness (/datum/controller/subsystem/local_profile): measure()\\n\",\"data\":null,\"w-state\":{\"tick_usage\":25.2424,\"tick_lag\":0.5,\"time\":858,\"timestamp\":\"1793751982.183949\"},\"s-store\":null,\"id\":958,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:26:22.551\",\"cat\":\"runtime\",\"msg\":\"runtime error: list index out of bounds\\nproc name: removeStaticPower (/area/proc/removeStaticPower)\\n  source file: code/game/area/areas.dm,561\\n  usr: null\\n  src: the Recreational Holodeck (/area/station/holodeck/rec_center)\\n  call stack:\\nthe Recreational Holodeck (/area/station/holodeck/rec_center): removeStaticPower(40, 4)\\nthe holodeck camera (/obj/machinery/camera/directional/south): unset static power()\\nthe holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\\nthe holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\\nthe holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\\nqdel(the holodeck camera (/obj/machinery/camera/directional/south), 0)\\nthe holodeck camera (/obj/machinery/camera/directional/south): deconstruct(0)\\n/datum/component/atom_mounted (/datum/component/atom_mounted): drop wallmount()\\n/datum/component/atom_mounted (/datum/component/atom_mounted): on turf changing(the wall (153,171,2) (/turf/closed/wall), /turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null, /list (/list))\\nthe wall (153,171,2) (/turf/closed/wall):  SendSignal(\\\"turf_change\\\", /list (/list))\\nthe wall (153,171,2) (/turf/closed/wall): ChangeTurf(/turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null)\\nthe wall (153,171,2) (/turf/closed/wall): ScrapeAway(1, null)\\nthe wall (153,171,2) (/turf/closed/wall): dismantle wall(0, 1)\\nthe wall (153,171,2) (/turf/closed/wall): ex act(2, null)\\nExplosions (/datum/controller/subsystem/explosions): fire(0)\\nExplosions (/datum/controller/subsystem/explosions): ignite(0)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":561.089,\"tick_lag\":0.5,\"time\":859,\"timestamp\":\"1793751982.552261\"},\"s-store\":null,\"id\":960,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:26:31.524\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot read null._listen_lookup\\nproc name: pre impact (/atom/movable/proc/pre_impact)\\n  source file: code/game/atoms_movable.dm,1360\\n  usr: null\\n  src: the tail pin (/obj/item/tail_pin)\\n  src.loc: null\\n  call stack:\\nthe tail pin (/obj/item/tail_pin): pre impact(null, /datum/thrownthing (/datum/thrownthing))\\nthe tail pin (/obj/item/tail_pin): pre impact(null, /datum/thrownthing (/datum/thrownthing))\\nthe tail pin (/obj/item/tail_pin): throw impact(null, /datum/thrownthing (/datum/thrownthing))\\nthe tail pin (/obj/item/tail_pin): throw impact(null, /datum/thrownthing (/datum/thrownthing))\\n/datum/thrownthing (/datum/thrownthing): finalize(0, null)\\n/datum/thrownthing (/datum/thrownthing): tick()\\nThrowing (/datum/controller/subsystem/throwing): fire(1)\\nThrowing (/datum/controller/subsystem/throwing): ignite(1)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":35.6654,\"tick_lag\":0.5,\"time\":907,\"timestamp\":\"1793751991.525507\"},\"s-store\":null,\"id\":979,\"s-ver\":\"1.0.0\"}",
+          "{\"ts\":\"2026-11-04 03:26:31.526\",\"cat\":\"runtime\",\"msg\":\"runtime error: Cannot execute null.hitby().\\nproc name: throw impact (/atom/movable/proc/throw_impact)\\n  source file: code/game/atoms_movable.dm,1353\\n  usr: null\\n  src: the tail pin (/obj/item/tail_pin)\\n  src.loc: null\\n  call stack:\\nthe tail pin (/obj/item/tail_pin): throw impact(null, /datum/thrownthing (/datum/thrownthing))\\nthe tail pin (/obj/item/tail_pin): throw impact(null, /datum/thrownthing (/datum/thrownthing))\\n/datum/thrownthing (/datum/thrownthing): finalize(0, null)\\n/datum/thrownthing (/datum/thrownthing): tick()\\nThrowing (/datum/controller/subsystem/throwing): fire(1)\\nThrowing (/datum/controller/subsystem/throwing): ignite(1)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":37.732,\"tick_lag\":0.5,\"time\":907,\"timestamp\":\"1793751991.526541\"},\"s-store\":null,\"id\":980,\"s-ver\":\"1.0.0\"}",
+          "[2026-11-04 00:26:22.183] DEBUG: runtime error: Cannot read null.z",
+          "[2026-11-04 00:26:22.551] DEBUG: runtime error: list index out of bounds",
+          "[2026-11-04 00:26:31.525] DEBUG: runtime error: Cannot read null._listen_lookup",
+          "[2026-11-04 00:26:31.526] DEBUG: runtime error: Cannot execute null.hitby()."
+        ]
+      },
+      "rust_after": {
+        "process": {
+          "samples": 71,
+          "sampled_wall_seconds": 70.552423,
+          "cpu_one_core_percent": 41.10418716590357,
+          "working_set_mib": [
+            1832.6953125,
+            1838.4140625
+          ],
+          "private_mib": [
+            1860.83984375,
+            1884.21875
+          ]
+        },
+        "sample_game_seconds": 60,
+        "sample_wall_seconds": 71.95,
+        "ssair": {
+          "type": "/datum/controller/subsystem/air",
+          "name": "Atmospherics",
+          "cost_ms_rolling": 62.2788,
+          "times_fired": 94,
+          "wait_ds": 5,
+          "tick_usage_rolling": 124.558,
+          "tick_overrun_rolling": 67.5168
+        },
+        "atmos_start": {
+          "active_turfs": 69,
+          "hotspots": 0,
+          "excited_groups": 7,
+          "pipenets": 332,
+          "cost_turfs": 8.5428,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.87743,
+          "cost_atmos_machinery": 15.9671
+        },
+        "atmos_end": {
+          "active_turfs": 109,
+          "hotspots": 0,
+          "excited_groups": 10,
+          "pipenets": 408,
+          "cost_turfs": 41.5561,
+          "cost_hotspots": 0,
+          "cost_pipenets": 2.46258,
+          "cost_atmos_machinery": 13.6062
+        },
+        "folder": "tmp\\profiling\\compare-rust-shared-space-sm-02",
+        "full_run_max_private_mib": 2150.375,
+        "clean": false,
+        "binary_sha256": "9ea2afc11ff4e91e36d49dd11442cc501435ae06ad487e032fd1ac1b5d177521",
+        "dll_sha256": {
+          "bandastation_atmos.dll": "5b1a798497e424f9522569bcb2436bbea104a709306b09f7fb54584a32f40dad",
+          "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+          "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+          "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+        },
+        "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c",
+        "incident": {
+          "seeded_turfs": [
+            [
+              168,
+              150,
+              2
+            ],
+            [
+              169,
+              150,
+              2
+            ],
+            [
+              170,
+              150,
+              2
+            ],
+            [
+              168,
+              151,
+              2
+            ],
+            [
+              169,
+              151,
+              2
+            ],
+            [
+              170,
+              151,
+              2
+            ],
+            [
+              168,
+              152,
+              2
+            ],
+            [
+              169,
+              152,
+              2
+            ],
+            [
+              170,
+              152,
+              2
+            ],
+            [
+              166,
+              153,
+              2
+            ],
+            [
+              168,
+              153,
+              2
+            ],
+            [
+              169,
+              153,
+              2
+            ],
+            [
+              170,
+              153,
+              2
+            ],
+            [
+              165,
+              154,
+              2
+            ],
+            [
+              166,
+              154,
+              2
+            ],
+            [
+              167,
+              154,
+              2
+            ],
+            [
+              168,
+              154,
+              2
+            ],
+            [
+              169,
+              154,
+              2
+            ],
+            [
+              170,
+              154,
+              2
+            ],
+            [
+              171,
+              154,
+              2
+            ],
+            [
+              166,
+              155,
+              2
+            ],
+            [
+              168,
+              155,
+              2
+            ],
+            [
+              169,
+              155,
+              2
+            ],
+            [
+              170,
+              155,
+              2
+            ],
+            [
+              168,
+              156,
+              2
+            ],
+            [
+              169,
+              156,
+              2
+            ],
+            [
+              170,
+              156,
+              2
+            ],
+            [
+              168,
+              157,
+              2
+            ],
+            [
+              169,
+              157,
+              2
+            ],
+            [
+              170,
+              157,
+              2
+            ],
+            [
+              168,
+              158,
+              2
+            ],
+            [
+              169,
+              158,
+              2
+            ],
+            [
+              170,
+              158,
+              2
+            ]
+          ],
+          "center": [
+            169,
+            154,
+            2
+          ],
+          "plasma_moles_per_turf": 300,
+          "temperature": 1200,
+          "internal_energy": 5000,
+          "gas_heat_power_generation": 1,
+          "strategy": "/datum/sm_delam/explosive",
+          "explosion_radius": 35,
+          "sm_deleted": 1
+        },
+        "byond": "516.1688",
+        "runtime_markers": [
+          "[09:22:01] Runtime in code/game/area/areas.dm,561: list index out of bounds",
+          "{\"ts\":\"2026-11-04 12:22:01.654\",\"cat\":\"runtime\",\"msg\":\"runtime error: list index out of bounds\\nproc name: removeStaticPower (/area/proc/removeStaticPower)\\n  source file: code/game/area/areas.dm,561\\n  usr: null\\n  src: the Recreational Holodeck (/area/station/holodeck/rec_center)\\n  call stack:\\nthe Recreational Holodeck (/area/station/holodeck/rec_center): removeStaticPower(40, 4)\\nthe holodeck camera (/obj/machinery/camera/directional/south): unset static power()\\nthe holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\\nthe holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\\nthe holodeck camera (/obj/machinery/camera/directional/south): Destroy(0)\\nqdel(the holodeck camera (/obj/machinery/camera/directional/south), 0)\\nthe holodeck camera (/obj/machinery/camera/directional/south): deconstruct(0)\\n/datum/component/atom_mounted (/datum/component/atom_mounted): drop wallmount()\\n/datum/component/atom_mounted (/datum/component/atom_mounted): on turf changing(the wall (153,171,2) (/turf/closed/wall), /turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null, /list (/list))\\nthe wall (153,171,2) (/turf/closed/wall):  SendSignal(\\\"turf_change\\\", /list (/list))\\nthe wall (153,171,2) (/turf/closed/wall): ChangeTurf(/turf/open/floor/plating (/turf/open/floor/plating), /turf/baseturf_bottom (/turf/baseturf_bottom), null)\\nthe wall (153,171,2) (/turf/closed/wall): ScrapeAway(1, null)\\nthe wall (153,171,2) (/turf/closed/wall): dismantle wall(1, 1)\\nthe wall (153,171,2) (/turf/closed/wall): ex act(2, null)\\nExplosions (/datum/controller/subsystem/explosions): fire(0)\\nExplosions (/datum/controller/subsystem/explosions): ignite(0)\\nMaster (/datum/controller/master): RunQueue()\\nMaster (/datum/controller/master): Loop(4)\\nMaster (/datum/controller/master): StartProcessing(0)\\n\",\"data\":null,\"w-state\":{\"tick_usage\":670.573,\"tick_lag\":0.5,\"time\":797,\"timestamp\":\"1793784121.654883\"},\"s-store\":null,\"id\":1060,\"s-ver\":\"1.0.0\"}",
+          "[2026-11-04 09:22:01.654] DEBUG: runtime error: list index out of bounds"
+        ]
+      }
+    }
+  ],
+  "limits": [
+    "One capture per backend/scenario; background events differ despite startup seed.",
+    "No clients; 50+ players, Linux and full round not measured.",
+    "heob CRT proxy is diagnostic only; allocation and process memory metrics are different.",
+    "SM runtimes prohibit treating that incident as a clean performance comparison."
+  ],
+  "native_capture_manifests": {
+    "native-heap-before-01": {
+      "diagnostic_only": true,
+      "profiler": "heob 4.2 x86, page protection off, recording starts before native initialization",
+      "dll_sha256": "1390474012154ea0b9c573665a35eb0a2f9829f28b1a89c02e9b2b02e37415de",
+      "diagnostic_dll_sha256": "1390474012154ea0b9c573665a35eb0a2f9829f28b1a89c02e9b2b02e37415de",
+      "diagnostic_pdb_sha256": "efbce98603999bea4150ce6d71265bdb58ee7db6120db7db4e61c667b5e8884f",
+      "runtime_markers": 0,
+      "exit_code": 0,
+      "source_sha256": {
+        "src/amounts.rs": "731772e59263567a7beaf62f22a0ac6c84c34bea0fe7068f3337300c3ca0e702",
+        "src/audit.rs": "23277040f9b51ac082225361734cc7eb33636af9c2c95412816e998c3e985129",
+        "src/byond.rs": "718b8ae5f8b6d07db047c85313763dae169a349dbbb2ff8c5f7ae526a39911e1",
+        "src/byond_packets.rs": "f4ec8627b4366f147e33b23447b6996bcfaf687b6505a3cb01ae5d30a6f52418",
+        "src/byond_world.rs": "6ab8a475b4487e99e62050e6987e472fa701b6edaa22931433de5004f654e868",
+        "src/catalog.rs": "99ade86eee86cbc0e06028c6f3e17bcb11e22c0df4000830d92e48423dd2e5e7",
+        "src/cell.rs": "db2714d008e511c16920ef9348e66155350325f881c741803a22b0b5bdb1e507",
+        "src/lib.rs": "60ab8daa338eecc4ecbb4a99ef400c31ed4704dd64a74efda8fc0fa170539f02",
+        "src/main.rs": "d014796fbb17c923b59010437c5df6a96b03b80dac26b499343fe351bdb1f098",
+        "src/network.rs": "2042f95614f1068d1b1e9449fd2cf422ce59651e9ef28f9c56b61b5e0567d2c2",
+        "src/phase.rs": "01b4a10807c38211282d32e28dbb0d89b46374c7b0a1f13a957b190cdd8f42ac",
+        "src/phase_binding.rs": "99a73074aaeada6f20305747840d9b6fe604e0cd974ad70164dcdca77651c15a",
+        "src/phase_tests.rs": "0b9e7912f3e92ce8a4658269b292d6d0eef2d2bd92be68d4882ade6f960e1c2c",
+        "src/phase_write.rs": "4aa8bf6d850cd73b70902e52446dd01de66959668c064bd31e3966a7559b3a12",
+        "src/reactions.rs": "4bb253a2099a104947f273b1a4c5015176c6f8145d3350419fe9afdf953854f0",
+        "src/results.rs": "dcfdafecf1ae1f9a1cdd34e5eeafe75bc9968a74c8f46de2f08243b3515505c0",
+        "src/storage.rs": "ada24ce0603e9d967dcd4d5cdd613b191090e59bb08efe3435cf14f13a072802",
+        "src/thermal.rs": "5abca4d20cade75c5a17cb3b1b5a175b9ee04e0bb7817033c34ecad3d890a1b0",
+        "src/transport.rs": "6b79fe1389f262e13602da7eaef90deaf2d10bf822e58ca26a4bfc49d30ae983",
+        "src/bin/cell.rs": "610cf621c145634075ff8fa06438f37cb749f18c41e7658bde59ea466e374126",
+        "src/bin/network.rs": "62067ca54fd0ff3ee5b7d2b071fafa987aaa711c58cf64d00b5f5e9e712a6867",
+        "src/bin/transport.rs": "c893a1aec02c7c987dc71de5499a1da81f31c64822142d358ccbfdee91facbe7"
+      }
+    },
+    "native-heap-after-02": {
+      "diagnostic_only": true,
+      "binary_sha256": "ade2ff9e7f2fcdf5bfb3f3ece35294db2ba695378b2ae531a722e3e5ef348116",
+      "reused_fixture": "native-heap-before-01",
+      "allocator": "diagnostic CRT proxy; not production",
+      "diagnostic_dll_sha256": "8499c58c589e4eb6cbf013cfa4bc1eab16c155219a3c1c42c304bfb6d446af26",
+      "diagnostic_pdb_sha256": "8b73c6760f5d8043a4901a24410e6bab3965e6a8aa379b7402ca7f9bac32d947",
+      "runtime_markers": 0,
+      "exit_code": 0,
+      "source_sha256": {
+        "src/amounts.rs": "2ec94fccfc113e7a0f702ece2e398fa50fbc43275c36ca4d0497dda55bbc5cf7",
+        "src/audit.rs": "23277040f9b51ac082225361734cc7eb33636af9c2c95412816e998c3e985129",
+        "src/byond.rs": "718b8ae5f8b6d07db047c85313763dae169a349dbbb2ff8c5f7ae526a39911e1",
+        "src/byond_packets.rs": "f4ec8627b4366f147e33b23447b6996bcfaf687b6505a3cb01ae5d30a6f52418",
+        "src/byond_world.rs": "c728106037154fb368b011bc9b6d426b66f9b33061ab61a81c8348b1b89fe996",
+        "src/catalog.rs": "1ab9f56b77176f272d6c4efa2f4245591ac63a37c174b46928302b924e2cbb9c",
+        "src/cell.rs": "5ff1a5443d7063242d227074b13b8332e6dea7e796b761e134fe8010a284b54c",
+        "src/lib.rs": "1ab16bc51499a2db928f1ce28582301c90fab94a419297a5d663c7b0ccc6847f",
+        "src/main.rs": "fd6ffb60662b313341925cf62a9265b9429cfc8d82b2e3a48e1d006c79bc6c56",
+        "src/network.rs": "0144fe2ee3a2ef3fd151aa5550ac210cf19b1f2d21573570ea3f2cba7aa85a45",
+        "src/phase.rs": "4cfa13cfe4f36f3d7a1457f730701c508abc2eb41c175309a28035c538ac2211",
+        "src/phase_binding.rs": "c59c5e29bd2d00da6c827a02f2ad7b66a3f08796291f20d37c40c651cd7de04b",
+        "src/phase_tests.rs": "b8e54ab1040832f9403c4b7dba3d807b258b8ac6dfc4db2a8c94ce8db09ba7c8",
+        "src/phase_write.rs": "3b3e2c4a09d067fc0c3443e5e18010e7cebfbb9fbfe5bbe02961766aee6c70ae",
+        "src/reactions.rs": "4ed18927df9a3b35475720d6130e55b4e3e0a1b1ee7f3ea26549f17f4e3c682b",
+        "src/results.rs": "a3aea0b5c84fba31277dc60bf54a96f77833ec655381a3ed1ea8290d03d177b4",
+        "src/storage.rs": "73096b7868480249b7c75c9a2cb8d34d247e99fd40f71a1e450bda2e4ff2439e",
+        "src/thermal.rs": "4dfb8dba9a9537d6c597d2ae1d3d61d964a2318649e76da15df4f3c1cc3932d2",
+        "src/transport.rs": "dd0d75e1e5f053312002c7b547a9dc0415053233a07bc44563b453dfb8c7e118",
+        "src/bin/cell.rs": "4cbefc4daf29244a0b71efd3737eaf2ff06390e140016bc650b2492da10f9a22",
+        "src/bin/network.rs": "ba9545b6a24098757402c215f661e5524db6c7909719ccbde81d07452b4dbb35",
+        "src/bin/transport.rs": "4778d792b31275751cfed1694539ec8292c3243f3aedbef4fcae05221ec4fc3e"
+      }
+    }
+  },
+  "validation": {
+    "rust_test_count": 77,
+    "rust_test_command": "cargo test --manifest-path rust/atmos/Cargo.toml --target i686-pc-windows-msvc --features byond --release",
+    "clippy_command": "cargo clippy --manifest-path rust/atmos/Cargo.toml --target i686-pc-windows-msvc --features byond --lib --examples -- -D warnings",
+    "clean_pair_comparison": "tmp/shared-space-clean-pairs.json",
+    "clean_pair_sha256": "df5bc3572bd8d3fe88b153c20579adc36120c20b3014f0ac4ebfc02d703c5421"
+  },
+  "fresh_idle_recheck": {
+    "old_dll_control": {
+      "process": {
+        "samples": 60,
+        "sampled_wall_seconds": 59.408496,
+        "cpu_one_core_percent": 18.12135590842091,
+        "working_set_mib": [
+          1953.75,
+          1954.88671875
+        ],
+        "private_mib": [
+          1994.03515625,
+          1996.63671875
+        ]
+      },
+      "sample_game_seconds": 60,
+      "sample_wall_seconds": 60.1344,
+      "ssair": {
+        "type": "/datum/controller/subsystem/air",
+        "name": "Atmospherics",
+        "cost_ms_rolling": 23.4937,
+        "times_fired": 120,
+        "wait_ds": 5,
+        "tick_usage_rolling": 46.9874,
+        "tick_overrun_rolling": 0
+      },
+      "atmos_start": {
+        "active_turfs": 38,
+        "hotspots": 0,
+        "excited_groups": 5,
+        "pipenets": 332,
+        "cost_turfs": 9.42826,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.93421,
+        "cost_atmos_machinery": 15.932
+      },
+      "atmos_end": {
+        "active_turfs": 49,
+        "hotspots": 1,
+        "excited_groups": 10,
+        "pipenets": 332,
+        "cost_turfs": 7.89876,
+        "cost_hotspots": 0,
+        "cost_pipenets": 1.3284,
+        "cost_atmos_machinery": 14.3854
+      },
+      "folder": "tmp\\profiling\\compare-rust-shared-space-control-idle-01",
+      "full_run_max_private_mib": 2251.1015625,
+      "dll_sha256": {
+        "bandastation_atmos.dll": "553671f5656e8462a20df22a2356a281613bf6dcbc633a93e1b76cba2a9dda12",
+        "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+        "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+        "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+      },
+      "binary_sha256": "9ea2afc11ff4e91e36d49dd11442cc501435ae06ad487e032fd1ac1b5d177521",
+      "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c"
+    },
+    "new_dll_repeat": {
+      "process": {
+        "samples": 59,
+        "sampled_wall_seconds": 58.39829,
+        "cpu_one_core_percent": 16.05355225298549,
+        "working_set_mib": [
+          1793.5859375,
+          1793.66796875
+        ],
+        "private_mib": [
+          1829.265625,
+          1829.3125
+        ]
+      },
+      "sample_game_seconds": 60,
+      "sample_wall_seconds": 60.0094,
+      "ssair": {
+        "type": "/datum/controller/subsystem/air",
+        "name": "Atmospherics",
+        "cost_ms_rolling": 20.8191,
+        "times_fired": 120,
+        "wait_ds": 5,
+        "tick_usage_rolling": 41.6382,
+        "tick_overrun_rolling": 0
+      },
+      "atmos_start": {
+        "active_turfs": 36,
+        "hotspots": 0,
+        "excited_groups": 5,
+        "pipenets": 296,
+        "cost_turfs": 6.67432,
+        "cost_hotspots": 0,
+        "cost_pipenets": 2.51832,
+        "cost_atmos_machinery": 12.8735
+      },
+      "atmos_end": {
+        "active_turfs": 28,
+        "hotspots": 2,
+        "excited_groups": 3,
+        "pipenets": 296,
+        "cost_turfs": 4.94878,
+        "cost_hotspots": 0,
+        "cost_pipenets": 0.971885,
+        "cost_atmos_machinery": 12.7123
+      },
+      "folder": "tmp\\profiling\\compare-rust-shared-space-idle-03",
+      "full_run_max_private_mib": 2091.02734375,
+      "dll_sha256": {
+        "bandastation_atmos.dll": "5b1a798497e424f9522569bcb2436bbea104a709306b09f7fb54584a32f40dad",
+        "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+        "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+        "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+      },
+      "binary_sha256": "9ea2afc11ff4e91e36d49dd11442cc501435ae06ad487e032fd1ac1b5d177521",
+      "harness_sha256": "5a05061835ae0426913a3f7627f77e323e8d441f7a39791569a7bcbf0ded5b4c"
+    }
+  }
+}
