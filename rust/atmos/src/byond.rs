@@ -516,7 +516,7 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
         (39, 3) => {
             api.output(field(2)?, &owner.profile())?;
         }
-        (23..=37, _) => return world::dispatch(api, &mut store, args),
+        (23..=37 | 40, _) => return world::dispatch(api, &mut store, args),
         _ => return Err("Invalid operation or arity".into()),
     }
     Ok(1.0)

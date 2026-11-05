@@ -26,7 +26,7 @@
 	var/datum/banda_atmos_cell/cell = phase.ensure_binding(src)
 	if(!banda_air_present || cell?.pending_rebind)
 		banda_air_requested = TRUE
-		return air
+		return cell?.pending_rebind ? cell.read_pending_air() : air
 	return phase.borrow_air(cell)
 
 /turf/proc/has_turf_air()
@@ -67,7 +67,7 @@
 /datum/banda_atmos_phase/world_adapter/proc/read_air(turf/open/target)
 	var/datum/banda_atmos_cell/cell = ensure_binding(target)
 	if(cell.pending_rebind)
-		return target.air
+		return cell.read_pending_air()
 	// Ordinary gas is refreshed by publication; space also has a globally shared last_share.
 	if(!cell.cache_current || cell.cache_cycle < 0 || (cell.native_air_kind == 3 && cell.cache_cycle != air_cycle))
 		cell.refresh_cache()
@@ -79,12 +79,12 @@
 		cell.copy_readonly(cell.cached_air)
 	return cell.readonly_air
 
-/datum/banda_atmos_cell/proc/refresh_cache(list/input, list/metadata, compact = FALSE)
+/datum/banda_atmos_cell/proc/refresh_cache(list/input, list/metadata, compact = FALSE, input_offset = 0, metadata_offset = 0)
 	if(!input)
 		input = read_packet()
 	if(!metadata)
 		metadata = read_metadata()
-	cached_air = banda_atmos_decode_air(input, metadata, native_air_kind, cached_air, compact)
+	cached_air = banda_atmos_decode_air(input, metadata, native_air_kind, cached_air, compact, input_offset, metadata_offset)
 	if(istype(cached_air, /datum/gas_mixture/turf))
 		var/datum/gas_mixture/turf/mixture = cached_air
 		mixture.banda_cell = src
@@ -99,6 +99,23 @@
 
 /datum/banda_atmos_cell/proc/remember_air(datum/gas_mixture/air)
 	committed_air = list(air.temperature, air.temperature_archived, air.volume, air.moles.Copy(), air.moles_archive.Copy(), air.reaction_results.Copy())
+
+/// Held mutable aliases may have changed; never let a metadata-only packet hide those writes.
+/datum/banda_atmos_cell/proc/can_reuse_air_cache()
+	return cache_current && cached_air && native_air_kind != 3 && matches_committed_air(cached_air)
+
+/datum/banda_atmos_cell/proc/refresh_service_cache(list/metadata, metadata_offset)
+	if(!can_reuse_air_cache())
+		refresh_cache()
+		return
+	// Publication replaces these snapshots even when their values did not change.
+	cached_air.moles_archive = cached_air.moles_archive.Copy()
+	cached_air.reaction_results = cached_air.reaction_results.Copy()
+	cached_air.last_share = metadata[metadata_offset + 7]
+	var/datum/banda_atmos_phase/world_adapter/phase = owner
+	cache_cycle = phase.air_cycle
+	if(readonly_air)
+		copy_readonly(cached_air)
 
 /datum/banda_atmos_cell/proc/matches_committed_air(datum/gas_mixture/air)
 	return committed_air && air.temperature && air.temperature == committed_air[1] && air.temperature_archived && air.temperature_archived == committed_air[2] && air.volume == committed_air[3] && \
@@ -154,14 +171,36 @@
 	destination.reaction_results = source_air.reaction_results.Copy()
 	destination.last_share = source_air.last_share
 
-/proc/banda_atmos_packet_moles(list/input)
+/proc/banda_atmos_packet_moles(list/input, input_offset = 0)
 	var/list/gases = banda_atmos_gases()
 	var/list/moles = list()
-	var/index = 5
-	for(var/gas in 1 to input[4])
+	var/index = input_offset + 5
+	for(var/gas in 1 to input[input_offset + 4])
 		moles[gases[input[index] + 1]] = input[index + 1]
 		index += 2
 	return moles
+
+/// Compare actual overlay references so floor/plane changes need no additional cache invalidation.
+/proc/banda_atmos_update_packet_visuals(turf/open/target, list/input, input_offset = 0)
+	var/list/gases = banda_atmos_gases()
+	var/list/minimums = GAS_META[META_GAS_MOLES_VISIBLE]
+	var/list/overlays = GAS_META[META_GAS_OVERLAY]
+	var/list/current = target.atmos_overlay_types
+	var/plane_offset = GET_TURF_PLANE_OFFSET(target) + 1
+	var/visible_count = 0
+	var/index = input_offset + 5
+	for(var/entry in 1 to input[input_offset + 4])
+		var/gas = gases[input[index++] + 1]
+		var/amount = input[index++]
+		if(!GAS_IS_VISIBLE(gas, amount, minimums[gas]))
+			continue
+		visible_count++
+		var/list/states = overlays[gas][plane_offset]
+		if(visible_count > length(current) || current[visible_count] != states[GAS_VISIBLE_STATE(amount)])
+			target.update_visuals(banda_atmos_packet_moles(input, input_offset))
+			return
+	if(visible_count != length(current))
+		target.update_visuals(banda_atmos_packet_moles(input, input_offset))
 
 /turf/proc/atmos_electrolyze(working_power, list/electrolyzer_args = list())
 	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)

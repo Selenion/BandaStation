@@ -37,10 +37,33 @@
 		return
 	var/turf/open/open = spot.loc
 	var/datum/banda_atmos_cell/cell = ensure_binding(open)
-	if(!cell || cell.pending_rebind || cell.updating_hotspot)
+	if(!cell)
+		return
+	if(cell.pending_rebind || cell.updating_hotspot)
+		cell.hotspots_pending = TRUE
 		return
 	spot.binding = cell
 	if(open.air)
 		cell.commit_air(open.air, FALSE, FALSE)
 	cell.cache_current = FALSE
 	import_hotspot(spot)
+
+/// Only a constructor rejected by a temporary binding lock needs this local reconciliation.
+/datum/banda_atmos_cell/proc/adopt_pending_hotspots()
+	SHOULD_NOT_SLEEP(TRUE)
+	if(pending_rebind || updating_hotspot || !owner?.world_owned || owner.closed || !isopenturf(target))
+		return
+	var/turf/open/open = target
+	if(!(open.flags_1 & INITIALIZED_1))
+		return
+	var/version = binding_version
+	var/datum/banda_atmos_phase/world_adapter/phase = owner
+	for(var/obj/effect/hotspot/spot in open)
+		if(binding_version != version || pending_rebind || open.banda_atmos_cell != src)
+			return
+		if(QDELETED(spot) || spot.binding)
+			continue
+		// Turf destruction can overwrite the pointer after a deletion callback creates its successor.
+		open.active_hotspot = spot
+		phase.adopt_hotspot(spot)
+	hotspots_pending = FALSE

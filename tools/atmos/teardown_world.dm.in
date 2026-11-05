@@ -1,0 +1,152 @@
+/// Observe the real fuel pool's replacement hotspot, including an item that changes old gas.
+/obj/item/wrench/banda_teardown_probe
+	var/list/exposures = list()
+
+/obj/item/wrench/banda_teardown_probe/fire_act(exposed_temperature, exposed_volume)
+	var/turf/open/target = get_turf(src)
+	if(!target.changing_turf)
+		return
+	var/datum/gas_mixture/air = target.get_mutable_air()
+	var/list/before = banda_atmos_full_packet(air)
+	var/same_air = air == target.get_readonly_air()
+	air.adjust_gas(/datum/gas/nitrogen, 7)
+	exposures += list(list(exposed_temperature, exposed_volume, before, banda_atmos_full_packet(air), same_air))
+
+/turf/open/floor/iron/banda_teardown_probe
+	var/list/teardown_observed
+
+/turf/open/floor/iron/banda_teardown_probe/Destroy()
+	if(teardown_observed)
+		teardown_observed["local_air_before_destroy"] = !!air
+	return ..()
+
+/obj/effect/hotspot/banda_teardown_probe
+	var/created_during_publication = FALSE
+	var/created_during_rebind = FALSE
+
+/obj/effect/hotspot/banda_teardown_probe/Initialize(mapload, starting_volume, starting_temperature)
+	var/turf/open/target = loc
+	created_during_publication = !!target.banda_atmos_cell?.updating_hotspot
+	created_during_rebind = !!target.banda_atmos_cell?.pending_rebind
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/teardown_hotspot_state(turf/target)
+	var/list/output = list()
+	for(var/obj/effect/hotspot/current as anything in SSair.hotspots)
+		if(QDELETED(current) || current.loc != target)
+			continue
+		var/obj/effect/hotspot/banda_teardown_probe/probe = current
+		output += list(list("[current.type]", !!current.binding, current.just_spawned,
+			current.temperature, current.volume, istype(probe) && probe.created_during_publication, istype(probe) && probe.created_during_rebind))
+	return output
+
+/datum/controller/subsystem/atmos_phase_test/proc/teardown_stale_write(datum/gas_mixture/air)
+	air.adjust_gas(/datum/gas/nitrogen, 100)
+
+/datum/controller/subsystem/atmos_phase_test/proc/teardown_checks()
+	var/list/output = list()
+	var/index = 0
+	for(var/transition in list("space", "baseturf", "inherit", "stationary"))
+		var/list/pair = list()
+		for(var/backend in list("dm", "rust"))
+			pair[backend] = teardown_state(backend == "rust", transition, 220 + index++)
+		output[transition] = pair
+	var/turf/open/floor = floor_at(228, 220)
+	var/turf/open/floor/iron/banda_teardown_probe/passive = floor.ChangeTurf(/turf/open/floor/iron/banda_teardown_probe)
+	var/list/observed = list()
+	passive.teardown_observed = observed
+	passive.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(passive))
+	phase.initializing = FALSE
+	passive.ChangeTurf(/turf/open/space)
+	output["passive_change_keeps_air_lazy"] = !observed["local_air_before_destroy"]
+	qdel(phase)
+	return output
+
+/datum/controller/subsystem/atmos_phase_test/proc/teardown_state(native, transition, x)
+	var/turf/open/target = floor_at(x, 220)
+	target.air.set_gas(/datum/gas/nitrogen, 300)
+	if(transition != "stationary")
+		target.air.set_gas(/datum/gas/oxygen, 100)
+		target.air.set_gas(/datum/gas/plasma, 20)
+	target.air.temperature = 700
+	target.air.archive()
+	var/datum/banda_atmos_phase/world_adapter/phase
+	var/datum/banda_atmos_cell/cell
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(list(target))
+		phase.native(18, list(), list())
+		phase.native(30)
+		phase.initializing = FALSE
+	var/obj/item/wrench/banda_teardown_probe/probe = new(target)
+	var/obj/effect/decal/cleanable/fuel_pool/pool = new(target, 3)
+	pool.hotspot_type = /obj/effect/hotspot/banda_teardown_probe
+	rand_seed(29051994)
+	pool.ignite()
+	var/obj/effect/hotspot/spot = target.active_hotspot
+	if(!spot || QDELETED(spot))
+		CRASH("Fuel teardown fixture did not create a hotspot")
+	if(transition != "stationary")
+		spot.just_spawned = FALSE
+	if(native)
+		cell = target.banda_atmos_cell
+	var/datum/gas_mixture/stale_air = cell?.cached_air
+	var/id = cell?.native_id
+	var/version = cell?.binding_version
+	var/list/before = banda_atmos_full_packet(target.get_readonly_air())
+	if(transition != "stationary")
+		switch(transition)
+			if("inherit")
+				target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+			if("baseturf")
+				target = target.ChangeTurf(/turf/baseturf_bottom, flags = CHANGETURF_INHERIT_AIR)
+			else
+				target = target.ChangeTurf(/turf/open/space)
+	var/list/result = list("before" = before, "exposures" = probe.exposures.Copy(),
+		"after" = banda_atmos_full_packet(target.get_readonly_air()), "pool_burns_after_change" = pool.burn_amount)
+	if(native)
+		result["binding_preserved"] = target.banda_atmos_cell == cell && cell.native_id == id && cell.binding_version == version + (transition == "stationary" ? 0 : 1) && !cell.pending_rebind
+		if(transition != "stationary")
+			var/rejected = FALSE
+			try
+				phase.invoke(CALLBACK(src, PROC_REF(teardown_stale_write), stale_air))
+			catch(var/exception/stale_error)
+				rejected = !!findtext(stale_error.name, "outdated native atmosphere binding")
+			result["stale_alias_rejected"] = rejected
+			result["stale_write_keeps_new_air"] = json_encode(result["after"]) == json_encode(banda_atmos_full_packet(target.get_readonly_air()))
+	if(transition != "inherit")
+		var/list/trace = list(teardown_hotspot_state(target))
+		var/list/pool_trace = list(QDELETED(pool) ? 0 : pool.burn_amount)
+		for(var/tick in 1 to 4)
+			SSair.times_fired++
+			if(native)
+				phase.run_tick(TRUE)
+			else
+				if(target in SSair.active_turfs)
+					target.process_cell(SSair.times_fired)
+				for(var/obj/effect/hotspot/current as anything in SSair.hotspots.Copy())
+					if(!QDELETED(current) && current.loc == target)
+						current.process()
+			trace += list(teardown_hotspot_state(target))
+			pool_trace += QDELETED(pool) ? 0 : pool.burn_amount
+		result["hotspot_trace"] = trace
+		result["pool_trace"] = pool_trace
+		var/count = 0
+		for(var/obj/effect/hotspot/current as anything in SSair.hotspots)
+			if(!QDELETED(current) && current.loc == target)
+				count++
+		result["hotspots_after_four_ticks"] = count
+		result["pool_burns_after_four_ticks"] = QDELETED(pool) ? 0 : pool.burn_amount
+	log_world("BANDA_ATMOS_TEARDOWN [native ? "rust" : "dm"]/[transition]: [json_encode(result)]")
+	if(!QDELETED(pool))
+		qdel(pool)
+	for(var/obj/effect/hotspot/current in target)
+		qdel(current)
+	qdel(probe)
+	if(phase)
+		qdel(phase)
+	return result

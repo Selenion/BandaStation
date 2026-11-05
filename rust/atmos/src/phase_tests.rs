@@ -2,6 +2,38 @@ use super::*;
 use crate::{catalog::*, cell::Hotspot, Holder};
 
 #[test]
+fn publication_flags_distinguish_service_updates_and_merge_pending_full_changes() {
+    let mut store = Store::default();
+    let mut air = Mixture::new(T20C, CELL_VOLUME, true);
+    air.set(NITROGEN, 100.0);
+    let tile = Tile::new([1, 1, 1], &air, false);
+    let id = store
+        .register(Cell::new(air, Context::default()), tile)
+        .unwrap();
+    store.discard_changes().unwrap();
+    let completed = store.begin().unwrap().calculate();
+    store.finish(completed).unwrap();
+    store.take_commands().unwrap();
+    assert_eq!(store.take_publication_changes().unwrap(), [(id, true)]);
+    for expected in [false, true] {
+        store.write(Write::Control(id, 0)).unwrap();
+        if !expected {
+            store.take_changes().unwrap();
+        }
+        let completed = store.begin().unwrap().calculate();
+        store.finish(completed).unwrap();
+        store.take_commands().unwrap();
+        assert_eq!(store.take_publication_changes().unwrap(), [(id, expected)]);
+        assert!(store.take_publication_changes().unwrap().is_empty());
+    }
+    let mut air = store.snapshot().cells[&id].air.clone();
+    air.results[0] = Some(0.0);
+    let archive = store.snapshot().schedule.tiles[&id].archived.clone();
+    store.write(Write::Commit(id, air, archive, false)).unwrap();
+    assert_eq!(store.take_publication_changes().unwrap(), [(id, true)]);
+}
+
+#[test]
 fn staged_worker_keeps_old_snapshot_until_safe_publication_and_merges_external_gas_once() {
     let mut store = Store::default();
     let mut air = Mixture::new(T20C, CELL_VOLUME, true);
@@ -142,7 +174,11 @@ fn assert_full_scan(store: &mut Store) {
     store.finish(completed).unwrap();
     assert!(store.spare.is_some());
     let after = store.snapshot();
-    let actual: BTreeSet<_> = store.take_changes().unwrap().into_iter().collect();
+    let actual: BTreeMap<_, _> = store
+        .take_publication_changes()
+        .unwrap()
+        .into_iter()
+        .collect();
     assert_eq!(
         actual, expected,
         "incomplete work set at cycle {}",

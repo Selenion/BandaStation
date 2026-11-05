@@ -97,7 +97,7 @@ pub struct Completed {
     epoch: u32,
     frame: Frame,
     commands: Vec<Command>,
-    changed: BTreeSet<CellId>,
+    changed: BTreeMap<CellId, bool>,
 }
 
 impl Job {
@@ -156,17 +156,17 @@ impl Frame {
         &self,
         previous: &Self,
         candidates: impl Iterator<Item = CellId>,
-    ) -> BTreeSet<CellId> {
+    ) -> BTreeMap<CellId, bool> {
         candidates
-            .filter(|&id| {
+            .filter_map(|id| {
                 let cell = &self.cells[&id];
                 let old = &previous.cells[&id];
                 let tile = &self.schedule.tiles[&id];
                 let old_tile = &previous.schedule.tiles[&id];
-                cell.air != old.air
+                let air_changed = cell.air != old.air || tile.archived != old_tile.archived;
+                let changed = air_changed
                     || cell.hotspot != old.hotspot
                     || cell.flags != old.flags
-                    || tile.archived != old_tile.archived
                     || tile.archived_cycle != old_tile.archived_cycle
                     || tile.current_cycle != old_tile.current_cycle
                     || tile.ticker != old_tile.ticker
@@ -176,7 +176,8 @@ impl Frame {
                     || tile.direction != old_tile.direction
                     || tile.terrain != old_tile.terrain
                     || (!matches!(tile.boundary, crate::transport::Boundary::Space)
-                        && tile.last_share != old_tile.last_share)
+                        && tile.last_share != old_tile.last_share);
+                changed.then_some((id, air_changed))
             })
             .collect()
     }
@@ -212,7 +213,7 @@ pub struct Store {
     bindings: BTreeMap<CellId, Binding>,
     detached: BTreeSet<CellId>,
     coordinates: BTreeMap<[i32; 3], CellId>,
-    changed: BTreeSet<CellId>,
+    changed: BTreeMap<CellId, bool>,
     topology_dirty: BTreeSet<CellId>,
     commands: Vec<Command>,
     closed: bool,
@@ -232,7 +233,7 @@ impl Default for Store {
             bindings: BTreeMap::new(),
             detached: BTreeSet::new(),
             coordinates: BTreeMap::new(),
-            changed: BTreeSet::new(),
+            changed: BTreeMap::new(),
             topology_dirty: BTreeSet::new(),
             commands: Vec::new(),
             closed: false,
@@ -431,7 +432,7 @@ impl Store {
                 self.coordinates.remove(&coordinates);
             }
             if visible && frame.cells.contains_key(&id) {
-                self.changed.insert(id);
+                self.changed.insert(id, true);
             }
         }
         Ok(())
@@ -527,7 +528,9 @@ impl Store {
         }
         let mut frame = completed.frame;
         let mut commands = completed.commands;
-        self.changed.extend(completed.changed);
+        for (id, air_changed) in completed.changed {
+            *self.changed.entry(id).or_default() |= air_changed;
+        }
         self.sync_ids.extend(frame.schedule.touched.iter().copied());
         // External changes become visible only after the completed native calculation.
         for pending in self.writes.drain(..) {
@@ -542,7 +545,7 @@ impl Store {
             let visible = apply(&mut frame, pending.write, &mut self.sync_ids);
             commands.extend(drain_effects(&mut frame, id, pending.binding_version));
             if visible && frame.cells.contains_key(&id) {
-                self.changed.insert(id);
+                self.changed.insert(id, true);
             }
         }
         self.commands = commands
@@ -571,7 +574,7 @@ impl Store {
                 self.commands
                     .extend(drain_effects(frame, id, pending.binding_version));
                 if visible && frame.cells.contains_key(&id) {
-                    self.changed.insert(id);
+                    self.changed.insert(id, true);
                 }
             }
             self.bindings.retain(|id, _| frame.cells.contains_key(id));
@@ -633,6 +636,15 @@ impl Store {
     }
 
     pub fn take_changes(&mut self) -> Result<Vec<CellId>, Error> {
+        Ok(self
+            .take_publication_changes()?
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect())
+    }
+
+    /// The flag excludes metadata-only updates; external writes conservatively require full gas.
+    pub fn take_publication_changes(&mut self) -> Result<Vec<(CellId, bool)>, Error> {
         if self.closed {
             return Err(Error::Closed);
         }
@@ -641,7 +653,7 @@ impl Store {
         }
         Ok(std::mem::take(&mut self.changed)
             .into_iter()
-            .filter(|id| self.published.cells.contains_key(id))
+            .filter(|(id, _)| self.published.cells.contains_key(id))
             .collect())
     }
 

@@ -12,6 +12,8 @@ import shutil
 import subprocess
 import time
 
+from runtime_check import validate_runtime_logs
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -163,6 +165,25 @@ def stage(target):
         shutil.copy2(dll, target / dll.name)
 
 
+def finish_capture(output, manifest, elapsed):
+    validation = validate_runtime_logs(output)
+    manifest["runtime_validation"] = validation
+    (output / "runtime-validation.json").write_text(json.dumps(validation, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if validation["unexpected_count"]:
+        (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
+        raise SystemExit(f"Unexpected runtime in profiling run; inspect {output / 'runtime-validation.json'}")
+    metadata_path = output / "profile-metadata.json"
+    if not metadata_path.exists():
+        raise SystemExit(f"No completed profile. Inspect {output / 'tgstation.log'}")
+    manifest["total_wall_seconds"] = elapsed
+    manifest["metadata"] = json.loads(metadata_path.read_text(encoding="utf-8-sig"))
+    manifest["binary_sha256"] = hashlib.sha256((output / "tgstation.dmb").read_bytes()).hexdigest()
+    (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
+    if validation["known_count"]:
+        print(f"Accepted with {validation['known_count']} known baseline runtimes; see runtime-validation.json")
+    print(f"Captured profile: {output}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--byond", type=Path, required=True)
@@ -224,17 +245,7 @@ def main():
         shutil.copy2(binary.with_suffix("." + extension), output / ("tgstation." + extension))
     daemon = args.byond / ("dd.exe" if os.name == "nt" else "DreamDaemon")
     elapsed = capture(daemon, output, args.scenario, bool(args.rust_dll), args.threaded)
-    logs = "\n".join(p.read_text(encoding="utf-8-sig", errors="replace") for p in output.rglob("*") if p.is_file() and (p.suffix == ".log" or p.name.endswith(".log.json")))
-    if any(marker in logs.lower() for marker in ("runtime error:", "runtime in ", "infinite loop")):
-        raise SystemExit(f"Runtime in profiling run; inspect {output}")
-    metadata_path = output / "profile-metadata.json"
-    if not metadata_path.exists():
-        raise SystemExit(f"No completed profile. Inspect {output / 'tgstation.log'}")
-    manifest["total_wall_seconds"] = elapsed
-    manifest["metadata"] = json.loads(metadata_path.read_text(encoding="utf-8-sig"))
-    manifest["binary_sha256"] = hashlib.sha256((output / "tgstation.dmb").read_bytes()).hexdigest()
-    (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
-    print(f"Captured profile: {output}")
+    finish_capture(output, manifest, elapsed)
 
 
 if __name__ == "__main__":

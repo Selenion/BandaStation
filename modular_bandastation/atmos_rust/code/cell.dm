@@ -11,6 +11,8 @@
 	/// Null uses a separate BYOND probability roll for every emitted random effect; numbers are test overrides.
 	var/rng_bits
 	var/updating_hotspot = FALSE
+	/// A gameplay constructor ran while this binding could not accept its hotspot yet.
+	var/hotspots_pending = FALSE
 	var/binding_version = 1
 	var/pending_rebind = FALSE
 	var/change_depth = 0
@@ -141,7 +143,7 @@
 	var/turf/open/open = isopenturf(target) && target.has_turf_air() ? target : null
 	return banda_atmos_decode_air(input, metadata, owner.world_owned ? native_air_kind : (istype(open?.air, /datum/gas_mixture/immutable/space) ? 3 : 2))
 
-/proc/banda_atmos_decode_air(list/input, list/metadata, kind, datum/gas_mixture/air, compact = FALSE)
+/proc/banda_atmos_decode_air(list/input, list/metadata, kind, datum/gas_mixture/air, compact = FALSE, input_offset = 0, metadata_offset = 0)
 	if(air)
 		// Keep previously borrowed mixtures and their moles list alive across publication.
 		air.moles.Cut()
@@ -151,14 +153,14 @@
 	else if(kind == 3)
 		air = new /datum/gas_mixture/immutable/space
 	else if(kind == 1 || kind == 4)
-		air = new /datum/gas_mixture(input[3])
+		air = new /datum/gas_mixture(input[input_offset + 3])
 	else
-		air = new /datum/gas_mixture/turf(input[3])
-	air.volume = input[3]
-	air.temperature = input[2]
+		air = new /datum/gas_mixture/turf(input[input_offset + 3])
+	air.volume = input[input_offset + 3]
+	air.temperature = input[input_offset + 2]
 	var/list/gases = banda_atmos_gases()
-	var/index = 5
-	for(var/gas in 1 to input[4])
+	var/index = input_offset + 5
+	for(var/gas in 1 to input[input_offset + 4])
 		air.moles[gases[input[index] + 1]] = input[index + 1]
 		index += 2
 	var/list/reactions = banda_atmos_reactions()
@@ -172,10 +174,10 @@
 			if(input[index])
 				air.reaction_results[reaction] = input[index + 1]
 			index += 2
-	air.temperature_archived = metadata[13]
-	air.last_share = metadata[7]
-	index = 15
-	for(var/gas in 1 to metadata[14])
+	air.temperature_archived = metadata[metadata_offset + 13]
+	air.last_share = metadata[metadata_offset + 7]
+	index = metadata_offset + 15
+	for(var/gas in 1 to metadata[metadata_offset + 14])
 		air.moles_archive[gases[metadata[index] + 1]] = metadata[index + 1]
 		index += 2
 	return air
@@ -190,54 +192,65 @@
 	owner.native(4, native_id, input)
 	return input
 
-/datum/banda_atmos_cell/proc/sync_air(list/input, list/metadata, compact = FALSE)
+/datum/banda_atmos_cell/proc/sync_air(list/input, list/metadata, compact = FALSE, input_offset = 0, metadata_offset = 0, input_count = 0, metadata_count = 0)
 	if(!target || QDELETED(src) || pending_rebind)
 		return
 	if(!metadata)
 		metadata = read_metadata()
 	if(!input)
 		input = read_packet()
-	target.temperature = metadata[1]
-	target.temperature_archived = metadata[2]
-	target.archived_cycle = metadata[3] ? metadata[3] + owner.source_cycle_offset : 0
-	target.current_cycle = metadata[4] ? metadata[4] + owner.source_cycle_offset : 0
+	target.temperature = metadata[metadata_offset + 1]
+	target.temperature_archived = metadata[metadata_offset + 2]
+	target.archived_cycle = metadata[metadata_offset + 3] ? metadata[metadata_offset + 3] + owner.source_cycle_offset : 0
+	target.current_cycle = metadata[metadata_offset + 4] ? metadata[metadata_offset + 4] + owner.source_cycle_offset : 0
 	if(!isopenturf(target) || !target.has_turf_air())
 		return
 	var/turf/open/open = target
 	if(owner.world_owned)
 		if(cached_air || readonly_air)
-			refresh_cache(input, metadata, compact)
+			if(compact && metadata_count == 12)
+				refresh_service_cache(metadata, metadata_offset)
+			else
+				refresh_cache(input, metadata, compact, input_offset, metadata_offset)
 	else
 		var/datum/gas_mixture/air = read_air(input, metadata)
 		open.air.copy_from(air)
 		open.air.reaction_results = air.reaction_results.Copy()
 		open.air.moles_archive = air.moles_archive.Copy()
 		open.air.temperature_archived = air.temperature_archived
-		open.air.last_share = metadata[7]
-	open.significant_share_ticker = metadata[5]
-	open.excited = metadata[6]
-	open.pressure_difference = metadata[8]
-	open.pressure_direction = metadata[9]
-	open.update_visuals(owner.world_owned ? banda_atmos_packet_moles(input) : null)
-	sync_hotspot(input, metadata)
+		open.air.last_share = metadata[metadata_offset + 7]
+	open.significant_share_ticker = metadata[metadata_offset + 5]
+	open.excited = metadata[metadata_offset + 6]
+	open.pressure_difference = metadata[metadata_offset + 8]
+	open.pressure_direction = metadata[metadata_offset + 9]
+	if(owner.world_owned)
+		banda_atmos_update_packet_visuals(open, input, input_offset)
+	else
+		open.update_visuals()
+	sync_hotspot(input, metadata, input_offset, metadata_offset, input_count)
 
-/datum/banda_atmos_cell/proc/sync_hotspot(list/input, list/metadata)
+/datum/banda_atmos_cell/proc/sync_hotspot(list/input, list/metadata, input_offset = 0, metadata_offset = 0, input_count = 0)
 	var/turf/open/open = target
 	var/obj/effect/hotspot/spot = open.active_hotspot
+	if(!input_count)
+		input_count = length(input) - input_offset
+	var/end = input_offset + input_count
 	updating_hotspot = TRUE
-	if(input[length(input) - 3])
+	if(input[end - 3])
 		if(!spot)
-			spot = new /obj/effect/hotspot/banda_native(open, input[length(input) - 1], input[length(input) - 2], src)
+			spot = new /obj/effect/hotspot/banda_native(open, input[end - 1], input[end - 2], src)
 		spot.binding = src
-		spot.temperature = input[length(input) - 2]
-		spot.volume = input[length(input) - 1]
-		spot.just_spawned = metadata[10]
-		spot.bypassing = metadata[11]
-		spot.cold_fire = metadata[12]
+		spot.temperature = input[end - 2]
+		spot.volume = input[end - 1]
+		spot.just_spawned = metadata[metadata_offset + 10]
+		spot.bypassing = metadata[metadata_offset + 11]
+		spot.cold_fire = metadata[metadata_offset + 12]
 		spot.update_native_presentation()
 	else if(spot)
 		qdel(spot)
 	updating_hotspot = FALSE
+	if(hotspots_pending)
+		adopt_pending_hotspots()
 
 /datum/banda_atmos_cell/proc/expose(temperature, volume, strengthen)
 	if(temperature < TCMB)

@@ -132,7 +132,8 @@ var/global/banda_phase_callback_calls = 0
 	var/list/threaded = threaded_world_checks()
 	var/list/feedback = list("sync" = feedback_check(FALSE, 173), "worker" = feedback_check(TRUE, 177))
 	var/list/threaded_errors = threaded_error_checks()
-	WRITE_FILE(file("phase-output.json"), json_encode(list("byond" = "[world.byond_version].[world.byond_build]", "startup_seed" = num2text(Master.random_seed, 9), "cases" = output, "checks" = checks, "networks" = networks, "inheritance" = inheritance, "bindings" = bindings, "deferred" = deferred, "api" = api, "contacts" = contacts, "debug" = debug, "exchange" = exchange, "exchange_error" = exchange_error, "exchange_effects" = exchange_effects, "exchange_spawn" = exchange_spawn, "threaded" = threaded, "feedback" = feedback, "threaded_errors" = threaded_errors)))
+	var/list/teardown = teardown_checks()
+	WRITE_FILE(file("phase-output.json"), json_encode(list("byond" = "[world.byond_version].[world.byond_build]", "startup_seed" = num2text(Master.random_seed, 9), "cases" = output, "checks" = checks, "networks" = networks, "inheritance" = inheritance, "bindings" = bindings, "deferred" = deferred, "api" = api, "contacts" = contacts, "debug" = debug, "exchange" = exchange, "exchange_error" = exchange_error, "exchange_effects" = exchange_effects, "exchange_spawn" = exchange_spawn, "threaded" = threaded, "feedback" = feedback, "threaded_errors" = threaded_errors, "teardown" = teardown)))
 	log_world("BANDA_ATMOS_PHASE_INTEGRATION_COMPLETE")
 	shutdown()
 

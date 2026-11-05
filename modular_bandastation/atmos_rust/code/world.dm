@@ -31,6 +31,13 @@
 	..()
 	if(!native_ready)
 		return
+	try
+		// Probe the additive publication operation before registering any world state.
+		native(40, list(), 1)
+	catch(var/exception/publication_error)
+		native_ready = FALSE
+		startup_error = "Native publication requires an updated DLL: [publication_error.name]"
+		return
 	threaded = CONFIG_GET(flag/rust_atmos_threaded)
 	if(threaded)
 		try
@@ -357,15 +364,20 @@
 
 /datum/banda_atmos_phase/world_adapter/proc/project_changes()
 	var/list/ids = list()
-	native(26, ids)
+	var/changes_received = FALSE
 	synchronizing = TRUE
 	try
+		native(40, ids, 1) // Protocol 1: sign marks metadata-only changes, absolute value is the cell ID.
+		changes_received = TRUE
 		for(var/start = 1; start <= length(ids); start += 256)
 			var/list/requests = list()
 			for(var/offset = start; offset < min(length(ids) + 1, start + 256); offset++)
-				var/id = ids[offset]
+				var/id = abs(ids[offset])
 				var/datum/banda_atmos_cell/binding = length(cells) >= id ? cells[id] : null
-				requests += list(id, !!binding?.cached_air || !!binding?.readonly_air)
+				var/full_cache = !!binding?.cached_air || !!binding?.readonly_air
+				if(full_cache && ids[offset] < 0 && binding.can_reuse_air_cache())
+					full_cache = FALSE
+				requests += list(id, full_cache)
 			var/list/output = list()
 			native(35, requests, output)
 			var/index = 1
@@ -377,16 +389,28 @@
 					CRASH("Native atmosphere coordinate registry mismatch")
 				var/kind = output[index++]
 				var/count = output[index++]
-				var/list/air = output.Copy(index, index + count)
+				var/air_offset = index - 1
+				var/air_count = count
 				index += count
 				count = output[index++]
-				var/list/metadata = output.Copy(index, index + count)
+				var/metadata_offset = index - 1
 				index += count
 				var/datum/banda_atmos_cell/cell = ensure_binding(target)
 				if(cell.binding_version == version && !cell.pending_rebind)
 					cell.native_air_kind = kind
-					cell.sync_air(air, metadata, TRUE)
+					cell.sync_air(output, output, TRUE, air_offset, metadata_offset, air_count, count)
 	catch(var/exception/error)
+		// Rust already consumed these changes; an aborted projection may leave any cache behind.
+		if(!changes_received)
+			for(var/datum/banda_atmos_cell/unknown_cache in cells)
+				if(!QDELETED(unknown_cache))
+					unknown_cache.cache_current = FALSE
+		for(var/changed_id in ids)
+			var/cache_id = abs(changed_id)
+			if(cache_id >= 1 && length(cells) >= cache_id)
+				var/datum/banda_atmos_cell/invalidated = cells[cache_id]
+				if(invalidated && !QDELETED(invalidated))
+					invalidated.cache_current = FALSE
 		synchronizing = FALSE
 		throw error
 	synchronizing = FALSE

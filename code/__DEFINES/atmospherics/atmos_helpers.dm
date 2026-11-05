@@ -54,6 +54,11 @@
 #define THERMAL_ENERGY(gas) (gas.temperature * gas.heat_capacity())
 
 GLOBAL_LIST_INIT(nonoverlaying_gases, typecache_of_gases_with_no_overlays())
+// BANDASTATION ADDITION START - Share visibility rules with native packet rendering.
+#define GAS_IS_VISIBLE(gas_id, amount, minimum) (!GLOB.nonoverlaying_gases[gas_id] && amount > minimum)
+#define GAS_VISIBLE_STATE(amount) min(TOTAL_VISIBLE_STATES, CEILING(amount / MOLES_GAS_VISIBLE_STEP, 1))
+// BANDASTATION ADDITION END
+// BANDASTATION EDIT START - Share visibility and opacity rules with native packet rendering.
 ///Returns a list of overlays of every gas in the mixture
 #define GAS_OVERLAYS(moles, out_var, z_layer_turf)\
 	do { \
@@ -62,13 +67,13 @@ GLOBAL_LIST_INIT(nonoverlaying_gases, typecache_of_gases_with_no_overlays())
 		var/list/_META_MOLES_VISIBLE = GAS_META[META_GAS_MOLES_VISIBLE];\
 		var/list/_META_GAS_OVERLAY = GAS_META[META_GAS_OVERLAY];\
 		for(var/gas_id, amount in moles){\
-			if(GLOB.nonoverlaying_gases[gas_id]) continue;\
-			if(amount <= _META_MOLES_VISIBLE[gas_id]) continue;\
+			if(!GAS_IS_VISIBLE(gas_id, amount, _META_MOLES_VISIBLE[gas_id])) continue;\
 			var/_GAS_OVERLAY = _META_GAS_OVERLAY[gas_id][offset];\
-			out_var += _GAS_OVERLAY[min(TOTAL_VISIBLE_STATES, CEILING(amount / MOLES_GAS_VISIBLE_STEP, 1))];\
+			out_var += _GAS_OVERLAY[GAS_VISIBLE_STATE(amount)];\
 		}\
 	}\
 	while (FALSE)
+// BANDASTATION EDIT END
 
 
 #ifdef TESTING

@@ -1,6 +1,16 @@
 /datum/banda_atmos_cell/proc/environment(active)
 	return banda_atmos_environment(target, active)
 
+/// Destruction callbacks still see the old turf's gas, without writing into the replacement binding.
+/datum/banda_atmos_cell/proc/read_pending_air()
+	if(!isopenturf(target))
+		return null
+	var/turf/open/open = target
+	// A new or uninitialized replacement must never borrow its predecessor's mixture.
+	if(!open.air && pending_rebind && change_depth && open.banda_air_present && (open.flags_1 & INITIALIZED_1))
+		open.air = read_air()
+	return open.air
+
 /datum/banda_atmos_cell/proc/turf_changing(turf/source, path, list/new_baseturfs, flags, list/post_change_callbacks)
 	SIGNAL_HANDLER
 	if(!owner || QDELETED(owner))
@@ -108,6 +118,8 @@
 		world_owner.mark_topology(target)
 		if(open?.active_hotspot)
 			world_owner.adopt_hotspot(open.active_hotspot)
+		if(hotspots_pending)
+			adopt_pending_hotspots()
 	sync_air()
 
 /datum/banda_atmos_safe/rebind/on_run(datum/banda_atmos_cell/cell, version)

@@ -1,10 +1,29 @@
 /// Count boundary writes without replacing the real native implementation.
 /datum/banda_atmos_phase/world_adapter/exchange_probe
 	var/commits = 0
+	var/service_publications = 0
+	var/fail_binding_id = 0
+	var/fail_change_read = FALSE
+
+/datum/banda_atmos_phase/world_adapter/exchange_probe/ensure_binding(turf/target)
+	if(fail_binding_id && target.banda_atmos_id == fail_binding_id)
+		fail_binding_id = 0
+		throw EXCEPTION("BANDA_EXPECTED_PUBLICATION_ERROR")
+	return ..()
 
 /datum/banda_atmos_phase/world_adapter/exchange_probe/native(operation, ...)
+	if(operation == 40 && fail_change_read)
+		fail_change_read = FALSE
+		..(arglist(args))
+		throw EXCEPTION("BANDA_EXPECTED_CHANGE_READ_ERROR")
 	if(operation == 3 || operation == 36)
 		commits++
+	if(operation == 35)
+		var/list/requests = args[2]
+		for(var/index = 1; index <= length(requests); index += 2)
+			var/id = requests[index]
+			if(!requests[index + 1] && length(cells) >= id && cells[id]?.cached_air)
+				service_publications++
 	return ..(arglist(args))
 
 /obj/machinery/banda_exchange_probe
@@ -25,6 +44,40 @@
 /obj/machinery/banda_exchange_probe/Destroy()
 	air_target = null
 	return ..()
+
+/turf/open/floor/iron/banda_visual_probe
+	var/visual_calls = 0
+
+/turf/open/floor/iron/banda_visual_probe/update_visuals(list/native_moles)
+	visual_calls++
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/packet_visual_checks()
+	var/turf/open/floor = floor_at(210, 180)
+	var/turf/open/floor/iron/banda_visual_probe/target = floor.ChangeTurf(/turf/open/floor/iron/banda_visual_probe)
+	var/list/gases = banda_atmos_gases()
+	var/plasma = gases.Find(/datum/gas/plasma) - 1
+	var/tritium = gases.Find(/datum/gas/tritium) - 1
+	var/nitrogen = gases.Find(/datum/gas/nitrogen) - 1
+	var/minimum = GAS_META[META_GAS_MOLES_VISIBLE][/datum/gas/plasma]
+	var/states_match = TRUE
+	var/unchanged_skipped = TRUE
+	for(var/amount in list(0, minimum - 0.0001, minimum, minimum + 0.0001, MOLES_GAS_VISIBLE_STEP * 20 - 0.0001, MOLES_GAS_VISIBLE_STEP * 20, MOLES_GAS_VISIBLE_STEP * 20 + 0.0001, TOTAL_VISIBLE_STATES * MOLES_GAS_VISIBLE_STEP * 2))
+		var/list/input = list(0, T20C, CELL_VOLUME, 3, plasma, amount, tritium, amount, nitrogen, 1000)
+		target.update_visuals(banda_atmos_packet_moles(input))
+		var/list/expected = target.atmos_overlay_types?.Copy()
+		target.update_visuals(list())
+		banda_atmos_update_packet_visuals(target, input)
+		states_match = states_match && json_encode(expected) == json_encode(target.atmos_overlay_types)
+		var/calls = target.visual_calls
+		banda_atmos_update_packet_visuals(target, input)
+		unchanged_skipped = unchanged_skipped && calls == target.visual_calls
+	floor = target.ChangeTurf(/turf/open/floor/iron)
+	target = floor.ChangeTurf(/turf/open/floor/iron/banda_visual_probe)
+	var/list/empty_packet = list(0, T20C, CELL_VOLUME, 0)
+	banda_atmos_update_packet_visuals(target, empty_packet)
+	states_match = states_match && !length(target.atmos_overlay_types)
+	return list("packet_visual_states_match_original" = states_match, "unchanged_packet_visuals_skip_rebuild" = unchanged_skipped)
 
 /datum/controller/subsystem/atmos_phase_test/proc/exchange_modify(turf/open/target, mode)
 	var/datum/gas_mixture/air = target.return_air()
@@ -77,6 +130,19 @@
 	phase.native(35, list(cell.native_id, TRUE), full)
 	checks["unborrowed_publication_omits_results_and_archive"] = length(presentation) < length(full) && presentation[8 + presentation[7]] == 12
 	checks["passive_cell_still_has_no_dm_mixture"] = !passive.air && !passive.banda_atmos_cell
+	// Batch decoding must respect both slice boundaries without retaining the output packet.
+	var/list/air_packet = cell.read_packet()
+	var/list/metadata_packet = cell.read_metadata()
+	var/list/batch = list(-999, -998)
+	var/air_offset = length(batch)
+	batch += air_packet
+	batch += -997
+	var/metadata_offset = length(batch)
+	batch += metadata_packet
+	batch += -996
+	var/datum/gas_mixture/decoded = banda_atmos_decode_air(batch, batch, cell.native_air_kind, input_offset = air_offset, metadata_offset = metadata_offset)
+	checks["batch_offsets_preserve_full_mixture"] = json_encode(banda_atmos_full_packet(decoded)) == json_encode(banda_atmos_full_packet(cell.read_air()))
+	checks["batch_offsets_preserve_rendered_gases"] = json_encode(banda_atmos_packet_moles(batch, air_offset)) == json_encode(banda_atmos_packet_moles(air_packet))
 	// Return to a result-free mixture so a real unchanged borrow can be skipped.
 	var/datum/gas_mixture/turf/clean = new()
 	clean.set_gas(/datum/gas/nitrogen, 19)
@@ -122,7 +188,64 @@
 	phase.run_tick(TRUE)
 	checks["publication_preserves_borrowed_moles_identity"] = clean == cell.cached_air && clean.moles == moles && clean.moles[/datum/gas/nitrogen] == 23
 	checks["publication_keeps_archive_result_snapshot_semantics"] = clean.moles_archive != old_archive && clean.reaction_results != old_results && old_archive[/datum/gas/nitrogen] == 19
+	// Equipment commits keep the old archive; one active pass must update it first.
+	phase.native(19, cell.native_id, 0)
+	phase.native(30)
+	SSair.times_fired++
+	phase.run_tick(TRUE)
+	phase.native(19, cell.native_id, 0)
+	phase.native(30)
+	var/list/archive_before_service = clean.moles_archive
+	var/list/results_before_service = clean.reaction_results
+	var/datum/gas_mixture/service_readonly = target.get_readonly_air()
+	var/service_before = phase.service_publications
+	SSair.times_fired++
+	phase.run_tick(TRUE)
+	checks["metadata_only_publication_omits_borrowed_archive"] = phase.service_publications > service_before
+	checks["metadata_only_publication_keeps_alias_and_snapshot_contract"] = clean == cell.cached_air && clean.moles == moles && clean.moles_archive != archive_before_service && clean.reaction_results != results_before_service && clean.moles[/datum/gas/nitrogen] == 23 && service_readonly.moles[/datum/gas/nitrogen] == 23
+	clean.moles[/datum/gas/nitrogen] = 999
+	cell.refresh_service_cache(cell.read_metadata(), 0)
+	checks["metadata_cache_revalidates_mutated_alias"] = clean.moles[/datum/gas/nitrogen] == 23 && cell.can_reuse_air_cache()
+	// Fail after native changes were consumed, before this DM binding receives the new mixture.
+	var/datum/gas_mixture/newer = cell.read_air()
+	newer.moles[/datum/gas/nitrogen] = 24
+	newer.archive()
+	phase.native(36, cell.native_id, FALSE, banda_atmos_compact_packet(newer, TRUE))
+	phase.fail_binding_id = cell.native_id
+	var/publication_failed = FALSE
+	try
+		phase.apply_frame()
+	catch(var/exception/publication_error)
+		publication_failed = publication_error.name == "BANDA_EXPECTED_PUBLICATION_ERROR"
+	var/stale_cycle = cell.cache_cycle
+	phase.native(19, cell.native_id, 0)
+	phase.native(30)
+	SSair.times_fired++
+	phase.native(16, SSair.times_fired)
+	phase.air_cycle = SSair.times_fired
+	phase.apply_frame()
+	var/datum/gas_mixture/native_state = cell.read_air()
+	checks["partial_publication_recovers_after_missed_frame"] = publication_failed && clean.moles[/datum/gas/nitrogen] == native_state.moles[/datum/gas/nitrogen] && native_state.moles[/datum/gas/nitrogen] == 24
+	log_world("BANDA_STALE_CACHE [json_encode(list("publication_failed" = publication_failed, "stale_cycle" = stale_cycle, "current_cycle" = phase.air_cycle, "cached" = clean.moles[/datum/gas/nitrogen], "native" = native_state.moles[/datum/gas/nitrogen]))]")
+	cell.refresh_cache()
+	checks["full_publication_recovers_after_missed_frame"] = clean.moles[/datum/gas/nitrogen] == 24
+	newer = cell.read_air()
+	newer.moles[/datum/gas/nitrogen] = 25
+	newer.archive()
+	phase.native(36, cell.native_id, FALSE, banda_atmos_compact_packet(newer, TRUE))
+	phase.fail_change_read = TRUE
+	var/change_read_failed = FALSE
+	try
+		phase.project_changes()
+	catch(var/exception/change_read_error)
+		change_read_failed = change_read_error.name == "BANDA_EXPECTED_CHANGE_READ_ERROR"
+	var/invalidated_after_read = !cell.cache_current
+	var/datum/gas_mixture/after_read_failure = target.get_readonly_air()
+	checks["change_list_failure_invalidates_cache"] = change_read_failed && invalidated_after_read && !phase.synchronizing && after_read_failure.moles[/datum/gas/nitrogen] == 25
 	qdel(phase)
+	var/list/visual_checks = packet_visual_checks()
+	for(var/key in visual_checks)
+		checks[key] = visual_checks[key]
 	return checks
 
 /// Compare partial writes across an equipment exception with the original DM path.

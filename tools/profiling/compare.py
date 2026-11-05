@@ -55,6 +55,7 @@ def main():
     if args.output.exists() or args.output.with_suffix(".json").exists():
         parser.error("Use a new output path to preserve the previous comparison")
     rows = []
+    runtime_notes = []
     lines = ["# Парные локальные профили DM/Rust", "", "CPU — процент одного ядра; память — private, не сумма с working set.", "",
              "| Сценарий / режим Rust | CPU DM / Rust, % | Главный поток DM / Rust, % | Private DM / Rust, MiB, максимум | SSair DM / Rust, ms* | Проходы MC DM / Rust | Завершённые native-расчёты | Реальное окно DM / Rust, s |",
              "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
@@ -69,6 +70,7 @@ def main():
             assert not any(key in manifest for key in ("diagnostic_only_reason", "diagnostic_instrumentation")), f"Diagnostic capture cannot establish performance: {folder}"
             # run.py adds these only after the complete runtime log passes validation.
             assert manifest.get("metadata") == metadata and manifest.get("binary_sha256"), f"Capture was not accepted: {folder}"
+            assert not manifest.get("runtime_validation", {}).get("unexpected_count"), f"Unexpected runtime: {folder}"
             assert manifest.get("rust_threaded", False) == metadata.get("rust_threaded", False), f"Wrong worker mode: {folder}"
         for key in ("map", "warmup_seconds", "sample_seconds", "harness_sha256", "platform", "logical_cpus"):
             assert manifests[0][key] == manifests[1][key], f"Different capture setting: {key}"
@@ -85,7 +87,13 @@ def main():
             assert b["native_completed_ticks"] is not None, "Worker requires a completed-calculation counter"
         mode = "worker" if rust.get("rust_threaded", False) else "sync"
         row = dict(scenario=dm["scenario"], rust_mode=mode, byond=dm["byond"], map=dm["map"], startup_seed=dm["startup_seed"],
-                   dm_folder=str(dm_folder), rust_folder=str(rust_folder), dm=a, rust=b)
+                   dm_folder=str(dm_folder), rust_folder=str(rust_folder), dm=a, rust=b,
+                   runtime_validation={label: manifest.get("runtime_validation") for label, manifest in zip(("dm", "rust"), manifests)})
+        for label, manifest in zip(("DM", mode), manifests):
+            validation = manifest.get("runtime_validation", {})
+            if validation.get("known_count"):
+                detail = ", ".join(f"{e['id']}: {e['count']}" for e in validation["known"])
+                runtime_notes.append(f"- {dm['scenario']} / {label}: известные исходные runtime — {detail}.")
         rows.append(row)
         main_cpu = [f'{m["process"]["main_thread_cpu_one_core_percent"]:.2f}'
                     if "main_thread_cpu_one_core_percent" in m["process"] else "—" for m in (a, b)]
@@ -96,6 +104,8 @@ def main():
                      f'{a["ssair"]["times_fired"]} / {b["ssair"]["times_fired"]} | '
                      f'{b["native_completed_ticks"] if b["native_completed_ticks"] is not None else "—"} | '
                      f'{a["sample_wall_seconds"]:.2f} / {b["sample_wall_seconds"]:.2f} |')
+    if runtime_notes:
+        lines += ["", "В принятых запусках есть известные исходные runtime; их частота и влияние на выполненную работу могут различаться.", "", *runtime_notes]
     lines += ["", "* SSair cost — сглаженная оценка в конце окна, не сумма CPU за окно.", "",
               "## CPU за одинаковое игровое время и на завершённый расчёт", "",
               "CPU-секунда — занятость одного логического ядра в течение секунды. Общий CPU равен сумме главного и всех остальных потоков.",

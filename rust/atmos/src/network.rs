@@ -8,7 +8,7 @@ use crate::{
     Archive, Mixture, REACTING_FLAG, STOP_FLAG, VOLATILE_FLAG,
 };
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashSet},
     ops::{Deref, DerefMut},
     sync::Arc,
 };
@@ -184,6 +184,8 @@ pub struct Schedule {
     pub hotspots: Vec<Id>,
     pub conducting: Vec<Id>,
     pressure_queue: Vec<Id>,
+    // Membership is separate so wind commands keep DM's insertion order.
+    pressure_queued: HashSet<Id>,
     /// Present only for DM builds with TRACK_MAX_SHARE, not part of normal simulation storage.
     pub max_shares: Option<BTreeMap<Id, f32>>,
     /// Conservative set of cells whose observable state this calculation may change.
@@ -202,6 +204,7 @@ impl Schedule {
         self.hotspots.clone_from(&source.hotspots);
         self.conducting.clone_from(&source.conducting);
         self.pressure_queue.clone_from(&source.pressure_queue);
+        self.pressure_queued.clone_from(&source.pressure_queued);
         self.max_shares.clone_from(&source.max_shares);
         self.touched.clear();
     }
@@ -213,6 +216,7 @@ impl Schedule {
     pub fn add_tile(&mut self, id: Id, tile: Tile) {
         if tile.pressure != 0.0 {
             self.pressure_queue.push(id);
+            self.pressure_queued.insert(id);
         }
         if tile.excited && tile.has_air {
             self.active.push(id);
@@ -323,6 +327,7 @@ impl Schedule {
         self.hotspots.retain(|v| *v != id);
         self.conducting.retain(|v| *v != id);
         self.pressure_queue.retain(|v| *v != id);
+        self.pressure_queued.remove(&id);
         let linked: Vec<_> = self
             .tiles
             .iter()
@@ -365,14 +370,16 @@ impl Schedule {
             self.touched.insert(id);
             self.tiles.get_mut(&id).unwrap().pressure = 0.0;
         }
+        self.pressure_queued.clear();
         // DM copies active_turfs and pops from its end; new activations wait until next pass.
         let current = self.active.clone();
+        let mut sleeping = false;
         for &id in current.iter().rev() {
             self.touched.insert(id);
             self.touched
                 .extend(self.tiles[&id].neighbors.iter().copied());
             let had_spot = cells[&id].hotspot.is_some();
-            self.process_cell(cells, id, cycle);
+            sleeping |= self.process_cell(cells, id, cycle);
             if !had_spot && cells[&id].hotspot.is_some() {
                 self.hotspots.push(id);
                 // The original constructor clears the protection when born during its cell's pass.
@@ -392,6 +399,11 @@ impl Schedule {
                     .drain(..)
                     .map(|effect| (id, effect)),
             );
+        }
+        // Processed neighbors cannot be reactivated by this pass (current_cycle guards them).
+        // Compact once after the fixed snapshot, keeping survivors and new activations in order.
+        if sleeping {
+            self.active.retain(|id| self.tiles[id].excited);
         }
         if fire {
             for id in self.hotspots.clone().into_iter().rev() {
@@ -463,12 +475,13 @@ impl Schedule {
                 && group.reactions & (REACTING_FLAG | STOP_FLAG) == 0
             {
                 let members = group.members.clone();
-                for member in members {
+                for &member in &members {
                     let tile = self.tiles.get_mut(&member).unwrap();
                     tile.excited = false;
                     tile.ticker = 0;
-                    self.active.retain(|v| *v != member);
                 }
+                let members: HashSet<_> = members.into_iter().collect();
+                self.active.retain(|member| !members.contains(member));
                 self.clear_group(id);
             }
             if let Some(group) = self.groups.get_mut(&id) {
@@ -509,7 +522,7 @@ impl Schedule {
         tile.archived_cycle = cycle;
     }
 
-    fn process_cell(&mut self, cells: &mut Storage<Cell>, id: Id, cycle: u32) {
+    fn process_cell(&mut self, cells: &mut Storage<Cell>, id: Id, cycle: u32) -> bool {
         if let Some(shares) = &mut self.max_shares {
             shares.insert(id, 0.0);
         }
@@ -687,13 +700,12 @@ impl Schedule {
             self.conducting.push(id);
         }
         let tile = &self.tiles[&id];
-        if !hot
+        let sleeping = !hot
             && cell.hotspot.is_none()
             && flags & (REACTING_FLAG | STOP_FLAG) == 0
-            && (tile.group.is_none() || ticker > EXCITED_GROUP_DISMANTLE_CYCLES as u32)
-        {
+            && (tile.group.is_none() || ticker > EXCITED_GROUP_DISMANTLE_CYCLES as u32);
+        if sleeping {
             self.tiles.get_mut(&id).unwrap().excited = false;
-            self.active.retain(|v| *v != id);
         }
         self.tiles.get_mut(&id).unwrap().ticker = ticker;
         let cell = cells.get_mut(&id).unwrap();
@@ -704,6 +716,7 @@ impl Schedule {
             },
             air: cell.air.clone(),
         });
+        sleeping
     }
 
     fn exchange(
@@ -741,7 +754,7 @@ impl Schedule {
     }
 
     fn pressure(&mut self, from: Id, to: Id, pressure: f32) {
-        if !self.pressure_queue.contains(&from) {
+        if self.pressure_queued.insert(from) {
             self.pressure_queue.push(from);
         }
         let position = self.tiles[&to].coordinates;
@@ -869,4 +882,93 @@ fn different(
     own_archive.total_moles() > MINIMUM_MOLES_DELTA_TO_MOVE
         && (own_archive.temperature - other_archive.temperature).abs()
             > MINIMUM_TEMPERATURE_DELTA_TO_SUSPEND
+}
+
+#[cfg(test)]
+mod queue_tests {
+    use super::*;
+
+    fn quiet_tiles() -> (Schedule, Storage<Cell>) {
+        let mut schedule = Schedule::default();
+        let mut cells = Storage::new();
+        for id in 1..=5 {
+            let mut air = Mixture::new(293.15, CELL_VOLUME, true);
+            air.set(NITROGEN, 100.0);
+            schedule.add(id, [id as i32, 1, 1], &air, false);
+            cells.insert(id, Cell::new(air, crate::Context::default()));
+        }
+        (schedule, cells)
+    }
+
+    #[test]
+    fn pressure_order_includes_negative_and_zero_events_and_survives_copy_and_remove() {
+        let (mut source, mut cells) = quiet_tiles();
+        source.pressure(3, 2, -1.0);
+        source.pressure(1, 2, 0.0);
+        source.pressure(3, 2, 10.0);
+        source.pressure(2, 1, 5.0);
+        assert_eq!(source.pressure_queue, [3, 1, 2]);
+        let mut copy = source.clone();
+        copy.pressure(4, 5, 9.0);
+        copy.copy_queues(&source);
+        copy.pressure(3, 2, 20.0);
+        assert_eq!(copy.pressure_queue, [3, 1, 2]);
+        copy.remove(1);
+        assert!(!copy.pressure_queued.contains(&1));
+        assert_eq!(copy.pressure_queue, [3, 2]);
+        source.run(&mut cells, 1);
+        source.pressure(3, 2, -2.0);
+        assert_eq!(source.pressure_queue, [3]);
+        assert_eq!(source.pressure_queued.len(), 1);
+        assert_eq!(copy.pressure_queue, [3, 2]);
+    }
+
+    #[test]
+    fn sleeping_and_reactivation_keep_insertion_order() {
+        let (mut schedule, mut cells) = quiet_tiles();
+        schedule.active = vec![4, 2, 5, 1, 3];
+        for id in [2, 5] {
+            cells.get_mut(&id).unwrap().hotspot = Some(crate::cell::Hotspot {
+                temperature: 700.0,
+                volume: 100.0,
+                just_spawned: false,
+                bypassing: false,
+                cold_fire: false,
+            });
+        }
+        schedule.run(&mut cells, 1);
+        assert_eq!(schedule.active, [2, 5]);
+        schedule.activate(3);
+        schedule.activate(4);
+        schedule.activate(3);
+        assert_eq!(schedule.active, [2, 5, 3, 4]);
+    }
+
+    #[test]
+    fn dismantling_group_preserves_survivor_order() {
+        let (mut schedule, mut cells) = quiet_tiles();
+        schedule.active = vec![4, 2, 5, 1, 3];
+        for id in [4, 5] {
+            cells.get_mut(&id).unwrap().hotspot = Some(crate::cell::Hotspot {
+                temperature: 700.0,
+                volume: 100.0,
+                just_spawned: false,
+                bypassing: false,
+                cold_fire: false,
+            });
+        }
+        let group = schedule.new_group();
+        for id in [3, 1, 2] {
+            schedule.add_member(group, id);
+        }
+        schedule.groups.get_mut(&group).unwrap().dismantle =
+            EXCITED_GROUP_DISMANTLE_CYCLES as u32 - 1;
+        schedule.run(&mut cells, 1);
+        assert_eq!(schedule.active, [4, 5]);
+        assert!(schedule.groups.is_empty());
+        for id in [1, 2, 3] {
+            assert!(!schedule.tiles[&id].excited);
+            assert_eq!(schedule.tiles[&id].ticker, 0);
+        }
+    }
 }

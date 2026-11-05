@@ -228,6 +228,22 @@ pub(super) unsafe fn dispatch(api: &Api, store: &mut Store, args: &[Value]) -> R
                 &ids.into_iter().map(|n| n as f32).collect::<Vec<_>>(),
             )?;
         }
+        (40, 4) => {
+            if api.integer(field(3)?)? != 1 {
+                return Err("Unknown publication protocol".into());
+            }
+            let changes = store
+                .take_publication_changes()
+                .map_err(|e| format!("{e:?}"))?;
+            api.output(
+                field(2)?,
+                &changes
+                    .into_iter()
+                    // IDs are positive exact f32 integers; sign carries the flag without extra list values.
+                    .map(|(id, full)| if full { id as f32 } else { -(id as f32) })
+                    .collect::<Vec<_>>(),
+            )?;
+        }
         (27 | 35, 4) => {
             let requests = api.numbers(field(2)?)?;
             let compact = opcode == 35;

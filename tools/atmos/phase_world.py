@@ -46,12 +46,12 @@ def main():
     (output / "phase-cases.json").write_text(json.dumps(inputs), encoding="utf-8")
     (output / "phase-network-cases.json").write_text(json.dumps([c["input"] for c in networks]), encoding="utf-8")
     dme = ROOT / "local-atmos-phase.test.dme"
-    fixtures = ("world_network", "phase_world", "phase_network", "inherit_world", "binding_world", "deferred_world", "api_world", "contact_world", "debug_world", "exchange_world", "threaded_world", "feedback_world", "threaded_error_world")
+    fixtures = ("world_network", "phase_world", "phase_network", "inherit_world", "binding_world", "deferred_world", "api_world", "contact_world", "debug_world", "exchange_world", "threaded_world", "feedback_world", "threaded_error_world", "teardown_world")
     dme.write_text((ROOT / "tgstation.dme").read_text(encoding="utf-8-sig") + "\n" + "".join(
         f'#include "tools/atmos/{fixture}.dm.in"\n' for fixture in fixtures), encoding="utf-8", newline="\n")
     fixture_hashes = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in (
         "tools/atmos/phase_world.dm.in", "tools/atmos/phase_network.dm.in", "tools/atmos/inherit_world.dm.in",
-        "tools/atmos/binding_world.dm.in", "tools/atmos/deferred_world.dm.in", "tools/atmos/api_world.dm.in", "tools/atmos/contact_world.dm.in", "tools/atmos/debug_world.dm.in", "tools/atmos/world_network.dm.in", "tools/atmos/exchange_world.dm.in", "tools/atmos/threaded_world.dm.in", "tools/atmos/feedback_world.dm.in", "tools/atmos/threaded_error_world.dm.in")}
+        "tools/atmos/binding_world.dm.in", "tools/atmos/deferred_world.dm.in", "tools/atmos/api_world.dm.in", "tools/atmos/contact_world.dm.in", "tools/atmos/debug_world.dm.in", "tools/atmos/world_network.dm.in", "tools/atmos/exchange_world.dm.in", "tools/atmos/threaded_world.dm.in", "tools/atmos/feedback_world.dm.in", "tools/atmos/threaded_error_world.dm.in", "tools/atmos/teardown_world.dm.in")}
     print("Compiling native phase integration harness", flush=True)
     defines = ["-DCBT"] + (["-DTRACK_MAX_SHARE"] if args.track_max_share else [])
     if not args.compiled_binary:
@@ -163,7 +163,7 @@ def main():
             failures.append(dict(id=key, difference="Failed lazy effect check"))
     if not exchange_error["dm_caught"] or not exchange_error["rust_caught"] or exchange_error["dm_moles"] != exchange_error["rust_moles"]:
         failures.append(dict(id="equipment_exception_preserves_banda_writes", difference="Equipment failure changes committed air", observed=exchange_error))
-    assert len(exchange) == 15, "Incomplete native exchange checks"
+    assert len(exchange) == 25, "Incomplete native exchange checks"
     for key, value in exchange.items():
         if value != 1:
             failures.append(dict(id=key, difference="Failed native exchange check"))
@@ -171,12 +171,45 @@ def main():
     for key, value in debug.items():
         if value != 1:
             failures.append(dict(id=key, difference="Failed native admin panel check"))
+    teardown = actual["teardown"]
+    assert set(teardown) == {"space", "baseturf", "inherit", "stationary", "passive_change_keeps_air_lazy"}, "Incomplete fuel teardown cases"
+    if teardown["passive_change_keeps_air_lazy"] != 1:
+        failures.append(dict(id="passive_change_keeps_air_lazy", difference="Replacement eagerly materialized old air"))
+    for transition in ("space", "baseturf", "inherit", "stationary"):
+        pair = teardown[transition]
+        source, native = pair["dm"], pair["rust"]
+        assert source["exposures"] or transition == "stationary", f"Fuel pool did not expose contents during DM {transition} teardown"
+        for key in ("before", "exposures", "after"):
+            difference = transport.difference(source[key], native[key], f"{transition}.{key}")
+            if difference:
+                failures.append(dict(id="fuel_teardown", difference=difference))
+        for key in ("pool_burns_after_change", "hotspots_after_four_ticks", "pool_burns_after_four_ticks"):
+            if source.get(key) != native.get(key):
+                failures.append(dict(id=f"fuel_teardown_{transition}_{key}", difference="Fuel/hotspot lifecycle differs", observed=pair))
+        required = ("binding_preserved",) if transition == "stationary" else ("binding_preserved", "stale_alias_rejected", "stale_write_keeps_new_air")
+        for key in required:
+            if native[key] != 1:
+                failures.append(dict(id=f"fuel_teardown_{transition}_{key}", difference="New floor binding is not protected", observed=pair))
+        if transition != "inherit":
+            # Binding/type differ by backend; the observable lifetime and presentation must agree per tick.
+            assert len(source["hotspot_trace"]) == len(native["hotspot_trace"]) == 5, "Incomplete per-tick hotspot trace"
+            for index, (source_spots, native_spots) in enumerate(zip(source["hotspot_trace"], native["hotspot_trace"])):
+                if any(not spot[1] for spot in native_spots):
+                    failures.append(dict(id="fuel_hotspot_unbound", difference=f"{transition}.tick{index}: unbound hotspot"))
+                difference = transport.difference([s[2:5] for s in source_spots], [s[2:5] for s in native_spots], f"{transition}.tick{index}")
+                if difference:
+                    failures.append(dict(id="fuel_teardown_tick_lifetime", difference=difference))
+            difference = transport.difference(source["pool_trace"], native["pool_trace"], f"{transition}.pool_trace")
+            if difference:
+                failures.append(dict(id="fuel_teardown_pool_lifetime", difference=difference))
+        if transition == "stationary":
+            assert any(spot[5] for tick in native["hotspot_trace"] for spot in tick), "Publication-time constructor was not exercised"
     report = dict(policy="DM object feedback between native calculations; approved by user", byond=actual["byond"], startup_seed=actual["startup_seed"], track_max_share=args.track_max_share,
                   dll_sha256=hashlib.sha256((output / "bandastation_atmos.dll").read_bytes()).hexdigest(),
                   binary_sha256=hashlib.sha256((output / "tgstation.dmb").read_bytes()).hexdigest(), feedback=feedback, threaded_errors=threaded_errors,
                   harness_sha256=fixture_hashes["tools/atmos/phase_world.dm.in"],
                   fixture_sha256=fixture_hashes,
-                  scenarios=len(pairs), network_scenarios=len(networks), network_ticks=sum(c["input"]["ticks"] for c in networks), checks=checks, inheritance=inheritance, bindings=binding_checks, deferred=deferred, api=api, contacts=contacts, debug=debug, exchange=exchange, exchange_error=exchange_error, exchange_effects=exchange_effects, exchange_spawn=exchange_spawn, threaded=threaded, failures=failures)
+                  scenarios=len(pairs), network_scenarios=len(networks), network_ticks=sum(c["input"]["ticks"] for c in networks), checks=checks, inheritance=inheritance, bindings=binding_checks, deferred=deferred, api=api, contacts=contacts, debug=debug, exchange=exchange, exchange_error=exchange_error, exchange_effects=exchange_effects, exchange_spawn=exchange_spawn, threaded=threaded, teardown=teardown, failures=failures)
     (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
     print(f"Native phase: {len(pairs)} world scenarios, {len(networks)} connected graphs, {len(checks)} queue/lifetime checks, {len(failures)} failures")
     for failure in failures:

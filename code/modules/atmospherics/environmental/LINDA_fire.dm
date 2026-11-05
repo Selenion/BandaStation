@@ -147,8 +147,8 @@
 	// Remove just_spawned protection if no longer processing the parent cell
 	just_spawned = (our_turf.current_cycle < SSair.times_fired)
 	update_color()
-	// BANDASTATION ADDITION START - Adopt direct world-created hotspots after their initial DM exposure.
-	if(SSair.native_atmos && !our_turf.banda_atmos_cell?.updating_hotspot)
+	// BANDASTATION ADDITION START - Native presentations are already bound; gameplay constructors must not be lost during binding updates.
+	if(SSair.native_atmos && !binding)
 		SSair.native_atmos.adopt_hotspot(src)
 	// BANDASTATION ADDITION END
 
