@@ -528,9 +528,23 @@
 	init_immediate_calculate_adjacent_turfs()
 
 /turf/open/GetHeatCapacity()
+	// BANDASTATION ADDITION START - A prefetched scalar does not materialize a DM gas cache.
+	var/datum/banda_atmos_phase/world_adapter/phase = SSair.native_atmos
+	if(phase?.properties_ready)
+		var/offset = phase.air_reading_offset(src)
+		if(offset)
+			return phase.air_reading_packet[offset + BANDA_ATMOS_HEAT_CAPACITY]
+	// BANDASTATION ADDITION END
 	. = get_readonly_air().heat_capacity() // BANDASTATION EDIT - Native gas access.
 
 /turf/open/GetTemperature()
+	// BANDASTATION ADDITION START - A prefetched scalar does not materialize a DM gas cache.
+	var/datum/banda_atmos_phase/world_adapter/phase = SSair.native_atmos
+	if(phase?.properties_ready)
+		var/offset = phase.air_reading_offset(src)
+		if(offset)
+			return phase.air_reading_packet[offset + BANDA_ATMOS_TEMPERATURE]
+	// BANDASTATION ADDITION END
 	. = get_readonly_air().temperature // BANDASTATION EDIT - Native gas access.
 
 /turf/open/TakeTemperature(temp)

@@ -10,6 +10,10 @@
 	var/closed = FALSE
 	var/in_safe_callback = FALSE
 	var/world_owned = FALSE
+	/// Optional main-thread native snapshots preserve direct edits through issued mixtures.
+	var/native_baselines_ready = FALSE
+	/// Rows written through the main-thread C API, without a DM numeric packet.
+	var/direct_publications = 0
 	var/source_cycle_offset = 0
 	var/list/cells = list()
 	var/list/waiting = list()
@@ -32,11 +36,30 @@
 		if(length(abi) != 4 || abi[1] != 11 || abi[2] != length(banda_atmos_gases()) || abi[3] != length(banda_atmos_reactions()) || abi[4] != BANDA_ATMOS_CATALOG_SIGNATURE)
 			throw EXCEPTION("Atmosphere DLL protocol/catalog does not match the DM build")
 		native_ready = TRUE
+		try
+			pipes_ready = native(41) == 1
+		catch
+			pipes_ready = FALSE
+		if(pipes_ready)
+			try
+				pipe_direct_ready = native(49) == 1
+			catch
+				pipe_direct_ready = FALSE
+		if(pipe_direct_ready)
+			try
+				pipe_owned_ready = native(68) == 1
+			catch
+				pipe_owned_ready = FALSE
 	catch(var/exception/error)
 		startup_error = error.name
 
 /datum/banda_atmos_phase/Destroy()
 	closed = TRUE
+	operation_cells.Cut()
+	pipes_ready = FALSE
+	pipe_direct_ready = FALSE
+	while(length(pipe_bindings))
+		qdel(pipe_bindings[length(pipe_bindings)])
 	if(native_id)
 		// Preserve external writes when handing cells back to the ordinary DM simulation.
 		native(10)
@@ -59,6 +82,13 @@
 
 /// All synchronous DLL calls copy numeric packets before returning.
 /datum/banda_atmos_phase/proc/native(operation, ...)
+	if(world_owned)
+		var/datum/banda_atmos_phase/world_adapter/world_owner = src
+		switch(operation)
+			if(3, 6, 20, 21, 33, 36)
+				world_owner.invalidate_air_reading(args[2])
+			if(1, 10, 16, 25, 30, 38, 64)
+				world_owner.clear_air_readings()
 	// BYOND 516 retains list arguments passed to call_ext through arglist after the call.
 	// Explicit arities let temporary packets be released without clearing callers' lists.
 	var/result
@@ -181,14 +211,19 @@
 	in_safe_callback = previous_safe
 	if(previous_safe)
 		return
-	if(failed)
+	// Banda DM keeps completed writes after an exception; rolling back a debit can duplicate gas
+	// that a receiver already consumed. The caller still stops the effect packet and rethrows.
+	try
+		for(var/datum/banda_atmos_cell/cell as anything in working_mixtures)
+			if(!QDELETED(cell) && cell.target && cell.owner == src && !cell.pending_rebind)
+				var/changed = cell.commit_air(working_mixtures[cell], synchronize = !world_owned, wake = !world_owned)
+				if(world_owned && cell.readonly_air && (changed || cell.readonly_air.last_share != working_mixtures[cell].last_share))
+					cell.copy_readonly(working_mixtures[cell])
+		finish_gas_operations(FALSE)
+	catch(var/exception/error)
+		finish_gas_operations(TRUE)
 		working_mixtures.Cut()
-		return
-	for(var/datum/banda_atmos_cell/cell as anything in working_mixtures)
-		if(!QDELETED(cell) && cell.target && cell.owner == src && !cell.pending_rebind)
-			var/changed = cell.commit_air(working_mixtures[cell], synchronize = !world_owned, wake = !world_owned)
-			if(world_owned && cell.readonly_air && (changed || cell.readonly_air.last_share != working_mixtures[cell].last_share))
-				cell.copy_readonly(working_mixtures[cell])
+		throw error
 	working_mixtures.Cut()
 
 /// Nested callbacks share a single mutable mixture until the outer callback commits it.

@@ -2,13 +2,17 @@
 /datum/banda_atmos_phase/world_adapter/exchange_probe
 	var/commits = 0
 	var/service_publications = 0
+	var/thermal_requests = 0
+	var/temperature_requests = 0
+	var/list/thermal_intervening_write
 	var/fail_binding_id = 0
 	var/fail_change_read = FALSE
+	var/binding_lookups = 0
+	var/last_projection_batch
+	var/compact_hotspots = 0
 
 /datum/banda_atmos_phase/world_adapter/exchange_probe/ensure_binding(turf/target)
-	if(fail_binding_id && target.banda_atmos_id == fail_binding_id)
-		fail_binding_id = 0
-		throw EXCEPTION("BANDA_EXPECTED_PUBLICATION_ERROR")
+	binding_lookups++
 	return ..()
 
 /datum/banda_atmos_phase/world_adapter/exchange_probe/native(operation, ...)
@@ -18,13 +22,30 @@
 		throw EXCEPTION("BANDA_EXPECTED_CHANGE_READ_ERROR")
 	if(operation == 3 || operation == 36)
 		commits++
-	if(operation == 35)
+	if(operation == 35 || operation == 53 || operation == 65 || operation == 73 || operation == 75)
 		var/list/requests = args[2]
-		for(var/index = 1; index <= length(requests); index += 2)
+		for(var/index = 1; index <= length(requests); index += (operation == 75 ? 3 : 2))
 			var/id = requests[index]
+			if(fail_binding_id == id)
+				fail_binding_id = 0
+				if(operation != 75)
+					..(arglist(args))
+				throw EXCEPTION("BANDA_EXPECTED_PUBLICATION_ERROR")
 			if(!requests[index + 1] && length(cells) >= id && cells[id]?.cached_air)
 				service_publications++
-	return ..(arglist(args))
+			if(requests[index + 1] > 1)
+				thermal_requests++
+				if(requests[index + 1] == 3)
+					temperature_requests++
+				if(thermal_intervening_write)
+					..(36, id, FALSE, thermal_intervening_write)
+					thermal_intervening_write = null
+	. = ..(arglist(args))
+	if(operation == 75)
+		last_projection_batch = .
+	if(operation == 76 && . == 5)
+		compact_hotspots++
+	return .
 
 /obj/machinery/banda_exchange_probe
 	var/turf/open/air_target
@@ -44,6 +65,215 @@
 /obj/machinery/banda_exchange_probe/Destroy()
 	air_target = null
 	return ..()
+
+/datum/banda_exchange_exposure_probe
+	var/observed_moles
+
+/datum/banda_exchange_exposure_probe/proc/on_exposure(turf/source, datum/gas_mixture/air, temperature)
+	SIGNAL_HANDLER
+	if(air)
+		observed_moles = air.moles[/datum/gas/nitrogen]
+		air.moles[/datum/gas/nitrogen] += 1
+
+/datum/controller/subsystem/atmos_phase_test/proc/exposure_cache_checks()
+	var/turf/open/target = floor_at(194, 182)
+	var/obj/machinery/light/light = new(target)
+	var/obj/structure/grille/grille = new(target)
+	target.air.set_gas(/datum/gas/nitrogen, 19)
+	target.air.temperature = 1800
+	target.air.archive()
+	target.temperature_expose(target.air, 1800)
+	var/dm_light = !!(light.flags_1 & ATMOS_IS_PROCESSING_1)
+	var/dm_grille = !!(grille.flags_1 & ATMOS_IS_PROCESSING_1)
+	light.stop_atmos_exposure()
+	grille.stop_atmos_exposure()
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target))
+	phase.initializing = FALSE
+	var/datum/banda_atmos_cell/cell = phase.ensure_binding(target)
+	phase.invoke(CALLBACK(cell, TYPE_PROC_REF(/datum/banda_atmos_cell, execute), 13, 1800, TRUE))
+	var/light_started = !!(light.flags_1 & ATMOS_IS_PROCESSING_1)
+	var/grille_started = !!(grille.flags_1 & ATMOS_IS_PROCESSING_1)
+	var/matches_dm = dm_light && dm_grille && light_started == dm_light && grille_started == dm_grille && !cell.cached_air
+	phase.invoke(CALLBACK(cell, TYPE_PROC_REF(/datum/banda_atmos_cell, execute), 13, 300, TRUE))
+	matches_dm = matches_dm && !(light.flags_1 & ATMOS_IS_PROCESSING_1) && !(grille.flags_1 & ATMOS_IS_PROCESSING_1) && !cell.cached_air
+	var/datum/banda_exchange_exposure_probe/probe = new()
+	probe.RegisterSignal(target, COMSIG_TURF_EXPOSE, TYPE_PROC_REF(/datum/banda_exchange_exposure_probe, on_exposure))
+	phase.invoke(CALLBACK(cell, TYPE_PROC_REF(/datum/banda_atmos_cell, execute), 13, 1800, TRUE))
+	var/mixed_signal = probe.observed_moles == 19 && cell.cached_air && cell.read_air().moles[/datum/gas/nitrogen] == 20
+	qdel(probe)
+	qdel(light)
+	qdel(grille)
+	qdel(phase)
+	return list("temperature_only_exposure_matches_dm_without_a_cache" = matches_dm, "mixed_exposure_still_receives_live_gas" = mixed_signal)
+
+/turf/open/floor/iron/banda_empty_exposure_probe
+	var/temperature_calls = 0
+	var/exposure_ends = 0
+
+/turf/open/floor/iron/banda_empty_exposure_probe/temperature_expose(datum/gas_mixture/air, exposed_temperature, native_keys)
+	temperature_calls++
+	return ..()
+
+/turf/open/floor/iron/banda_empty_exposure_probe/atmos_end()
+	exposure_ends++
+	return ..()
+
+/datum/banda_empty_exposure_listener
+	var/calls = 0
+	var/observed_moles
+
+/datum/banda_empty_exposure_listener/proc/exposed(turf/source, datum/gas_mixture/air, temperature)
+	SIGNAL_HANDLER
+	calls++
+	observed_moles = air?.moles[/datum/gas/nitrogen]
+	if(air)
+		air.adjust_gas(/datum/gas/nitrogen, 1)
+
+/// Compare actual native command packets with the original turf notification and queue transitions.
+/datum/controller/subsystem/atmos_phase_test/proc/empty_exposure_checks()
+	var/list/checks = list()
+	for(var/scenario in list("empty", "held", "hot", "destroyed", "queued", "listener", "listener_changes", "gasless"))
+		var/list/reference
+		var/native_calls
+		for(var/native in list(FALSE, TRUE))
+			var/turf/open/base = floor_at(208, 183)
+			var/turf/open/floor/iron/banda_empty_exposure_probe/target = base.ChangeTurf(/turf/open/floor/iron/banda_empty_exposure_probe)
+			target.heat_capacity = 1000
+			target.to_be_destroyed = scenario == "destroyed"
+			target.air.set_gas(/datum/gas/nitrogen, 17)
+			target.banda_air_requested = FALSE
+			if(scenario == "queued")
+				target.flags_1 |= ATMOS_IS_PROCESSING_1
+				SSair.atom_process |= target
+			var/datum/banda_empty_exposure_listener/listener = new()
+			if(scenario == "listener")
+				listener.RegisterSignal(target, COMSIG_TURF_EXPOSE, TYPE_PROC_REF(/datum/banda_empty_exposure_listener, exposed))
+			var/datum/banda_atmos_phase/world_adapter/phase
+			var/datum/gas_mixture/held = target.air
+			if(native)
+				phase = new("bandastation_atmos.dll")
+				SSair.native_atmos = phase
+				phase.register_batch(list(target))
+				phase.initializing = FALSE
+				if(scenario == "held")
+					held = phase.invoke(CALLBACK(target, TYPE_PROC_REF(/atom, return_air)))
+			if(scenario == "held")
+				held.moles[/datum/gas/nitrogen] = 23
+			var/temperature = scenario == "hot" ? 1000 : 300
+			var/has_gas = scenario != "gasless"
+			empty_exposure_packet(phase, target, temperature, has_gas)
+			if(scenario == "listener_changes")
+				listener.RegisterSignal(target, COMSIG_TURF_EXPOSE, TYPE_PROC_REF(/datum/banda_empty_exposure_listener, exposed))
+				empty_exposure_packet(phase, target, temperature, has_gas)
+				listener.UnregisterSignal(target, COMSIG_TURF_EXPOSE)
+				empty_exposure_packet(phase, target, temperature, has_gas)
+			var/datum/gas_mixture/result = native ? target.banda_atmos_cell.read_air() : target.air
+			var/list/state = list("processing" = !!(target.flags_1 & ATMOS_IS_PROCESSING_1), "queued" = (target in SSair.atom_process), "ends" = target.exposure_ends,
+				"destroyed" = target.to_be_destroyed, "calls" = listener.calls, "observed" = listener.observed_moles, "moles" = result.moles[/datum/gas/nitrogen])
+			if(native)
+				native_calls = target.temperature_calls
+				checks["temperature_notification_[scenario]_matches_dm"] = json_encode(state) == json_encode(reference)
+			else
+				reference = state
+			if(target.flags_1 & ATMOS_IS_PROCESSING_1)
+				target.stop_atmos_exposure()
+			qdel(listener)
+			if(phase)
+				qdel(phase)
+		var/expected_calls = (scenario in list("empty", "held", "gasless")) ? 0 : 1
+		checks["temperature_notification_[scenario]_uses_expected_path"] = native_calls == expected_calls
+	return checks
+
+/datum/banda_atmos_cell/publication_probe
+	var/publications = 0
+	var/hotspot_publications = 0
+
+/datum/banda_atmos_cell/publication_probe/sync_air(list/input, list/metadata, compact = FALSE, input_offset = 0, metadata_offset = 0, input_count = 0, metadata_count = 0, visuals_only = FALSE, list/thermal_baseline)
+	publications++
+	return ..(arglist(args))
+
+/datum/banda_atmos_cell/publication_probe/sync_hotspot(list/input, list/metadata, input_offset = 0, metadata_offset = 0, input_count = 0, absent = FALSE)
+	hotspot_publications++
+	return ..(arglist(args))
+
+/// Duplicate service rows can be omitted only while their actual DM state needs no repair.
+/datum/controller/subsystem/atmos_phase_test/proc/service_publication_checks()
+	var/list/checks = list()
+	var/turf/open/target = floor_at(205, 184)
+	var/turf/open/cold = floor_at(206, 184)
+	cold.banda_air_requested = FALSE
+	target.excited = FALSE
+	target.banda_air_requested = FALSE
+	target.air.set_gas(/datum/gas/nitrogen, 19)
+	var/datum/banda_atmos_phase/world_adapter/exchange_probe/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target))
+	phase.initializing = FALSE
+	phase.native(30)
+	var/datum/banda_atmos_cell/publication_probe/cell = new(phase, target, FALSE, target.banda_atmos_id)
+	phase.cells.len = max(length(phase.cells), cell.native_id)
+	phase.cells[cell.native_id] = cell
+	var/lookups = phase.binding_lookups
+	phase.native(19, cell.native_id, 0)
+	phase.project_changes()
+	checks["service_publication_updates_changed_dm_fields"] = target.excited && phase.direct_publications == 1 && phase.native_baselines_ready
+	phase.native(19, cell.native_id, 0)
+	phase.project_changes()
+	checks["duplicate_cold_service_omits_dm_projection"] = phase.service_publications_skipped == 1
+	checks["publication_reuses_existing_binding"] = phase.binding_lookups == lookups
+	var/temperature = target.temperature
+	target.temperature += 10
+	phase.native(19, cell.native_id, 0)
+	phase.project_changes()
+	checks["service_publication_repairs_direct_terrain_edits"] = target.temperature == temperature
+	target.update_visuals(list(/datum/gas/plasma = 40))
+	phase.native(19, cell.native_id, 0)
+	phase.project_changes()
+	checks["service_publication_clears_stale_overlays"] = !length(target.atmos_overlay_types)
+	cell.hotspots_pending = TRUE
+	phase.native(19, cell.native_id, 0)
+	phase.project_changes()
+	checks["service_publication_reconciles_pending_hotspots"] = !cell.hotspots_pending && cell.hotspot_publications == 1 && phase.compact_hotspots == 1
+	var/datum/gas_mixture/visible = cell.read_air()
+	visible.set_gas(/datum/gas/plasma, 40)
+	phase.native(36, cell.native_id, FALSE, banda_atmos_compact_packet(visible, TRUE))
+	phase.project_changes()
+	checks["visible_cold_publication_omits_absent_hotspot_work"] = length(target.atmos_overlay_types) && cell.hotspot_publications == 1
+	var/datum/gas_mixture/held = target.get_readonly_air()
+	var/list/old_archive = cell.cached_air.moles_archive
+	var/list/old_results = cell.cached_air.reaction_results
+	var/publications = phase.direct_publications
+	phase.native(19, cell.native_id, 0)
+	phase.project_changes()
+	checks["service_publication_preserves_held_snapshot_contract"] = held == target.get_readonly_air() && phase.direct_publications == publications + 1 && cell.cached_air.moles_archive != old_archive && cell.cached_air.reaction_results != old_results
+	cell.cached_air.moles[/datum/gas/nitrogen] = 999
+	phase.native(19, cell.native_id, 0)
+	phase.project_changes()
+	checks["service_publication_repairs_held_mixture_edits"] = cell.cached_air.moles[/datum/gas/nitrogen] == 19 && held.moles[/datum/gas/nitrogen] == 19
+	phase.native(37, cell.native_id, SSair.times_fired + 10, 777)
+	phase.project_changes()
+	checks["service_publication_keeps_archive_metadata_current"] = target.archived_cycle == SSair.times_fired + 10 && target.temperature_archived == 777
+	phase.register_batch(list(cold))
+	phase.native(19, cold.banda_atmos_id, 0)
+	phase.project_changes()
+	cold.temperature_archived = null
+	phase.native(19, cold.banda_atmos_id, 0)
+	phase.project_changes()
+	checks["service_publication_distinguishes_null_and_zero"] = !isnull(cold.temperature_archived) && cold.temperature_archived == 0
+	qdel(phase)
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/empty_exposure_packet(datum/banda_atmos_phase/world_adapter/phase, turf/open/target, temperature, has_gas)
+	if(!phase)
+		target.temperature_expose(has_gas ? target.air : null, temperature)
+		return
+	var/datum/banda_atmos_safe/world_commands/world/packet = new()
+	packet.owner = phase
+	packet.run_args = list(list(target.banda_atmos_id, target.banda_atmos_cell?.binding_version || 1, 13, temperature, has_gas))
+	phase.run_callback(packet)
 
 /turf/open/floor/iron/banda_visual_probe
 	var/visual_calls = 0
@@ -94,6 +324,82 @@
 			air.reaction_results[/datum/gas/nitrogen] = 7
 			air.reaction_results[/datum/gas_reaction/standard/tritfire] = null
 	return air
+
+/datum/controller/subsystem/atmos_phase_test/proc/thermal_cache_checks()
+	var/turf/open/target = floor_at(196, 182)
+	target.thermal_conductivity = 0.1
+	target.heat_capacity = 500000
+	target.temperature = 1300
+	target.temperature_archived = 1300
+	target.air.set_gas(/datum/gas/nitrogen, 19)
+	target.air.temperature = 600
+	target.air.temperature_archived = 280
+	var/datum/banda_atmos_phase/world_adapter/exchange_probe/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target))
+	phase.initializing = FALSE
+	var/datum/gas_mixture/held = target.get_readonly_air()
+	var/datum/banda_atmos_cell/cell = target.banda_atmos_cell
+	var/datum/gas_mixture/live = cell.cached_air
+	var/list/moles = live.moles
+	var/list/old_archive = live.moles_archive
+	var/list/old_results = live.reaction_results
+	var/list/held_moles = held.moles
+	live.volume = 100
+	live.moles[/datum/gas/nitrogen] = 999
+	live.reaction_results[/datum/gas_reaction/standard/plasmafire] = 7
+	held_moles[/datum/gas/nitrogen] = 2
+	calculate_thermal_cache_frame(phase, cell)
+	phase.project_changes()
+	var/datum/gas_mixture/native_air = cell.read_air()
+	var/thermal_changed = phase.thermal_requests == 1 && live.temperature > 600 && live.temperature_archived == 600 && json_encode(banda_atmos_full_packet(live)) == json_encode(banda_atmos_full_packet(native_air))
+	var/aliases = live == cell.cached_air && live.moles == moles && live.moles[/datum/gas/nitrogen] == 19 && live.moles_archive != old_archive && live.reaction_results != old_results && old_results[/datum/gas_reaction/standard/plasmafire] == 7 && held.moles == held_moles && held_moles[/datum/gas/nitrogen] == 19 && held.temperature == live.temperature
+
+	// The effect callback borrows the cache and would commit the edit before the test frame.
+	phase.apply_frame()
+	old_archive = live.moles_archive
+	old_archive[/datum/gas/nitrogen] = 500
+	var/previous_temperature = live.temperature
+	calculate_thermal_cache_frame(phase, cell, TRUE)
+	phase.project_changes()
+	var/temperature_only = phase.temperature_requests == 1 && live.temperature != previous_temperature && live.temperature_archived == 600 && live.moles_archive != old_archive && live.moles_archive[/datum/gas/nitrogen] == 19 && old_archive[/datum/gas/nitrogen] == 500
+
+	calculate_thermal_cache_frame(phase, cell)
+	phase.fail_binding_id = cell.native_id
+	var/caught = FALSE
+	try
+		phase.project_changes()
+	catch(var/exception/error)
+		caught = error.name == "BANDA_EXPECTED_PUBLICATION_ERROR"
+	var/invalidated = !cell.cache_current
+	var/requests = phase.thermal_requests
+	// Isolate recovery through publication. An effect callback can repair it earlier by borrowing air.
+	phase.native(5, list())
+	calculate_thermal_cache_frame(phase, cell)
+	phase.project_changes()
+	native_air = cell.read_air()
+	var/recovered = caught && invalidated && phase.thermal_requests == requests && live.temperature == native_air.temperature && held.temperature_archived == native_air.temperature_archived
+
+	calculate_thermal_cache_frame(phase, cell)
+	var/datum/gas_mixture/intervening = cell.read_air()
+	intervening.set_gas(/datum/gas/nitrogen, 40)
+	phase.thermal_intervening_write = banda_atmos_compact_packet(intervening, TRUE)
+	requests = phase.thermal_requests
+	phase.project_changes()
+	var/downgraded = phase.thermal_requests == requests + 1 && !phase.thermal_intervening_write && moles[/datum/gas/nitrogen] == 40 && held_moles[/datum/gas/nitrogen] == 40
+	qdel(phase)
+	return list("thermal_packet_updates_temperature_and_archive" = thermal_changed, "thermal_packet_preserves_aliases_and_repairs_direct_edits" = aliases, "temperature_packet_preserves_unchanged_archive" = temperature_only, "thermal_packet_recovers_after_missed_publication" = recovered, "thermal_request_reads_gas_after_intervening_write" = downgraded)
+
+/datum/controller/subsystem/atmos_phase_test/proc/calculate_thermal_cache_frame(datum/banda_atmos_phase/world_adapter/phase, datum/banda_atmos_cell/cell, keep_archive = FALSE)
+	phase.apply_frame()
+	phase.native(19, cell.native_id, 0)
+	phase.native(19, cell.native_id, 4)
+	if(keep_archive)
+		phase.native(37, cell.native_id, SSair.times_fired + 1, cell.target.temperature_archived)
+	phase.native(30)
+	SSair.times_fired++
+	phase.native(16, SSair.times_fired)
+	phase.air_cycle = SSair.times_fired
 
 /datum/controller/subsystem/atmos_phase_test/proc/exchange_world_checks()
 	var/list/checks = list()
@@ -203,6 +509,19 @@
 	phase.run_tick(TRUE)
 	checks["metadata_only_publication_omits_borrowed_archive"] = phase.service_publications > service_before
 	checks["metadata_only_publication_keeps_alias_and_snapshot_contract"] = clean == cell.cached_air && clean.moles == moles && clean.moles_archive != archive_before_service && clean.reaction_results != results_before_service && clean.moles[/datum/gas/nitrogen] == 23 && service_readonly.moles[/datum/gas/nitrogen] == 23
+	phase.native(19, cell.native_id, 2)
+	phase.project_changes()
+	var/was_inactive = !target.excited
+	service_before = phase.service_publications
+	archive_before_service = clean.moles_archive
+	phase.native(19, cell.native_id, 0)
+	phase.project_changes()
+	checks["activation_publishes_service_state_without_gas"] = was_inactive && target.excited && !target.significant_share_ticker && phase.service_publications == service_before + 1 && clean.moles == moles && clean.moles_archive != archive_before_service && service_readonly.moles[/datum/gas/nitrogen] == 23
+	clean.moles[/datum/gas/nitrogen] = 999
+	service_before = phase.service_publications
+	phase.native(19, cell.native_id, 0)
+	phase.project_changes()
+	checks["activation_reloads_a_mutated_cache"] = clean.moles[/datum/gas/nitrogen] == 23 && cell.can_reuse_air_cache() && phase.service_publications == service_before
 	clean.moles[/datum/gas/nitrogen] = 999
 	cell.refresh_service_cache(cell.read_metadata(), 0)
 	checks["metadata_cache_revalidates_mutated_alias"] = clean.moles[/datum/gas/nitrogen] == 23 && cell.can_reuse_air_cache()
@@ -246,6 +565,115 @@
 	var/list/visual_checks = packet_visual_checks()
 	for(var/key in visual_checks)
 		checks[key] = visual_checks[key]
+	checks += exposure_cache_checks()
+	checks += empty_exposure_checks()
+	checks += service_publication_checks()
+	checks += thermal_cache_checks()
+	checks += native_projection_checks()
+	checks += native_projection_error_checks()
+	checks += operation_protocol_checks()
+	return checks
+
+/turf/open/floor/iron/banda_projection_probe
+	var/datum/gas_mixture/later_air
+	var/observed_temperature
+	var/throw_on_overlay = FALSE
+
+/turf/open/floor/iron/banda_projection_probe/apply_gas_overlays(list/new_overlay_types)
+	. = ..()
+	if(later_air)
+		observed_temperature = later_air.temperature
+		later_air.moles[/datum/gas/nitrogen] = 999
+		later_air = null
+	if(throw_on_overlay)
+		throw EXCEPTION("BANDA_EXPECTED_OVERLAY_PUBLICATION_ERROR")
+
+/// Compare the native writer with the previous packet decoder, including a reentrant alias edit.
+/datum/controller/subsystem/atmos_phase_test/proc/native_projection_checks()
+	var/list/checks = list()
+	var/list/traces = list()
+	for(var/direct in list(FALSE, TRUE))
+		var/turf/open/start = floor_at(213, 185 + direct)
+		var/turf/open/floor/iron/banda_projection_probe/first = start.ChangeTurf(/turf/open/floor/iron/banda_projection_probe)
+		var/turf/open/later = floor_at(214, 185 + direct)
+		later.air.set_gas(/datum/gas/nitrogen, 23)
+		later.air.temperature = 300
+		later.air.archive()
+		var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		checks["native_projection_available"] = phase.native_baselines_ready
+		if(!direct)
+			phase.native_baselines_ready = FALSE
+		phase.register_batch(list(first, later))
+		phase.native(30)
+		phase.initializing = FALSE
+		var/datum/gas_mixture/held = later.get_readonly_air()
+		var/datum/banda_atmos_cell/cell = later.banda_atmos_cell
+		first.later_air = cell.cached_air
+		var/list/moles = cell.cached_air.moles
+		var/datum/gas_mixture/visible = first.banda_atmos_cell ? first.banda_atmos_cell.read_air() : new()
+		visible.set_gas(/datum/gas/plasma, 40)
+		phase.native(36, first.banda_atmos_id, FALSE, banda_atmos_compact_packet(visible, TRUE))
+		var/datum/gas_mixture/replacement = cell.read_air()
+		replacement.temperature = 450
+		phase.native(36, cell.native_id, FALSE, banda_atmos_compact_packet(replacement, TRUE))
+		phase.project_changes()
+		checks["native_projection_callback_order_[direct]"] = first.observed_temperature == 300 && held.temperature == 450 && held.moles[/datum/gas/nitrogen] == 23 && cell.cached_air.moles == moles
+		traces += json_encode(banda_atmos_full_packet(held))
+		if(direct)
+			checks["native_projection_used_without_dm_baseline"] = phase.direct_publications == 2 && !islist(cell.committed_air) && cell.can_reuse_air_cache()
+			var/list/snapshot = cell.committed_snapshot()
+			cell.cached_air.moles[/datum/gas/nitrogen] = 24
+			checks["native_baseline_detached_from_live_lists"] = !cell.can_reuse_air_cache() && snapshot[4][/datum/gas/nitrogen] == 23
+			cell.cached_air.moles[/datum/gas/nitrogen] = 23
+			checks["native_baseline_recognizes_restored_values"] = cell.can_reuse_air_cache()
+			cell.cached_air.reaction_results = list(/datum/gas_reaction/standard/plasmafire = 0, /datum/gas/nitrogen = null)
+			cell.remember_air(cell.cached_air)
+			snapshot = cell.committed_snapshot()
+			checks["native_baseline_keeps_zero_null_and_key_order"] = !cell.can_reuse_air_cache() && length(snapshot[6]) == 2 && snapshot[6][1] == /datum/gas_reaction/standard/plasmafire && snapshot[6][2] == /datum/gas/nitrogen && !isnull(snapshot[6][/datum/gas_reaction/standard/plasmafire]) && isnull(snapshot[6][/datum/gas/nitrogen])
+		qdel(phase)
+	checks["native_projection_matches_legacy_packet_state"] = traces[1] == traces[2]
+	return checks
+
+/// Aborting a callback must free the native cursor and invalidate every undelivered cache.
+/datum/controller/subsystem/atmos_phase_test/proc/native_projection_error_checks()
+	var/list/checks = list()
+	for(var/direct in list(FALSE, TRUE))
+		var/turf/open/start = floor_at(215, 188 + direct)
+		var/turf/open/floor/iron/banda_projection_probe/first = start.ChangeTurf(/turf/open/floor/iron/banda_projection_probe)
+		var/turf/open/later = floor_at(216, 188 + direct)
+		later.air.set_gas(/datum/gas/nitrogen, 23)
+		var/datum/banda_atmos_phase/world_adapter/exchange_probe/phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		if(!direct)
+			phase.native_baselines_ready = FALSE
+		phase.register_batch(list(first, later))
+		phase.native(30)
+		phase.initializing = FALSE
+		var/datum/gas_mixture/held = later.get_readonly_air()
+		var/datum/gas_mixture/visible = new()
+		visible.set_gas(/datum/gas/plasma, 40)
+		phase.native(36, first.banda_atmos_id, FALSE, banda_atmos_compact_packet(visible, TRUE))
+		var/datum/banda_atmos_cell/cell = later.banda_atmos_cell
+		var/datum/gas_mixture/replacement = cell.read_air()
+		replacement.moles[/datum/gas/nitrogen] = 27
+		phase.native(36, cell.native_id, FALSE, banda_atmos_compact_packet(replacement, TRUE))
+		first.throw_on_overlay = TRUE
+		var/caught = FALSE
+		try
+			phase.project_changes()
+		catch(var/exception/error)
+			caught = error.name == "BANDA_EXPECTED_OVERLAY_PUBLICATION_ERROR"
+		checks["projection_callback_failure_invalidates_undelivered_cache_[direct]"] = caught && !phase.synchronizing && !cell.cache_current && held.moles[/datum/gas/nitrogen] == 23 && later.get_readonly_air().moles[/datum/gas/nitrogen] == 27
+		if(direct)
+			var/released = FALSE
+			try
+				phase.native(76, phase.last_projection_batch, phase, list(), list())
+			catch(var/exception/release_error)
+				released = !!findtext(release_error.name, "Missing publication batch")
+			checks["projection_callback_failure_releases_native_cursor"] = released
+		first.throw_on_overlay = FALSE
+		qdel(phase)
 	return checks
 
 /// Compare partial writes across an equipment exception with the original DM path.

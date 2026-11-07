@@ -27,3 +27,7 @@ serde_json = "1"
 [[bench]]
 name = "atmos_bench"
 harness = false
+
+[[bench]]
+name = "pipenet_bench"
+harness = false

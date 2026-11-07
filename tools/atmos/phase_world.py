@@ -15,6 +15,7 @@ from native_probe import probe
 ROOT = catalog.ROOT
 sys.path.insert(0, str(ROOT / "tools/profiling"))
 from run import stage
+from runtime_check import validate_runtime_logs
 
 
 def main():
@@ -46,12 +47,11 @@ def main():
     (output / "phase-cases.json").write_text(json.dumps(inputs), encoding="utf-8")
     (output / "phase-network-cases.json").write_text(json.dumps([c["input"] for c in networks]), encoding="utf-8")
     dme = ROOT / "local-atmos-phase.test.dme"
-    fixtures = ("world_network", "phase_world", "phase_network", "inherit_world", "binding_world", "deferred_world", "api_world", "contact_world", "debug_world", "exchange_world", "threaded_world", "feedback_world", "threaded_error_world", "teardown_world")
+    fixtures = ("world_network", "phase_world", "phase_network", "inherit_world", "binding_world", "deferred_world", "api_world", "properties_world", "vent_world", "scrubber_world", "contact_world", "debug_world", "exchange_world", "operations_world", "threaded_world", "feedback_world", "threaded_error_world", "teardown_world", "pipeline_world")
     dme.write_text((ROOT / "tgstation.dme").read_text(encoding="utf-8-sig") + "\n" + "".join(
         f'#include "tools/atmos/{fixture}.dm.in"\n' for fixture in fixtures), encoding="utf-8", newline="\n")
-    fixture_hashes = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in (
-        "tools/atmos/phase_world.dm.in", "tools/atmos/phase_network.dm.in", "tools/atmos/inherit_world.dm.in",
-        "tools/atmos/binding_world.dm.in", "tools/atmos/deferred_world.dm.in", "tools/atmos/api_world.dm.in", "tools/atmos/contact_world.dm.in", "tools/atmos/debug_world.dm.in", "tools/atmos/world_network.dm.in", "tools/atmos/exchange_world.dm.in", "tools/atmos/threaded_world.dm.in", "tools/atmos/feedback_world.dm.in", "tools/atmos/threaded_error_world.dm.in", "tools/atmos/teardown_world.dm.in")}
+    fixture_paths = [f"tools/atmos/{fixture}.dm.in" for fixture in fixtures]
+    fixture_hashes = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in fixture_paths}
     print("Compiling native phase integration harness", flush=True)
     defines = ["-DCBT"] + (["-DTRACK_MAX_SHARE"] if args.track_max_share else [])
     if not args.compiled_binary:
@@ -64,7 +64,9 @@ def main():
                         "-ip", "127.0.0.1", "-logself", "-params", "log-directory=local-atmos-phase"],
                        cwd=output, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=300)
     logs = "\n".join(p.read_text(encoding="utf-8-sig", errors="replace") for p in output.rglob("*") if p.is_file() and (p.suffix == ".log" or p.name.endswith(".log.json")))
-    if any(marker in logs.lower() for marker in ("runtime error:", "runtime in ", "infinite loop")):
+    runtime = validate_runtime_logs(output)
+    (output / "runtime-validation.json").write_text(json.dumps(runtime, indent=2, ensure_ascii=False), encoding="utf-8")
+    if runtime["unexpected_count"] or "infinite loop" in logs.lower():
         raise SystemExit(f"Runtime in native phase integration; inspect {output}")
     actual = json.loads((output / "phase-output.json").read_text(encoding="utf-8-sig"))
     assert [c["id"] for c in actual["cases"]] == [c["id"] for c in inputs], "Incomplete native run"
@@ -110,16 +112,54 @@ def main():
         if value != 1:
             failures.append(dict(id=key, difference="Failed deferred initialization check"))
     api = actual["api"]
-    assert len(api) == 32, "Incomplete lazy world API checks"
+    assert len(api) == 83, "Incomplete lazy world API/property checks"
     for key, value in api.items():
         if value != 1:
             failures.append(dict(id=key, difference="Failed lazy world API check"))
+    vents = actual["vents"]
+    assert set(vents) == {"release", "siphon", "depleted_port", "empty_siphon", "tiny_release", "tiny_siphon", "chain", "held_tile", "port_signal", "siphon_signal", "machine_error", "benchmark"}
+    for mode, pair in ((key, pair) for key, pair in vents.items() if key != "benchmark"):
+        source, native = pair["dm"], pair["rust"]
+        fallback = mode in ("held_tile", "port_signal", "siphon_signal")
+        empty = mode in ("empty_siphon", "tiny_release", "tiny_siphon")
+        moves = 2 if mode == "chain" else int(not fallback and not empty)
+        diff = transport.difference(source["state"], native["state"], mode)
+        if diff or native["moves"] != moves or native["fallbacks"] != int(fallback) or native["empty"] != int(empty):
+            failures.append(dict(id=f"vent_{mode}", difference=diff or "Wrong transfer path", observed=pair))
+        if not (source["aliases_kept"] and native["aliases_kept"] and native["scope_closed"]) or (not fallback and native["full_cache"]):
+            failures.append(dict(id=f"vent_{mode}_lifetime", difference="Alias, scope or cache contract failed", observed=pair))
+    assert vents["chain"]["dm"]["state"]["second_updates"] == 1, "Second vent did not exercise the fresh reading"
+    for mode in ("port_signal", "siphon_signal"):
+        assert vents[mode]["dm"]["state"]["redirected"] and vents[mode]["dm"]["state"]["signal_calls"] == 1
+    assert vents["empty_siphon"]["dm"]["state"]["excited"] and not vents["empty_siphon"]["dm"]["state"]["updates"]
+    assert vents["machine_error"]["dm"]["state"]["caught"] and vents["machine_error"]["dm"]["state"]["updates"] == 1
+    for guard in ("stale_binding", "rejected_output"):
+        if vents["release"]["rust"]["guards"].get(guard) != 1:
+            failures.append(dict(id=f"vent_{guard}", difference="Direct transfer did not reject an invalid call"))
+    bench = {(row["repeat"], row["mode"]): row for row in vents["benchmark"]}
+    assert set(bench) == {(repeat, mode) for repeat in range(1, 4) for mode in ("dm", "rust")}
+    for repeat in range(1, 4):
+        control, direct = bench[repeat, "dm"], bench[repeat, "rust"]
+        assert all(row["loop_seconds"] > 0 and row["vent_seconds"] > 0 for row in (control, direct))
+        if not (control["updates"] == direct["updates"] == direct["moves"] == 32 * 320
+                and not direct["fallbacks"] and control["full_caches"] == 32 and not direct["full_caches"]):
+            failures.append(dict(id=f"vent_benchmark_{repeat}_coverage", difference="Wrong workload or cache path"))
+        diff = transport.difference(control["states"], direct["states"], "vent_benchmark")
+        if diff:
+            failures.append(dict(id=f"vent_benchmark_{repeat}_state", difference=diff))
+    scrubbers = actual["scrubbers"]
+    failures.extend(check_scrubbers(scrubbers))
     contacts = actual["contacts"]
     assert contacts["dm"]["hot"] > 0 and contacts["dm"]["cold"] == 0, "DM contact contract not established"
     if contacts["native"]["hot"] != contacts["dm"]["hot"] or contacts["native"]["cold"] != contacts["dm"]["cold"]:
         failures.append(dict(id="native_contact_burn", difference="Contact exposure differs from original DM", observed=contacts))
     debug = actual["debug"]
     threaded = actual["threaded"]
+    pipeline = actual["pipeline"]
+    assert len(pipeline) == 21, "Incomplete pipeline checks"
+    for key, value in pipeline.items():
+        if value != 1:
+            failures.append(dict(id=key, difference="Pipeline boundary differs"))
     assert len(threaded) == 31, "Incomplete threaded world checks"
     for key, value in threaded.items():
         if value != 1:
@@ -163,7 +203,7 @@ def main():
             failures.append(dict(id=key, difference="Failed lazy effect check"))
     if not exchange_error["dm_caught"] or not exchange_error["rust_caught"] or exchange_error["dm_moles"] != exchange_error["rust_moles"]:
         failures.append(dict(id="equipment_exception_preserves_banda_writes", difference="Equipment failure changes committed air", observed=exchange_error))
-    assert len(exchange) == 25, "Incomplete native exchange checks"
+    assert len(exchange) == 83, "Incomplete native exchange/operation checks"
     for key, value in exchange.items():
         if value != 1:
             failures.append(dict(id=key, difference="Failed native exchange check"))
@@ -209,9 +249,9 @@ def main():
                   binary_sha256=hashlib.sha256((output / "tgstation.dmb").read_bytes()).hexdigest(), feedback=feedback, threaded_errors=threaded_errors,
                   harness_sha256=fixture_hashes["tools/atmos/phase_world.dm.in"],
                   fixture_sha256=fixture_hashes,
-                  scenarios=len(pairs), network_scenarios=len(networks), network_ticks=sum(c["input"]["ticks"] for c in networks), checks=checks, inheritance=inheritance, bindings=binding_checks, deferred=deferred, api=api, contacts=contacts, debug=debug, exchange=exchange, exchange_error=exchange_error, exchange_effects=exchange_effects, exchange_spawn=exchange_spawn, threaded=threaded, teardown=teardown, failures=failures)
+                  scenarios=len(pairs), network_scenarios=len(networks), network_ticks=sum(c["input"]["ticks"] for c in networks), checks=checks, inheritance=inheritance, bindings=binding_checks, deferred=deferred, api=api, vents=vents, scrubbers=scrubbers, contacts=contacts, debug=debug, exchange=exchange, exchange_error=exchange_error, exchange_effects=exchange_effects, exchange_spawn=exchange_spawn, threaded=threaded, pipeline=pipeline, teardown=teardown, failures=failures)
     (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
-    print(f"Native phase: {len(pairs)} world scenarios, {len(networks)} connected graphs, {len(checks)} queue/lifetime checks, {len(failures)} failures")
+    print(f"Native phase: {len(pairs)} world scenarios, {len(networks)} graphs, {len(checks)} queue/lifetime checks, {len(vents) - 1} vent and {len(scrubbers) - 2 + len(scrubbers['admission'])} scrubber scenarios, {len(failures)} failures")
     for failure in failures:
         print(f"  {failure['id']}: {failure['difference']}")
     raise SystemExit(bool(failures))
@@ -230,6 +270,60 @@ def state_difference(expected, actual):
     if [p[0] for p in expected["gases"]] != [p[0] for p in actual["gases"]]:
         return "Gas keys/order changed"
     return transport.difference([p[1] for p in expected["gases"]], [p[1] for p in actual["gases"]], "moles")
+
+
+def check_scrubbers(cases):
+    # Direct moves, empty operations, fallbacks, and notifications to the pipe network.
+    expected = {
+        "filter": (1, 0, 0, 1), "trace": (1, 0, 0, 1), "zero_filter": (0, 1, 0, 0),
+        "purge": (1, 0, 0, 1), "empty_purge": (0, 1, 0, 1), "tiny_purge": (0, 1, 0, 1),
+        "unselected": (0, 0, 0, 0), "pressure": (0, 0, 0, 0), "wide": (2, 1, 0, 2),
+        "wide_limit": (1, 0, 0, 1), "signal": (0, 0, 1, 1), "held": (1, 0, 0, 1),
+        "read_in_callback": (1, 0, 0, 1), "render_in_callback": (1, 0, 0, 1), "exception": (1, 0, 0, 1),
+        "wide_exception": (2, 1, 0, 2),
+    }
+    cold = {
+        "filter": (1, 1, 0), "trace": (1, 1, 0), "zero_filter": (1, 0, 0),
+        "purge": (1, 1, 0), "empty_purge": (1, 0, 0), "tiny_purge": (1, 0, 0),
+        "unselected": (0, 0, 0), "pressure": (0, 0, 0), "wide": (4, 2, 0),
+        "wide_limit": (1, 1, 0), "signal": (0, 0, 1), "held": (0, 0, 1),
+        "read_in_callback": (1, 1, 1), "render_in_callback": (1, 1, 1), "exception": (1, 1, 1), "wide_exception": (4, 2, 3),
+    }
+    assert set(cases) == expected.keys() | {"benchmark", "admission"}
+    failures = []
+    for mode, counts in expected.items():
+        control, direct = (cases[mode][key] for key in ("control", "direct"))
+        diff = transport.difference(control["state"], direct["state"], mode)
+        observed = (direct["moves"], direct["empty"], direct["fallbacks"], direct["state"]["updates"])
+        if diff or observed != counts or not (control["aliases"] and direct["aliases"]):
+            failures.append(dict(id=f"scrubber_{mode}", difference=diff or "Wrong path, effects or mixture aliases", observed=cases[mode]))
+        if tuple(direct[key] for key in ("cold_ops", "cold_moves", "cached_tiles")) != cold[mode]:
+            failures.append(dict(id=f"scrubber_{mode}_cache", difference="Wrong native tile path or unexpected DM cache", observed=direct))
+    assert cases["signal"]["control"]["state"]["signals"] == 1
+    assert cases["exception"]["control"]["state"]["caught"] == 1
+    assert cases["wide_exception"]["control"]["state"]["caught"] == 1
+    assert cases["render_in_callback"]["control"]["state"]["rendered_overlays"] == 0
+    for mode, rows in cases["admission"].items():
+        control, direct = rows["control"], rows["direct"]
+        scheduled = mode not in ("absent", "thermal")
+        received_air = mode == "mixed"
+        if (control != dict(scheduled=int(scheduled), received_air=int(received_air), cache=int(mode != "thermal"), compact=0)
+                or direct != dict(scheduled=int(scheduled), received_air=int(received_air), cache=int(received_air),
+                                  compact=int(mode not in ("thermal", "mixed")))):
+            failures.append(dict(id=f"scrubber_admission_{mode}", difference="Scheduling, exposure signal or cache changed", observed=rows))
+    bench = {(row["repeat"], row["mode"]): row for row in cases["benchmark"]}
+    assert set(bench) == {(repeat, mode) for repeat in range(1, 4) for mode in ("control", "direct")}
+    for repeat in range(1, 4):
+        control, direct = (bench[repeat, mode] for mode in ("control", "direct"))
+        assert all(row["loop_seconds"] > 0 and row["scrub_seconds"] > 0 for row in (control, direct))
+        if (any(row["updates"] != 8192 or row["moves"] != 8192 or row["fallbacks"] for row in (control, direct))
+                or control["cached_tiles"] != 32 or control["cold_moves"] != 0
+                or direct["cached_tiles"] != 0 or direct["cold_moves"] != 8192):
+            failures.append(dict(id=f"scrubber_benchmark_{repeat}_coverage", difference="Wrong workload or transfer path"))
+        diff = transport.difference(control["states"], direct["states"], "scrubber_benchmark")
+        if diff:
+            failures.append(dict(id=f"scrubber_benchmark_{repeat}_state", difference=diff))
+    return failures
 
 
 if __name__ == "__main__":

@@ -81,6 +81,8 @@ def main():
             for key in ("seeded_turfs", "center", "plasma_moles_per_turf", "temperature", "internal_energy", "gas_heat_power_generation", "strategy", "explosion_radius"):
                 assert dm["incident"][key] == rust["incident"][key], f"Different SM input: {key}"
             assert dm["incident"]["sm_deleted"] and rust["incident"]["sm_deleted"], "Delamination did not complete"
+        if dm["scenario"] in ("atmos-decompression", "pipe-plasma-flood"):
+            assert dm["incident"]["inputs"] == rust["incident"]["inputs"], "Different atmosphere incident inputs"
         a, b = metrics(dm_folder, dm), metrics(rust_folder, rust)
         assert a["process"] and b["process"], "Missing process samples"
         if rust.get("rust_threaded", False):

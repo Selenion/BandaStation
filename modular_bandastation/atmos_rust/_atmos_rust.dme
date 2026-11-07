@@ -10,3 +10,8 @@
 #include "code/debug.dm"
 #include "code/mixture.dm"
 #include "code/access.dm"
+#include "code/properties.dm"
+#include "code/vents.dm"
+#include "code/pipes.dm"
+#include "code/operations.dm"
+#include "code/pipeline.dm"

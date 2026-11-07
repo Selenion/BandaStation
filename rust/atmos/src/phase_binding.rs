@@ -14,6 +14,14 @@ pub struct Rebinding {
 }
 
 impl Store {
+    /// A detached or not-yet-published replacement cannot supply synchronous observations.
+    pub fn published_binding_version(&self, id: CellId) -> Option<u32> {
+        let binding = self.bindings.get(&id)?;
+        (binding.attached
+            && self.published.binding_versions.get(id as usize) == Some(&binding.version))
+        .then_some(binding.version)
+    }
+
     pub fn binding_version(&self, id: CellId) -> Result<u32, Error> {
         self.bindings
             .get(&id)

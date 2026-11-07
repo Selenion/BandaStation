@@ -1,13 +1,21 @@
 //! Small BYOND 516 C API adapter. Only the completion notification touches BYOND on a worker.
-//! Numeric input is copied before spawning; native state retains no turf/object references.
+//! Worker state is numeric; main-thread projection separately owns DM cache baselines.
 use crate::{
     catalog::*,
     cell::{Cell, WorldAction},
     phase::{Store, Write},
     Effect,
 };
+#[path = "byond_operations.rs"]
+mod operations;
 #[path = "byond_packets.rs"]
 mod packet;
+#[path = "byond_pipe_direct.rs"]
+mod pipe_direct;
+#[path = "byond_pipes.rs"]
+mod pipes;
+#[path = "byond_projection.rs"]
+mod projection;
 #[path = "byond_worker.rs"]
 mod worker;
 #[path = "byond_world.rs"]
@@ -186,6 +194,9 @@ pub extern "C" fn banda_atmos_error(_count: u32, _values: *const *const c_char) 
 }
 
 unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
+    if matches!(api.integer(&args[0])?, 74..=81) {
+        return projection::dispatch(api, args);
+    }
     let opcode = api.integer(args.first().ok_or("Missing operation")?)?;
     if opcode == 0 {
         if args.len() != 1 {
@@ -204,6 +215,12 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
     let id = api.integer(args.get(1).ok_or("Missing owner")?)?;
     let owner = engine(id)?;
     let mut store = owner.lock().map_err(|_| "Phase owner poisoned")?;
+    if matches!(opcode, 82..=86) {
+        return operations::dispatch(api, args, &mut store);
+    }
+    if matches!(opcode, 41..=49 | 68..=69) {
+        return pipes::dispatch(api, args, &mut store);
+    }
     let field = |index| {
         args.get(index)
             .ok_or_else(|| "Missing argument".to_string())
@@ -212,11 +229,14 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
         (1, 2) => {
             store.close();
             owner.notify();
+            drop(store);
             registry()
                 .lock()
                 .map_err(|_| "Registry poisoned")?
                 .engines
                 .remove(&id);
+            projection::close(id)?;
+            return Ok(1.0);
         }
         (2, 7) => {
             let coordinates = api.numbers(field(5)?)?;
@@ -264,10 +284,16 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
             }
             store.write(write).map_err(|e| format!("{e:?}"))?;
         }
-        (4, 4) => api.output(
-            field(3)?,
-            &packet::air_packet(&store.snapshot(), api.integer(field(2)?)?)?,
-        )?,
+        (4, 4) => {
+            let id = api.integer(field(2)?)?;
+            let frame = store.snapshot();
+            let output = if let Some(sample) = store.pending_operation_sample(id) {
+                packet::air_packet_with(&frame, &frame.cells[&id], &sample.air, false, true)
+            } else {
+                packet::air_packet(&frame, id)?
+            };
+            api.output(field(3)?, &output)?;
+        }
         (5, 3) => {
             let commands = store.pending_commands().map_err(|e| format!("{e:?}"))?;
             let mut output = Vec::new();
@@ -377,10 +403,23 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
                 ))
                 .map_err(|e| format!("{e:?}"))?;
         }
-        (12, 4) => api.output(
-            field(3)?,
-            &packet::turf_packet(&store.snapshot(), api.integer(field(2)?)?)?,
-        )?,
+        (12, 4) => {
+            let id = api.integer(field(2)?)?;
+            let frame = store.snapshot();
+            let output = if let Some(sample) = store.pending_operation_sample(id) {
+                let mut output = packet::turf_packet_with(
+                    &frame,
+                    id,
+                    &frame.schedule.tiles[&id],
+                    Some(&sample.archived),
+                );
+                output[6] = sample.last_share;
+                output
+            } else {
+                packet::turf_packet(&frame, id)?
+            };
+            api.output(field(3)?, &output)?;
+        }
         (13, 4) => {
             let value = terrain(&api.numbers(field(3)?)?)?;
             store
@@ -415,7 +454,8 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
             let completed = job.map_err(|e| format!("{e:?}"))?.calculate();
             store.finish(completed).map_err(|e| format!("{e:?}"))?;
         }
-        (17, 3) => {
+        (63, 2) => {}
+        (17 | 63, 3) => {
             let snapshot = store.snapshot();
             let schedule = &snapshot.schedule;
             let mut output = Vec::new();
@@ -423,14 +463,16 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
                 output.push(ids.len() as f32);
                 output.extend(ids.iter().map(|id| *id as f32));
             }
-            output.push(schedule.groups.len() as f32);
-            for group in schedule.groups.values() {
-                output.extend([
-                    group.breakdown as f32,
-                    group.dismantle as f32,
-                    group.members.len() as f32,
-                ]);
-                output.extend(group.members.iter().map(|id| *id as f32));
+            if opcode == 17 {
+                output.push(schedule.groups.len() as f32);
+                for group in schedule.groups.values() {
+                    output.extend([
+                        group.breakdown as f32,
+                        group.dismantle as f32,
+                        group.members.len() as f32,
+                    ]);
+                    output.extend(group.members.iter().map(|id| *id as f32));
+                }
             }
             api.output(field(2)?, &output)?;
         }
@@ -516,7 +558,40 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
         (39, 3) => {
             api.output(field(2)?, &owner.profile())?;
         }
-        (23..=37 | 40, _) => return world::dispatch(api, &mut store, args),
+        (23..=37 | 40 | 50..=53 | 64..=66 | 73, _) => {
+            return world::dispatch(api, &mut store, args)
+        }
+        (54, 2) => pipe_direct::vent_available()?,
+        (55, 8) => return pipe_direct::transfer_vent(api, &mut store, &args[2..]),
+        (56, 2) => pipe_direct::vent_available()?,
+        (57, 8) if !store.busy() => return pipe_direct::transfer_scrubber(api, &args[2..]),
+        (58, 3) if api.integer(field(2)?)? == 1 => pipe_direct::vent_available()?,
+        (59, 4) => {
+            let id = api.integer(field(2)?)?;
+            let version = api.integer(field(3)?)?;
+            let Some((air, _)) = store.scrubber_air(id, version) else {
+                return Ok(-1.0);
+            };
+            let keys = air.keys().iter().fold(0u32, |keys, gas| keys | (1 << gas));
+            // Present zero keys count; zero as an FFI return indicates an error.
+            return Ok((keys + 1) as f32);
+        }
+        (60 | 71, 8) => {
+            return pipe_direct::transfer_scrubber_tile(api, &mut store, &args[2..], opcode == 71)
+        }
+        (61, 3) => pipe_direct::finish_scrubber_tiles(&mut store, api.integer(field(2)?)? == 1)?,
+        (61, 4) if api.integer(field(2)?)? == 0 => {
+            let ids: Vec<_> = store
+                .scrubber_edits
+                .iter()
+                .map(|edit| edit.0 as f32)
+                .collect();
+            api.output(field(3)?, &ids)?;
+        }
+        (62, 6) => return pipe_direct::take_scrubber_tile(api, &mut store, &args[2..]),
+        (67, 6) => return pipe_direct::transfer_passive_vent(api, &mut store, &args[2..]),
+        (70, 7) => return pipe_direct::transfer_owned_vent(api, &mut store, &args[2..]),
+        (72, 6) => return pipe_direct::transfer_owned_passive(api, &mut store, &args[2..]),
         _ => return Err("Invalid operation or arity".into()),
     }
     Ok(1.0)

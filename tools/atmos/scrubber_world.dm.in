@@ -1,0 +1,286 @@
+/obj/machinery/atmospherics/components/unary/vent_scrubber/banda_scrubber_probe
+	var/parent_updates = 0
+	var/merge_signals = 0
+	var/fail_update = 0
+	var/read_on_update = FALSE
+	var/observed_carbon
+	var/render_on_update = FALSE
+	var/rendered_overlays
+	var/saw_compact_keys = FALSE
+
+/obj/machinery/atmospherics/components/unary/vent_scrubber/banda_scrubber_probe/should_atmos_process(datum/gas_mixture/air, exposed_temperature, native_keys)
+	saw_compact_keys = !isnull(native_keys)
+	return ..()
+
+/obj/machinery/atmospherics/components/unary/vent_scrubber/banda_scrubber_probe/update_parents()
+	parent_updates++
+	if(read_on_update)
+		var/turf/open/spot = loc
+		var/datum/gas_mixture/air = spot.get_readonly_air()
+		observed_carbon = air.moles[/datum/gas/carbon_dioxide]
+	if(render_on_update)
+		var/turf/open/spot = loc
+		spot.update_visuals()
+		rendered_overlays = length(spot.atmos_overlay_types)
+	if(parent_updates == fail_update)
+		throw EXCEPTION("BANDA_EXPECTED_SCRUBBER_ERROR")
+
+/obj/machinery/atmospherics/components/unary/vent_scrubber/banda_scrubber_probe/proc/count_merge(datum/source)
+	SIGNAL_HANDLER
+	merge_signals++
+
+/datum/banda_scrubber_exposure_probe
+	var/received_air = FALSE
+
+/datum/banda_scrubber_exposure_probe/proc/observe(datum/source, datum/gas_mixture/air)
+	SIGNAL_HANDLER
+	received_air = !!air?.moles
+
+/datum/controller/subsystem/atmos_phase_test/proc/setup_scrubber(turf/open/target)
+	var/obj/machinery/atmospherics/components/unary/vent_scrubber/banda_scrubber_probe/scrubber = new(target)
+	scrubber.nodes[1] = scrubber
+	scrubber.set_on(TRUE)
+	scrubber.set_is_operational(TRUE)
+	scrubber.filter_types = list(/datum/gas/plasma, /datum/gas/carbon_dioxide)
+	var/datum/gas_mixture/port = scrubber.airs[1]
+	port.temperature = 320
+	port.moles[/datum/gas/nitrogen] = 12
+	port.moles_archive[/datum/gas/nitrogen] = 13
+	port.temperature_archived = 315
+	port.last_share = 3
+	var/list/reactions = banda_atmos_reactions()
+	port.reaction_results[reactions[1]] = 4
+	return scrubber
+
+/datum/controller/subsystem/atmos_phase_test/proc/scrubber_tile(x, y, carbon, plasma)
+	var/turf/open/target = floor_at(x, y)
+	SSair.remove_from_active(target)
+	target.significant_share_ticker = 17
+	var/datum/gas_mixture/air = target.air
+	air.temperature = 333
+	air.moles[/datum/gas/nitrogen] = 300
+	if(!isnull(carbon))
+		air.moles[/datum/gas/carbon_dioxide] = carbon
+	if(!isnull(plasma))
+		air.moles[/datum/gas/plasma] = plasma
+	air.moles_archive[/datum/gas/oxygen] = MOLAR_ACCURACY
+	air.moles_archive[/datum/gas/nitrogen] = 20
+	air.temperature_archived = 280
+	var/list/reactions = banda_atmos_reactions()
+	air.reaction_results[reactions[1]] = 5
+	return target
+
+/datum/controller/subsystem/atmos_phase_test/proc/scrubber_transfer_cases()
+	var/list/cases = list()
+	for(var/mode in list("filter", "trace", "zero_filter", "purge", "empty_purge", "tiny_purge", "unselected", "pressure", "wide", "wide_limit", "signal", "held", "read_in_callback", "render_in_callback", "exception", "wide_exception"))
+		var/list/control = scrubber_transfer_case(mode, mode in list("exception", "wide_exception", "read_in_callback") ? "borrowed" : "dm")
+		cases[mode] = list("control" = control, "direct" = scrubber_transfer_case(mode, "direct"))
+	cases["admission"] = list()
+	for(var/mode in list("gas", "zero", "absent", "thermal", "mixed", "settings"))
+		cases["admission"][mode] = list("control" = scrubber_admission_case(mode, FALSE), "direct" = scrubber_admission_case(mode, TRUE))
+	return cases
+
+/datum/controller/subsystem/atmos_phase_test/proc/scrubber_admission_case(mode, compact)
+	var/carbon = mode == "absent" ? null : (mode == "zero" ? 0 : 70)
+	var/turf/open/target = scrubber_tile(218, 182, carbon, null)
+	var/obj/machinery/atmospherics/components/unary/vent_scrubber/banda_scrubber_probe/scrubber = setup_scrubber(target)
+	var/datum/banda_scrubber_exposure_probe/observer = new
+	if(mode == "mixed")
+		observer.RegisterSignal(target, COMSIG_TURF_EXPOSE, TYPE_PROC_REF(/datum/banda_scrubber_exposure_probe, observe))
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.scrubber_tile_ready = compact && phase.scrubber_tile_ready
+	target.banda_air_requested = FALSE
+	phase.register_batch(list(target))
+	phase.native(30)
+	phase.initializing = FALSE
+	var/datum/banda_atmos_cell/cell = phase.ensure_binding(target)
+	if(mode == "thermal")
+		// The existing unwelded path dereferences null air on heat-only exposure.
+		scrubber.welded = TRUE
+		SSair.atom_process |= scrubber
+		scrubber.flags_1 |= ATMOS_IS_PROCESSING_1
+	if(mode == "settings")
+		scrubber.atmos_conditions_changed()
+	else
+		phase.invoke(CALLBACK(cell, TYPE_PROC_REF(/datum/banda_atmos_cell, execute), 13, 300, mode != "thermal"))
+	var/list/result = list("scheduled" = !!(scrubber.flags_1 & ATMOS_IS_PROCESSING_1), "received_air" = observer.received_air,
+		"cache" = !!(cell.cached_air || cell.readonly_air), "compact" = scrubber.saw_compact_keys)
+	if(mode == "mixed")
+		observer.UnregisterSignal(target, COMSIG_TURF_EXPOSE)
+	qdel(observer)
+	scrubber.nodes[1] = null
+	qdel(scrubber)
+	qdel(phase)
+	return result
+
+/datum/controller/subsystem/atmos_phase_test/proc/scrubber_transfer_case(mode, backend)
+	var/carbon = 70
+	var/plasma = 30
+	if(mode == "trace")
+		carbon = 0.006
+		plasma = 0.008
+	if(mode == "zero_filter")
+		carbon = 0
+		plasma = 0
+	if(mode == "unselected")
+		carbon = null
+		plasma = null
+	if(mode == "render_in_callback")
+		carbon = null
+		plasma = MOLES_GAS_VISIBLE + 0.005
+	var/turf/open/target = scrubber_tile(218, 182, carbon, plasma)
+	if(mode == "render_in_callback")
+		target.update_visuals(target.air.moles)
+		if(length(target.atmos_overlay_types) != 1)
+			CRASH("The staged scrubber test must start above the visibility threshold")
+	if(mode == "empty_purge")
+		target.air.moles.Cut()
+	var/obj/machinery/atmospherics/components/unary/vent_scrubber/banda_scrubber_probe/scrubber = setup_scrubber(target)
+	var/datum/gas_mixture/port = scrubber.airs[1]
+	port.banda_expose_pipe_port()
+	var/list/port_moles = port.moles
+	var/list/port_archive = port.moles_archive
+	if(mode in list("purge", "empty_purge", "tiny_purge"))
+		scrubber.scrubbing = ATMOS_DIRECTION_SIPHONING
+	if(mode == "tiny_purge")
+		scrubber.volume_rate = 0.000001
+	if(mode == "pressure" || mode == "wide_limit")
+		var/pressure = 50 * ONE_ATMOSPHERE + (mode == "pressure" ? 1 : -1)
+		port.moles[/datum/gas/nitrogen] = pressure * port.volume / (port.temperature * R_IDEAL_GAS_EQUATION)
+	var/list/targets = list(target)
+	if(mode in list("wide", "wide_limit", "wide_exception"))
+		scrubber.widenet = TRUE
+		scrubber.adjacent_turfs = list(scrubber_tile(219, 182, null, null), scrubber_tile(219, 183, 0, 0), scrubber_tile(218, 183, 20, 10))
+		COOLDOWN_START(scrubber, check_turfs_cooldown, 2 SECONDS)
+		targets += scrubber.adjacent_turfs
+	if(mode == "signal")
+		scrubber.RegisterSignal(port, COMSIG_GASMIX_MERGED, TYPE_PROC_REF(/obj/machinery/atmospherics/components/unary/vent_scrubber/banda_scrubber_probe, count_merge))
+	scrubber.fail_update = mode == "exception" ? 1 : (mode == "wide_exception" ? 2 : 0)
+	scrubber.read_on_update = mode == "read_in_callback"
+	scrubber.render_on_update = mode == "render_in_callback"
+	var/datum/banda_atmos_phase/world_adapter/phase
+	if(backend != "dm")
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		if(backend == "borrowed")
+			phase.scrubber_tile_ready = FALSE
+		for(var/turf/open/spot as anything in targets)
+			spot.banda_air_requested = FALSE
+		phase.register_batch(targets)
+		phase.native(30)
+		phase.initializing = FALSE
+	var/datum/gas_mixture/held
+	var/list/held_moles
+	var/list/held_archive
+	if(mode == "held")
+		held = phase ? phase.invoke(CALLBACK(target, TYPE_PROC_REF(/turf/open, get_mutable_air))) : target.air
+		held_moles = held.moles
+		held_archive = held.moles_archive
+	SSair.atom_process |= scrubber
+	scrubber.flags_1 |= ATMOS_IS_PROCESSING_1
+	var/caught = FALSE
+	try
+		if(phase)
+			phase.invoke(CALLBACK(scrubber, TYPE_PROC_REF(/atom, process_exposure)))
+		else
+			scrubber.process_exposure()
+	catch(var/exception/error)
+		if(error.name != "BANDA_EXPECTED_SCRUBBER_ERROR")
+			throw error
+		caught = TRUE
+	var/list/states = list()
+	var/list/published = list()
+	var/cached_tiles = 0
+	for(var/turf/open/spot as anything in targets)
+		if(spot.banda_atmos_cell?.cached_air || spot.banda_atmos_cell?.readonly_air)
+			cached_tiles++
+		states += list(list("air" = banda_atmos_full_packet(spot.get_readonly_air()), "excited" = !!spot.excited, "ticker" = spot.significant_share_ticker, "overlays" = length(spot.atmos_overlay_types)))
+		if(scrubber.fail_update)
+			var/list/packet = list()
+			phase.native(4, spot.banda_atmos_id, packet)
+			published += list(packet)
+	var/datum/gas_mixture/after = phase ? target.banda_atmos_cell?.cached_air : target.air
+	var/list/result = list(
+		"state" = list("tiles" = states, "port" = banda_atmos_full_packet(port), "updates" = scrubber.parent_updates,
+			"on" = !!scrubber.on, "scheduled" = !!(scrubber.flags_1 & ATMOS_IS_PROCESSING_1), "signals" = scrubber.merge_signals,
+			"caught" = caught, "published" = published, "observed_carbon" = scrubber.observed_carbon, "rendered_overlays" = scrubber.rendered_overlays),
+		"moves" = phase?.scrubber_transfers || 0, "empty" = phase?.scrubber_empty_transfers || 0,
+		"fallbacks" = phase?.scrubber_transfer_fallbacks || 0,
+		"cold_ops" = phase?.scrubber_tile_operations || 0, "cold_moves" = phase?.scrubber_tile_moves || 0, "cached_tiles" = cached_tiles,
+		"aliases" = port == scrubber.airs[1] && port.moles == port_moles && port.moles_archive == port_archive && (!held || (held == after && held.moles == held_moles && held.moles_archive == held_archive)),
+	)
+	if(mode == "signal")
+		scrubber.UnregisterSignal(port, COMSIG_GASMIX_MERGED)
+	scrubber.nodes[1] = null
+	qdel(scrubber)
+	qdel(phase)
+	return result
+
+/datum/controller/subsystem/atmos_phase_test/proc/benchmark_scrubber_transfers()
+	var/list/rows = list()
+	for(var/repetition in 1 to 3)
+		var/list/modes = repetition % 2 ? list("control", "direct") : list("direct", "control")
+		for(var/mode in modes)
+			var/list/targets = list()
+			var/list/scrubbers = list()
+			var/list/reset_packets = list()
+			for(var/x in 175 to 182)
+				for(var/y in 185 to 188)
+					var/turf/open/target = scrubber_tile(x, y, 70, 30)
+					scrubbers += setup_scrubber(target)
+					target.banda_air_requested = FALSE
+					targets += target
+					reset_packets[target] = banda_atmos_compact_packet(target.air, TRUE)
+			var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+			SSair.native_atmos = phase
+			if(mode == "control")
+				phase.scrubber_tile_ready = FALSE
+			phase.register_batch(targets)
+			phase.native(30)
+			phase.initializing = FALSE
+			world.Profile(PROFILE_RESTART)
+			scrubber_bench_cycles(phase, scrubbers, reset_packets)
+			world.Profile(PROFILE_STOP)
+			var/list/procs = json_decode(world.Profile(PROFILE_REFRESH, format = "json"))
+			var/loop_seconds
+			var/scrub_seconds
+			for(var/list/row as anything in procs)
+				switch(row["name"])
+					if("/datum/controller/subsystem/atmos_phase_test/proc/scrubber_bench_cycles")
+						loop_seconds = row["total"]
+					if("/obj/machinery/atmospherics/components/unary/vent_scrubber/proc/scrub_exposed_tile")
+						scrub_seconds = row["total"]
+			var/list/states = list()
+			var/updates = 0
+			var/cached_tiles = 0
+			for(var/obj/machinery/atmospherics/components/unary/vent_scrubber/banda_scrubber_probe/scrubber as anything in scrubbers)
+				var/turf/open/target = scrubber.loc
+				if(target.banda_atmos_cell?.cached_air || target.banda_atmos_cell?.readonly_air)
+					cached_tiles++
+				updates += scrubber.parent_updates
+				states += list(list(banda_atmos_full_packet(target.get_readonly_air()), banda_atmos_full_packet(scrubber.airs[1])))
+				scrubber.nodes[1] = null
+				qdel(scrubber)
+			rows += list(list("mode" = mode, "repeat" = repetition, "loop_seconds" = loop_seconds, "scrub_seconds" = scrub_seconds,
+				"moves" = phase.scrubber_transfers, "fallbacks" = phase.scrubber_transfer_fallbacks, "updates" = updates, "states" = states,
+				"cold_moves" = phase.scrubber_tile_moves, "cached_tiles" = cached_tiles))
+			qdel(phase)
+	return rows
+
+/datum/controller/subsystem/atmos_phase_test/proc/scrubber_bench_cycles(datum/banda_atmos_phase/world_adapter/phase, list/scrubbers, list/reset_packets)
+	for(var/step in 1 to 256)
+		for(var/turf/target as anything in reset_packets)
+			phase.native(36, target.banda_atmos_id, FALSE, reset_packets[target])
+		phase.project_changes()
+		for(var/obj/machinery/atmospherics/components/unary/vent_scrubber/scrubber as anything in scrubbers)
+			phase.invoke(CALLBACK(src, PROC_REF(scrubber_bench_pass), scrubber))
+		phase.project_changes()
+
+/datum/controller/subsystem/atmos_phase_test/proc/scrubber_bench_pass(obj/machinery/atmospherics/components/unary/vent_scrubber/scrubber)
+	var/datum/gas_mixture/port = scrubber.airs[1]
+	port.banda_expose_pipe_port()
+	port.moles.Cut()
+	port.moles[/datum/gas/nitrogen] = 12
+	port.temperature = 320
+	scrubber.process_exposure()

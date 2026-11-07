@@ -193,6 +193,13 @@ SUBSYSTEM_DEF(air)
 		if(native_atmos)
 			timer = TICK_USAGE_REAL
 			var/datum/banda_atmos_phase/world_adapter/native_owner = native_atmos
+			if(native_owner.pipelined)
+				if(native_owner.start_pipeline_tick())
+					native_atoms_pending = TRUE
+					cost_turfs = MC_AVERAGE(cost_turfs, native_owner.last_tick_ms)
+					SStgui.update_uis(SSair)
+				currentpart = SSAIR_PIPENETS
+				return
 			if(native_owner.threaded)
 				native_atoms_pending = TRUE
 				// The previous worker's wall latency is separate from this MC phase's CPU budget.
@@ -339,6 +346,8 @@ SUBSYSTEM_DEF(air)
 /datum/controller/subsystem/air/proc/process_pipenets(resumed = FALSE)
 	if (!resumed)
 		src.currentrun = networks.Copy()
+		// BANDASTATION ADDITION - Bound native records follow the lifetime of their weak DM views.
+		native_atmos?.reap_pipe_bindings()
 	//cache for sanic speed (lists are references anyways)
 	var/list/currentrun = src.currentrun
 	while(currentrun.len)
@@ -396,15 +405,25 @@ SUBSYSTEM_DEF(air)
 		src.currentrun = atmos_machinery.Copy()
 	//cache for sanic speed (lists are references anyways)
 	var/list/currentrun = src.currentrun
+	// BANDASTATION ADDITION - Scalar reads stay native until a device requests a real mixture.
+	var/readings_left = 0
 	while(currentrun.len)
 		var/obj/machinery/M = currentrun[currentrun.len]
+		// BANDASTATION ADDITION START - Bound prefetch to the current, non-sleeping MC chunk.
+		if(native_atmos?.properties_ready && readings_left <= 0)
+			native_atmos.prefetch_air_readings(currentrun)
+			readings_left = BANDA_ATMOS_READING_BATCH_SIZE
+		readings_left--
+		// BANDASTATION ADDITION END
 		currentrun.len--
 		if(!M)
 			atmos_machinery -= M
 		if(M.process_atmos(wait * 0.1) == PROCESS_KILL)
 			stop_processing_machine(M)
 		if(MC_TICK_CHECK)
+			native_atmos?.clear_air_readings() // BANDASTATION ADDITION
 			return
+	native_atmos?.clear_air_readings() // BANDASTATION ADDITION
 
 
 /datum/controller/subsystem/air/proc/process_super_conductivity(resumed = FALSE)

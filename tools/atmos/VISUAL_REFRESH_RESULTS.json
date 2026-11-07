@@ -1,0 +1,1967 @@
+{
+  "scope": "Same DLL and DM build with direct pipe, vent and scrubber transfers. Ordinary icon refresh with a DM tile cache versus compact visual descriptors",
+  "source_sha256": {
+    "code/__DEFINES/atmospherics/atmos_helpers.dm": "c18c2263eaea3b9919cd646bbdd9270fbd8910ab61f387b83f16ebd7785e7f32",
+    "code/controllers/subsystem/air.dm": "ee32d69734353cd269c8516b8f6c9f44e72138e17babad4d96963e56f131414e",
+    "code/datums/elements/atmos_sensitive.dm": "50be77c2254e77da0f135c434388cf16e053291009dc7cda2377d3ffcf62a1c9",
+    "code/game/turfs/open/_open.dm": "7fba14955ac13a96f8fb2c5d58156fcd610edecd0e8f527089e6648135c0605e",
+    "code/modules/atmospherics/environmental/LINDA_turf_tile.dm": "2c95c67208bbef065877ad9c7203881dc41ba3ce18910f9bf0164e1e6422394e",
+    "code/modules/atmospherics/machinery/components/unary_devices/vent_pump.dm": "1dd7a8bcdd8fefadf81e12ceb6fa829d7678ef6a9a8e72c5024f544ed95f2d66",
+    "code/modules/atmospherics/machinery/components/unary_devices/vent_scrubber.dm": "32ef52256788c34ccb0826007aaafbdb08537bb6ddc319ac46058318c594f27f",
+    "modular_bandastation/atmos_rust/_atmos_rust.dm": "e4d505bfb306242cf07f41dd98e9855a4aeb3f5d20af07606ed76a7211634aab",
+    "modular_bandastation/atmos_rust/_atmos_rust.dme": "af3a8519512340d73cc7145400e5b967a7ca23518d8e78f2f3994bf05bf98dee",
+    "modular_bandastation/atmos_rust/code/access.dm": "a37c2744a5f997f78bb7f5aa0ea3d0f4460d4b0c57febdb45683100458aaca5a",
+    "modular_bandastation/atmos_rust/code/binding.dm": "ff14195e9f033087bcf94b50fd38c9aff2ff01f27ab602a3852d78b31f58e05b",
+    "modular_bandastation/atmos_rust/code/catalog.dm": "c446cf8d946f0b9aacb05f9cc50150a4f63477bd8e92087d713c0298ab871645",
+    "modular_bandastation/atmos_rust/code/cell.dm": "9e3a4e92680bc2b53541ec1ab460c2536a5eea636efe2c966f2642626f952a2f",
+    "modular_bandastation/atmos_rust/code/debug.dm": "86bf40b6d4cbd0e0da0eae26d99344e93e0a592871730412889a37858a390dea",
+    "modular_bandastation/atmos_rust/code/hotspot.dm": "9f0043d2470bee9f8fa571c605150591f53702b24fe5a3f270fbd270e52fbdab",
+    "modular_bandastation/atmos_rust/code/mixture.dm": "7e8ddba508125b589db4d2ecd25d3aaec28f8faa21836301289e111abb2b88e4",
+    "modular_bandastation/atmos_rust/code/phase.dm": "86ab62a44df96f15359e4dea68f1e719332569e00d7bc4d1260eebc15765bfbb",
+    "modular_bandastation/atmos_rust/code/pipes.dm": "61280f32254b2b42f8ed6b974b2f5b15c72937cd2f02bfda4a57665234addda9",
+    "modular_bandastation/atmos_rust/code/properties.dm": "0c512ece5a83e66b8ba692c0c20e0cadca757367ef19941efac90769665d6c8c",
+    "modular_bandastation/atmos_rust/code/safe.dm": "11a61108902152ef2b1213f99eafdec85973b1b9e36908c73cbd8b6e4e457c3a",
+    "modular_bandastation/atmos_rust/code/serialization.dm": "911d95c078b0a2839db97b9376f104a589ac35fb0f62db5263a06d26a1d9756a",
+    "modular_bandastation/atmos_rust/code/vents.dm": "83dd449657f7664446c560395a7d09a05e38cb7b390625ec6f4e163d6773c794",
+    "modular_bandastation/atmos_rust/code/world.dm": "4687c9277f5d71471470b8deb164bfe6eb4aeec2e2b44589ab53b3979349de93",
+    "rust/atmos/src/amounts.rs": "7ee269fa180dd9d6c2571504a89abf81f002c48cda60db6acbf455480e47aa95",
+    "rust/atmos/src/bin/cell.rs": "610cf621c145634075ff8fa06438f37cb749f18c41e7658bde59ea466e374126",
+    "rust/atmos/src/bin/network.rs": "62067ca54fd0ff3ee5b7d2b071fafa987aaa711c58cf64d00b5f5e9e712a6867",
+    "rust/atmos/src/bin/transport.rs": "c893a1aec02c7c987dc71de5499a1da81f31c64822142d358ccbfdee91facbe7",
+    "rust/atmos/src/byond.rs": "f19a8a5bbfc82c67833193602de71a3a10d9b3b6a19576a400098843102d3847",
+    "rust/atmos/src/byond_packets.rs": "8c025b05c866d90e5906188ea23dc84fe00045e663cd4c582451aa33e0c177a4",
+    "rust/atmos/src/byond_pipe_direct.rs": "d6eee5728903430476b0f01a84b85d007363945628a99423bc07647e25eeab29",
+    "rust/atmos/src/byond_pipes.rs": "606670cbeeb3fad59b8511f68988849950c01c53036ae112e6e9f36adcc7ac36",
+    "rust/atmos/src/byond_scrubber.rs": "ab0a590b186ff79dea5d73a416357b4d0d0cc31dd3f60d2cba698d5c499f1fd8",
+    "rust/atmos/src/byond_worker.rs": "5665e969b3963ca9dd8f54572aace4d7320b082f373553cc80ac94f60c719902",
+    "rust/atmos/src/byond_world.rs": "fe992e372002acce4fc0333ed41999d2535c80ccdd4557eb6b5526c936e8a9ba",
+    "rust/atmos/src/catalog.rs": "99ade86eee86cbc0e06028c6f3e17bcb11e22c0df4000830d92e48423dd2e5e7",
+    "rust/atmos/src/cell.rs": "cc6cf689ce1d6329d68e947129279b47aee8fbe381fcc5b193e21fd45b31e726",
+    "rust/atmos/src/lib.rs": "62aac5ce2e7a74309525edd3312e406615ac67936b2375a6bb52b9a41a493251",
+    "rust/atmos/src/main.rs": "d014796fbb17c923b59010437c5df6a96b03b80dac26b499343fe351bdb1f098",
+    "rust/atmos/src/network.rs": "ade41ec358bc188b03eefb4d43741b0136f3408cd3ed61ed2a18e5936d4bbee8",
+    "rust/atmos/src/phase.rs": "3746859d7fe21815d754f40abf5d69dcebe6b5a367d0fe134d9cf76229e773b4",
+    "rust/atmos/src/phase_binding.rs": "25d710ed4e2b656a02cbc794d4e8dcb9a67453e2c5d472e09158930c354fb7eb",
+    "rust/atmos/src/phase_tests.rs": "b415e50bfbd51b0bbaf63b315d150816e67aa0e8360be4e5e263d9448d55a15c",
+    "rust/atmos/src/phase_write.rs": "b585830788ae39cd4c134926a4903be2bec3f03b68a9c3b8ff33661a6b677a75",
+    "rust/atmos/src/pipenet.rs": "2d60f00f3f9047f502b50af1a0a36ade329a5973e42372c567317c4522b35a59",
+    "rust/atmos/src/pipenet_pool.rs": "6dea471892ed2c135522baf8b88eda3cc84bdf4eff116dbd1959ef53df99530b",
+    "rust/atmos/src/reactions.rs": "4bb253a2099a104947f273b1a4c5015176c6f8145d3350419fe9afdf953854f0",
+    "rust/atmos/src/results.rs": "dcfdafecf1ae1f9a1cdd34e5eeafe75bc9968a74c8f46de2f08243b3515505c0",
+    "rust/atmos/src/simd.rs": "13ea48a4f890a749ddacfd738e8be0d08f0b3dac9112f1bc7980b2d3f97a5637",
+    "rust/atmos/src/storage.rs": "42bb00c21e76ce71135018067a3f29a10125fbb6df13504f4c4071e69ec1127a",
+    "rust/atmos/src/thermal.rs": "4dfb8dba9a9537d6c597d2ae1d3d61d964a2318649e76da15df4f3c1cc3932d2",
+    "rust/atmos/src/transport.rs": "12c114112f7c2e7c4102bf924ff53a6c6d757f18b079ad580135e193aa0378b6",
+    "rust/atmos/src/visibility.rs": "bd904031401744abb79c14ae1c8114fad86fc6521a3b06b7fd93ba022b836b7d",
+    "rust/atmos/src/worker_profile.rs": "2eca1bfc2a0d365eec900a6a4dbd05844a768153e020544b92e2a782a9d1e522",
+    "tools/profiling/local_profile.dm.in": "246c835d84076234a424fc6f5d48fc923b74ad64a8bd632f0cc24a5b19488c5d",
+    "tools/profiling/run.py": "fe199dea097c8d99a21f5240de93564fba41198e761f3146584276a74a6cc594"
+  },
+  "pairs": [
+    {
+      "scenario": "atmos-fire",
+      "repeat": 1,
+      "runs": [
+        {
+          "folder": "tmp\\profiling\\visual-refresh-v1-full-fire-01",
+          "metrics": {
+            "process": {
+              "samples": 61,
+              "sampled_wall_seconds": 60.385807,
+              "cpu_seconds": 18.671875,
+              "cpu_one_core_percent": 30.920966246257173,
+              "working_set_mib": [
+                1796.7890625,
+                1798.12890625
+              ],
+              "private_mib": [
+                1823.359375,
+                1834.375
+              ],
+              "observed_lifetime_peak_working_set_mib": 2089.984375,
+              "observed_lifetime_peak_commit_mib": 2111.48046875,
+              "main_thread_id": 476,
+              "main_thread_cpu_seconds": 18.3125,
+              "main_thread_cpu_one_core_percent": 30.32583467833758,
+              "other_threads_cpu_seconds": 0.359375,
+              "other_threads_cpu_one_core_percent": 0.5951315679195941
+            },
+            "native_completed_ticks": 120,
+            "sample_game_seconds": 60,
+            "sample_wall_seconds": 61.6391,
+            "ssair": {
+              "type": "/datum/controller/subsystem/air",
+              "name": "Atmospherics",
+              "cost_ms_rolling": 27.3385,
+              "times_fired": 120,
+              "wait_ds": 5,
+              "tick_usage_rolling": 54.6771,
+              "tick_overrun_rolling": 0
+            },
+            "atmos_start": {
+              "active_turfs": 85,
+              "hotspots": 0,
+              "excited_groups": 3,
+              "pipenets": 296,
+              "cost_turfs": 43.2901,
+              "cost_hotspots": 0,
+              "cost_pipenets": 3.11963,
+              "cost_atmos_machinery": 11.7369,
+              "native_completed_ticks": 52,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 1409,
+              "native_pipe_imports": 24654,
+              "native_pipe_direct_groups": 1409,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1608,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 1,
+              "native_visual_publication_enabled": 1,
+              "native_visual_refresh_enabled": 0,
+              "native_visual_refreshes": 710,
+              "native_property_batches": 432,
+              "native_property_hits": 20911,
+              "native_property_fallbacks": 2331,
+              "native_publication_values": 793128,
+              "native_visual_publications": 20636,
+              "native_vent_transfer_enabled": 1,
+              "native_vent_transfers": 417,
+              "native_vent_empty_transfers": 0,
+              "native_vent_transfer_fallbacks": 0,
+              "native_scrubber_transfer_enabled": 1,
+              "native_scrubber_tile_enabled": 1,
+              "native_scrubber_tile_operations": 0,
+              "native_scrubber_tile_moves": 0,
+              "native_scrubber_transfers": 2,
+              "native_scrubber_empty_transfers": 0,
+              "native_scrubber_transfer_fallbacks": 0,
+              "native_pipe_records": 1608,
+              "native_pipe_slots": 1608,
+              "native_worker_cpu_seconds": 0.0625,
+              "native_worker_jobs": 52,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 116.596
+            },
+            "atmos_end": {
+              "active_turfs": 595,
+              "hotspots": 2,
+              "excited_groups": 19,
+              "pipenets": 296,
+              "cost_turfs": 91.1872,
+              "cost_hotspots": 0,
+              "cost_pipenets": 2.87781,
+              "cost_atmos_machinery": 12.2512,
+              "native_completed_ticks": 172,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 3821,
+              "native_pipe_imports": 73659,
+              "native_pipe_direct_groups": 3821,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1608,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 1,
+              "native_visual_publication_enabled": 1,
+              "native_visual_refresh_enabled": 0,
+              "native_visual_refreshes": 710,
+              "native_property_batches": 1272,
+              "native_property_hits": 67258,
+              "native_property_fallbacks": 8592,
+              "native_publication_values": 4640952,
+              "native_visual_publications": 63184,
+              "native_vent_transfer_enabled": 1,
+              "native_vent_transfers": 1019,
+              "native_vent_empty_transfers": 118,
+              "native_vent_transfer_fallbacks": 0,
+              "native_scrubber_transfer_enabled": 1,
+              "native_scrubber_tile_enabled": 1,
+              "native_scrubber_tile_operations": 326,
+              "native_scrubber_tile_moves": 326,
+              "native_scrubber_transfers": 756,
+              "native_scrubber_empty_transfers": 0,
+              "native_scrubber_transfer_fallbacks": 0,
+              "native_pipe_records": 1608,
+              "native_pipe_slots": 1608,
+              "native_worker_cpu_seconds": 0.40625,
+              "native_worker_jobs": 172,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 1203.07
+            },
+            "normalized": {
+              "completed_ticks": 120,
+              "completed_ticks_per_real_second": 1.9468162254153614,
+              "real_ms_per_completed_tick": 513.6591666666667,
+              "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+              "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+              "estimated_process_cpu_seconds": 19.059405305496707,
+              "estimated_process_cpu_ms_per_completed_tick": 158.8283775458059,
+              "estimated_main_thread_cpu_seconds": 18.69257156321518,
+              "estimated_main_thread_cpu_ms_per_completed_tick": 155.7714296934598,
+              "estimated_other_threads_cpu_seconds": 0.36683374228152654,
+              "estimated_other_threads_cpu_ms_per_completed_tick": 3.0569478523460547
+            },
+            "worker": {
+              "cpu_seconds": 0.34375,
+              "jobs": 120,
+              "mcycles": 1086.474,
+              "cpu_one_core_percent": 0.5576817312387754,
+              "cpu_ms_per_job": 2.8645833333333335,
+              "scope": "Completed numerical jobs through staging, before Byond_Return; jobs may cross window bounds; Windows thread-time counters can be coarse",
+              "simd_available": 1
+            },
+            "private_last_mib": 1834.28515625,
+            "pipe_procs": [
+              {
+                "name": "/datum/controller/subsystem/air/proc/process_pipenets",
+                "self": 0.043,
+                "total": 0.39,
+                "real": 0.387,
+                "over": 0,
+                "calls": 120
+              },
+              {
+                "name": "/datum/pipeline/proc/reconcile_air",
+                "self": 0.021,
+                "total": 0.217,
+                "real": 0.221,
+                "over": 0,
+                "calls": 2412
+              },
+              {
+                "name": "/datum/banda_atmos_phase/proc/reconcile_pipes",
+                "self": 0.094,
+                "total": 0.196,
+                "real": 0.199,
+                "over": 0,
+                "calls": 2412
+              }
+            ],
+            "groups": 2412,
+            "imports": 49005,
+            "packet_imports": 0,
+            "direct_groups": 2412,
+            "private_start_mib": 1821.2734375,
+            "bridge_procs": {
+              "publication": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+                "self": 0.558,
+                "total": 4.044,
+                "real": 4.054,
+                "over": 0.087,
+                "calls": 840
+              },
+              "refresh": {
+                "name": "/datum/banda_atmos_cell/proc/refresh_cache",
+                "self": 0.197,
+                "total": 1.209,
+                "real": 1.235,
+                "over": 0.031,
+                "calls": 51393
+              },
+              "borrow": {
+                "name": "/datum/banda_atmos_phase/world_adapter/borrow_air",
+                "self": 0.255,
+                "total": 0.355,
+                "real": 0.393,
+                "over": 0.198,
+                "calls": 122421
+              },
+              "sync": {
+                "name": "/datum/banda_atmos_cell/proc/sync_air",
+                "self": 0.708,
+                "total": 3.102,
+                "real": 3.093,
+                "over": 0.107,
+                "calls": 91101
+              },
+              "readonly": {
+                "name": "/turf/open/get_readonly_air",
+                "self": 0.057,
+                "total": 0.155,
+                "real": 0.159,
+                "over": 0,
+                "calls": 22309
+              },
+              "prefetch": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/prefetch_air_readings",
+                "self": 0.237,
+                "total": 0.288,
+                "real": 0.274,
+                "over": 0,
+                "calls": 840
+              },
+              "properties": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/air_reading_offset",
+                "self": 0.122,
+                "total": 0.124,
+                "real": 0.145,
+                "over": 0,
+                "calls": 52608
+              },
+              "machinery": {
+                "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+                "self": 0.213,
+                "total": 2.909,
+                "real": 2.919,
+                "over": 0,
+                "calls": 240
+              },
+              "vent": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+                "self": 0.242,
+                "total": 0.415,
+                "real": 0.413,
+                "over": 0,
+                "calls": 44280
+              },
+              "scrubber": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_scrubber/proc/scrub",
+                "self": 0.001,
+                "total": 0.014,
+                "real": 0.009,
+                "over": 0,
+                "calls": 428
+              },
+              "scrubber_exposure": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_scrubber/proc/scrub_exposed_tile",
+                "self": 0.007,
+                "total": 0.042,
+                "real": 0.032,
+                "over": 0,
+                "calls": 754
+              },
+              "atoms": {
+                "name": "/datum/controller/subsystem/air/proc/process_atoms",
+                "self": 0.018,
+                "total": 0.433,
+                "real": 0.431,
+                "over": 0,
+                "calls": 120
+              },
+              "heat_pipe": {
+                "name": "/obj/machinery/atmospherics/pipe/heat_exchanging/process_atmos",
+                "self": 0.049,
+                "total": 0.1,
+                "real": 0.076,
+                "over": 0,
+                "calls": 9960
+              },
+              "mole_overlays": {
+                "name": "/proc/banda_atmos_update_packet_visuals",
+                "self": 0.264,
+                "total": 0.34,
+                "real": 0.363,
+                "over": 0.029,
+                "calls": 48553
+              },
+              "state_overlays": {
+                "name": "/proc/banda_atmos_update_visual_states",
+                "self": 0.092,
+                "total": 0.104,
+                "real": 0.108,
+                "over": 0.022,
+                "calls": 43128
+              },
+              "update_visuals": {
+                "name": "/turf/open/proc/update_visuals",
+                "self": 0.033,
+                "total": 0.067,
+                "real": 0.061,
+                "over": 0.005,
+                "calls": 5207
+              }
+            },
+            "property_batches": 840,
+            "property_hits": 46347,
+            "property_fallbacks": 6261,
+            "publication_values": 3847824,
+            "visual_publications": 42548,
+            "scrubber_transfers": 754,
+            "scrubber_empty_transfers": 0,
+            "scrubber_transfer_fallbacks": 0,
+            "scrubber_tile_operations": 326,
+            "scrubber_tile_moves": 326,
+            "visual_refreshes": 0,
+            "scrubber_direct_share_percent": 43.236074270557026
+          },
+          "runtime": {
+            "status": "clean",
+            "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+            "known_count": 0,
+            "unexpected_count": 0,
+            "known": [],
+            "unexpected": []
+          },
+          "mode": "full",
+          "binary_sha256": "1bcd43ea2a98de9af2ff20d6ad68fe9347502468b0d04b7edb6865001dcf032c",
+          "dll_sha256": "189f38448571a0debce62af677e5ed9f71bea04ce2721f25b589372dc5b8f4d6",
+          "inputs": {
+            "scenario": "atmos-fire",
+            "byond": "516.1688",
+            "map": "MetaStation",
+            "startup_seed": "29051994",
+            "seeded_turfs": [
+              [
+                100,
+                100,
+                2
+              ],
+              [
+                100,
+                101,
+                2
+              ],
+              [
+                100,
+                102,
+                2
+              ],
+              [
+                100,
+                103,
+                2
+              ],
+              [
+                100,
+                104,
+                2
+              ],
+              [
+                100,
+                105,
+                2
+              ],
+              [
+                100,
+                106,
+                2
+              ],
+              [
+                100,
+                108,
+                2
+              ],
+              [
+                100,
+                109,
+                2
+              ],
+              [
+                100,
+                110,
+                2
+              ],
+              [
+                100,
+                111,
+                2
+              ],
+              [
+                100,
+                112,
+                2
+              ],
+              [
+                100,
+                113,
+                2
+              ],
+              [
+                100,
+                114,
+                2
+              ],
+              [
+                100,
+                115,
+                2
+              ],
+              [
+                100,
+                116,
+                2
+              ],
+              [
+                100,
+                118,
+                2
+              ],
+              [
+                100,
+                119,
+                2
+              ],
+              [
+                100,
+                120,
+                2
+              ],
+              [
+                100,
+                121,
+                2
+              ],
+              [
+                100,
+                122,
+                2
+              ],
+              [
+                100,
+                123,
+                2
+              ],
+              [
+                100,
+                124,
+                2
+              ],
+              [
+                100,
+                126,
+                2
+              ],
+              [
+                100,
+                127,
+                2
+              ],
+              [
+                100,
+                128,
+                2
+              ],
+              [
+                100,
+                129,
+                2
+              ],
+              [
+                100,
+                130,
+                2
+              ],
+              [
+                100,
+                131,
+                2
+              ],
+              [
+                100,
+                132,
+                2
+              ],
+              [
+                100,
+                133,
+                2
+              ],
+              [
+                100,
+                134,
+                2
+              ],
+              [
+                100,
+                135,
+                2
+              ],
+              [
+                100,
+                136,
+                2
+              ],
+              [
+                100,
+                137,
+                2
+              ],
+              [
+                100,
+                138,
+                2
+              ],
+              [
+                100,
+                142,
+                2
+              ],
+              [
+                100,
+                143,
+                2
+              ],
+              [
+                100,
+                144,
+                2
+              ],
+              [
+                100,
+                145,
+                2
+              ],
+              [
+                100,
+                147,
+                2
+              ],
+              [
+                100,
+                149,
+                2
+              ],
+              [
+                100,
+                150,
+                2
+              ],
+              [
+                101,
+                100,
+                2
+              ],
+              [
+                101,
+                101,
+                2
+              ],
+              [
+                101,
+                102,
+                2
+              ],
+              [
+                101,
+                103,
+                2
+              ],
+              [
+                101,
+                104,
+                2
+              ],
+              [
+                101,
+                105,
+                2
+              ],
+              [
+                101,
+                106,
+                2
+              ],
+              [
+                101,
+                107,
+                2
+              ],
+              [
+                101,
+                108,
+                2
+              ],
+              [
+                101,
+                109,
+                2
+              ],
+              [
+                101,
+                110,
+                2
+              ],
+              [
+                101,
+                111,
+                2
+              ],
+              [
+                101,
+                112,
+                2
+              ],
+              [
+                101,
+                113,
+                2
+              ],
+              [
+                101,
+                114,
+                2
+              ],
+              [
+                101,
+                115,
+                2
+              ],
+              [
+                101,
+                116,
+                2
+              ],
+              [
+                101,
+                126,
+                2
+              ],
+              [
+                101,
+                127,
+                2
+              ],
+              [
+                101,
+                128,
+                2
+              ],
+              [
+                101,
+                129,
+                2
+              ]
+            ]
+          },
+          "incident": []
+        },
+        {
+          "folder": "tmp\\profiling\\visual-refresh-v1-compact-fire-01",
+          "metrics": {
+            "process": {
+              "samples": 61,
+              "sampled_wall_seconds": 60.342672,
+              "cpu_seconds": 18.359375,
+              "cpu_one_core_percent": 30.42519396555724,
+              "working_set_mib": [
+                1810.671875,
+                1812.8125
+              ],
+              "private_mib": [
+                1844.421875,
+                1854.36328125
+              ],
+              "observed_lifetime_peak_working_set_mib": 2097.37890625,
+              "observed_lifetime_peak_commit_mib": 2119.1796875,
+              "main_thread_id": 47644,
+              "main_thread_cpu_seconds": 18.0625,
+              "main_thread_cpu_one_core_percent": 29.933212105688657,
+              "other_threads_cpu_seconds": 0.296875,
+              "other_threads_cpu_one_core_percent": 0.4919818598685852
+            },
+            "native_completed_ticks": 119,
+            "sample_game_seconds": 60,
+            "sample_wall_seconds": 60.9344,
+            "ssair": {
+              "type": "/datum/controller/subsystem/air",
+              "name": "Atmospherics",
+              "cost_ms_rolling": 26.2696,
+              "times_fired": 119,
+              "wait_ds": 5,
+              "tick_usage_rolling": 52.5392,
+              "tick_overrun_rolling": 0
+            },
+            "atmos_start": {
+              "active_turfs": 85,
+              "hotspots": 0,
+              "excited_groups": 3,
+              "pipenets": 296,
+              "cost_turfs": 18.9059,
+              "cost_hotspots": 0,
+              "cost_pipenets": 3.16858,
+              "cost_atmos_machinery": 11.9584,
+              "native_completed_ticks": 52,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 1379,
+              "native_pipe_imports": 24414,
+              "native_pipe_direct_groups": 1379,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1608,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 1,
+              "native_visual_publication_enabled": 1,
+              "native_visual_refresh_enabled": 1,
+              "native_visual_refreshes": 870,
+              "native_property_batches": 431,
+              "native_property_hits": 21073,
+              "native_property_fallbacks": 2169,
+              "native_publication_values": 849838,
+              "native_visual_publications": 22643,
+              "native_vent_transfer_enabled": 1,
+              "native_vent_transfers": 417,
+              "native_vent_empty_transfers": 0,
+              "native_vent_transfer_fallbacks": 0,
+              "native_scrubber_transfer_enabled": 1,
+              "native_scrubber_tile_enabled": 1,
+              "native_scrubber_tile_operations": 0,
+              "native_scrubber_tile_moves": 0,
+              "native_scrubber_transfers": 2,
+              "native_scrubber_empty_transfers": 0,
+              "native_scrubber_transfer_fallbacks": 0,
+              "native_pipe_records": 1608,
+              "native_pipe_slots": 1608,
+              "native_worker_cpu_seconds": 0.015625,
+              "native_worker_jobs": 52,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 121.107
+            },
+            "atmos_end": {
+              "active_turfs": 635,
+              "hotspots": 0,
+              "excited_groups": 22,
+              "pipenets": 296,
+              "cost_turfs": 85.2977,
+              "cost_hotspots": 0,
+              "cost_pipenets": 2.86615,
+              "cost_atmos_machinery": 11.9765,
+              "native_completed_ticks": 171,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 3766,
+              "native_pipe_imports": 73068,
+              "native_pipe_direct_groups": 3766,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1608,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 1,
+              "native_visual_publication_enabled": 1,
+              "native_visual_refresh_enabled": 1,
+              "native_visual_refreshes": 971,
+              "native_property_batches": 1264,
+              "native_property_hits": 67969,
+              "native_property_fallbacks": 7359,
+              "native_publication_values": 4414038,
+              "native_visual_publications": 75002,
+              "native_vent_transfer_enabled": 1,
+              "native_vent_transfers": 1014,
+              "native_vent_empty_transfers": 117,
+              "native_vent_transfer_fallbacks": 0,
+              "native_scrubber_transfer_enabled": 1,
+              "native_scrubber_tile_enabled": 1,
+              "native_scrubber_tile_operations": 631,
+              "native_scrubber_tile_moves": 631,
+              "native_scrubber_transfers": 683,
+              "native_scrubber_empty_transfers": 0,
+              "native_scrubber_transfer_fallbacks": 0,
+              "native_pipe_records": 1608,
+              "native_pipe_slots": 1608,
+              "native_worker_cpu_seconds": 0.3125,
+              "native_worker_jobs": 171,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 1203.63
+            },
+            "normalized": {
+              "completed_ticks": 119,
+              "completed_ticks_per_real_second": 1.952919861359101,
+              "real_ms_per_completed_tick": 512.053781512605,
+              "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+              "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+              "estimated_process_cpu_seconds": 18.53940939174851,
+              "estimated_process_cpu_ms_per_completed_tick": 155.79335623318076,
+              "estimated_main_thread_cpu_seconds": 18.239623197328747,
+              "estimated_main_thread_cpu_ms_per_completed_tick": 153.27414451536762,
+              "estimated_other_threads_cpu_seconds": 0.2997861944197632,
+              "estimated_other_threads_cpu_ms_per_completed_tick": 2.519211717813136
+            },
+            "worker": {
+              "cpu_seconds": 0.296875,
+              "jobs": 119,
+              "mcycles": 1082.5230000000001,
+              "cpu_one_core_percent": 0.48720427213527995,
+              "cpu_ms_per_job": 2.494747899159664,
+              "scope": "Completed numerical jobs through staging, before Byond_Return; jobs may cross window bounds; Windows thread-time counters can be coarse",
+              "simd_available": 1
+            },
+            "private_last_mib": 1854.359375,
+            "pipe_procs": [
+              {
+                "name": "/datum/controller/subsystem/air/proc/process_pipenets",
+                "self": 0.038,
+                "total": 0.384,
+                "real": 0.386,
+                "over": 0,
+                "calls": 119
+              },
+              {
+                "name": "/datum/pipeline/proc/reconcile_air",
+                "self": 0.023,
+                "total": 0.22,
+                "real": 0.221,
+                "over": 0,
+                "calls": 2387
+              },
+              {
+                "name": "/datum/banda_atmos_phase/proc/reconcile_pipes",
+                "self": 0.094,
+                "total": 0.193,
+                "real": 0.191,
+                "over": 0,
+                "calls": 2387
+              }
+            ],
+            "groups": 2387,
+            "imports": 48654,
+            "packet_imports": 0,
+            "direct_groups": 2387,
+            "private_start_mib": 1844.05078125,
+            "bridge_procs": {
+              "publication": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+                "self": 0.566,
+                "total": 3.696,
+                "real": 3.688,
+                "over": 0.02,
+                "calls": 833
+              },
+              "refresh": {
+                "name": "/datum/banda_atmos_cell/proc/refresh_cache",
+                "self": 0.199,
+                "total": 0.947,
+                "real": 0.978,
+                "over": 0.014,
+                "calls": 40737
+              },
+              "borrow": {
+                "name": "/datum/banda_atmos_phase/world_adapter/borrow_air",
+                "self": 0.22,
+                "total": 0.31,
+                "real": 0.347,
+                "over": 0.142,
+                "calls": 100592
+              },
+              "sync": {
+                "name": "/datum/banda_atmos_cell/proc/sync_air",
+                "self": 0.696,
+                "total": 2.773,
+                "real": 2.819,
+                "over": 0.038,
+                "calls": 90351
+              },
+              "readonly": {
+                "name": "/turf/open/get_readonly_air",
+                "self": 0.044,
+                "total": 0.133,
+                "real": 0.166,
+                "over": 0,
+                "calls": 22105
+              },
+              "prefetch": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/prefetch_air_readings",
+                "self": 0.241,
+                "total": 0.285,
+                "real": 0.278,
+                "over": 0,
+                "calls": 833
+              },
+              "properties": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/air_reading_offset",
+                "self": 0.143,
+                "total": 0.144,
+                "real": 0.164,
+                "over": 0,
+                "calls": 52086
+              },
+              "machinery": {
+                "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+                "self": 0.222,
+                "total": 2.88,
+                "real": 2.865,
+                "over": 0,
+                "calls": 246
+              },
+              "vent": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+                "self": 0.236,
+                "total": 0.429,
+                "real": 0.426,
+                "over": 0,
+                "calls": 43911
+              },
+              "scrubber": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_scrubber/proc/scrub",
+                "self": 0,
+                "total": 0.002,
+                "real": 0.002,
+                "over": 0,
+                "calls": 50
+              },
+              "scrubber_exposure": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_scrubber/proc/scrub_exposed_tile",
+                "self": 0.005,
+                "total": 0.022,
+                "real": 0.023,
+                "over": 0,
+                "calls": 681
+              },
+              "atoms": {
+                "name": "/datum/controller/subsystem/air/proc/process_atoms",
+                "self": 0.013,
+                "total": 0.39,
+                "real": 0.394,
+                "over": 0,
+                "calls": 119
+              },
+              "heat_pipe": {
+                "name": "/obj/machinery/atmospherics/pipe/heat_exchanging/process_atmos",
+                "self": 0.029,
+                "total": 0.072,
+                "real": 0.094,
+                "over": 0,
+                "calls": 9877
+              },
+              "mole_overlays": {
+                "name": "/proc/banda_atmos_update_packet_visuals",
+                "self": 0.188,
+                "total": 0.231,
+                "real": 0.254,
+                "over": 0.01,
+                "calls": 37992
+              },
+              "state_overlays": {
+                "name": "/proc/banda_atmos_update_visual_states",
+                "self": 0.156,
+                "total": 0.175,
+                "real": 0.167,
+                "over": 0.008,
+                "calls": 53032
+              },
+              "update_visuals": {
+                "name": "/turf/open/proc/update_visuals",
+                "self": 0.017,
+                "total": 0.038,
+                "real": 0.052,
+                "over": 0.003,
+                "calls": 3885
+              }
+            },
+            "property_batches": 833,
+            "property_hits": 46896,
+            "property_fallbacks": 5190,
+            "publication_values": 3564200,
+            "visual_publications": 52359,
+            "scrubber_transfers": 681,
+            "scrubber_empty_transfers": 0,
+            "scrubber_transfer_fallbacks": 0,
+            "scrubber_tile_operations": 631,
+            "scrubber_tile_moves": 631,
+            "visual_refreshes": 101,
+            "scrubber_direct_share_percent": 92.65785609397945
+          },
+          "runtime": {
+            "status": "clean",
+            "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+            "known_count": 0,
+            "unexpected_count": 0,
+            "known": [],
+            "unexpected": []
+          },
+          "mode": "compact",
+          "binary_sha256": "1bcd43ea2a98de9af2ff20d6ad68fe9347502468b0d04b7edb6865001dcf032c",
+          "dll_sha256": "189f38448571a0debce62af677e5ed9f71bea04ce2721f25b589372dc5b8f4d6",
+          "inputs": {
+            "scenario": "atmos-fire",
+            "byond": "516.1688",
+            "map": "MetaStation",
+            "startup_seed": "29051994",
+            "seeded_turfs": [
+              [
+                100,
+                100,
+                2
+              ],
+              [
+                100,
+                101,
+                2
+              ],
+              [
+                100,
+                102,
+                2
+              ],
+              [
+                100,
+                103,
+                2
+              ],
+              [
+                100,
+                104,
+                2
+              ],
+              [
+                100,
+                105,
+                2
+              ],
+              [
+                100,
+                106,
+                2
+              ],
+              [
+                100,
+                108,
+                2
+              ],
+              [
+                100,
+                109,
+                2
+              ],
+              [
+                100,
+                110,
+                2
+              ],
+              [
+                100,
+                111,
+                2
+              ],
+              [
+                100,
+                112,
+                2
+              ],
+              [
+                100,
+                113,
+                2
+              ],
+              [
+                100,
+                114,
+                2
+              ],
+              [
+                100,
+                115,
+                2
+              ],
+              [
+                100,
+                116,
+                2
+              ],
+              [
+                100,
+                118,
+                2
+              ],
+              [
+                100,
+                119,
+                2
+              ],
+              [
+                100,
+                120,
+                2
+              ],
+              [
+                100,
+                121,
+                2
+              ],
+              [
+                100,
+                122,
+                2
+              ],
+              [
+                100,
+                123,
+                2
+              ],
+              [
+                100,
+                124,
+                2
+              ],
+              [
+                100,
+                126,
+                2
+              ],
+              [
+                100,
+                127,
+                2
+              ],
+              [
+                100,
+                128,
+                2
+              ],
+              [
+                100,
+                129,
+                2
+              ],
+              [
+                100,
+                130,
+                2
+              ],
+              [
+                100,
+                131,
+                2
+              ],
+              [
+                100,
+                132,
+                2
+              ],
+              [
+                100,
+                133,
+                2
+              ],
+              [
+                100,
+                134,
+                2
+              ],
+              [
+                100,
+                135,
+                2
+              ],
+              [
+                100,
+                136,
+                2
+              ],
+              [
+                100,
+                137,
+                2
+              ],
+              [
+                100,
+                138,
+                2
+              ],
+              [
+                100,
+                142,
+                2
+              ],
+              [
+                100,
+                143,
+                2
+              ],
+              [
+                100,
+                144,
+                2
+              ],
+              [
+                100,
+                145,
+                2
+              ],
+              [
+                100,
+                147,
+                2
+              ],
+              [
+                100,
+                149,
+                2
+              ],
+              [
+                100,
+                150,
+                2
+              ],
+              [
+                101,
+                100,
+                2
+              ],
+              [
+                101,
+                101,
+                2
+              ],
+              [
+                101,
+                102,
+                2
+              ],
+              [
+                101,
+                103,
+                2
+              ],
+              [
+                101,
+                104,
+                2
+              ],
+              [
+                101,
+                105,
+                2
+              ],
+              [
+                101,
+                106,
+                2
+              ],
+              [
+                101,
+                107,
+                2
+              ],
+              [
+                101,
+                108,
+                2
+              ],
+              [
+                101,
+                109,
+                2
+              ],
+              [
+                101,
+                110,
+                2
+              ],
+              [
+                101,
+                111,
+                2
+              ],
+              [
+                101,
+                112,
+                2
+              ],
+              [
+                101,
+                113,
+                2
+              ],
+              [
+                101,
+                114,
+                2
+              ],
+              [
+                101,
+                115,
+                2
+              ],
+              [
+                101,
+                116,
+                2
+              ],
+              [
+                101,
+                126,
+                2
+              ],
+              [
+                101,
+                127,
+                2
+              ],
+              [
+                101,
+                128,
+                2
+              ],
+              [
+                101,
+                129,
+                2
+              ]
+            ]
+          },
+          "incident": []
+        }
+      ]
+    }
+  ],
+  "summary": [
+    {
+      "scenario": "atmos-fire",
+      "modes": {
+        "full": {
+          "total_cpu_percent": {
+            "median": 30.920966246257173,
+            "min": 30.920966246257173,
+            "max": 30.920966246257173
+          },
+          "main_cpu_percent": {
+            "median": 30.32583467833758,
+            "min": 30.32583467833758,
+            "max": 30.32583467833758
+          },
+          "other_cpu_percent": {
+            "median": 0.5951315679195941,
+            "min": 0.5951315679195941,
+            "max": 0.5951315679195941
+          },
+          "worker_cpu_percent": {
+            "median": 0.5576817312387754,
+            "min": 0.5576817312387754,
+            "max": 0.5576817312387754
+          },
+          "cpu_ms_per_tick": {
+            "median": 158.8283775458059,
+            "min": 158.8283775458059,
+            "max": 158.8283775458059
+          },
+          "completed_ticks": {
+            "median": 120,
+            "min": 120,
+            "max": 120
+          },
+          "private_last_mib": {
+            "median": 1834.28515625,
+            "min": 1834.28515625,
+            "max": 1834.28515625
+          },
+          "private_start_mib": {
+            "median": 1821.2734375,
+            "min": 1821.2734375,
+            "max": 1821.2734375
+          },
+          "private_window_delta_mib": {
+            "median": 13.01171875,
+            "min": 13.01171875,
+            "max": 13.01171875
+          },
+          "private_sample_peak_mib": {
+            "median": 1834.375,
+            "min": 1834.375,
+            "max": 1834.375
+          },
+          "lifetime_peak_commit_mib": {
+            "median": 2111.48046875,
+            "min": 2111.48046875,
+            "max": 2111.48046875
+          },
+          "publication_seconds": {
+            "median": 4.044,
+            "min": 4.044,
+            "max": 4.044
+          },
+          "publication_calls": {
+            "median": 840,
+            "min": 840,
+            "max": 840
+          },
+          "refresh_seconds": {
+            "median": 1.209,
+            "min": 1.209,
+            "max": 1.209
+          },
+          "refresh_calls": {
+            "median": 51393,
+            "min": 51393,
+            "max": 51393
+          },
+          "borrow_seconds": {
+            "median": 0.355,
+            "min": 0.355,
+            "max": 0.355
+          },
+          "borrow_calls": {
+            "median": 122421,
+            "min": 122421,
+            "max": 122421
+          },
+          "sync_seconds": {
+            "median": 3.102,
+            "min": 3.102,
+            "max": 3.102
+          },
+          "sync_calls": {
+            "median": 91101,
+            "min": 91101,
+            "max": 91101
+          },
+          "readonly_seconds": {
+            "median": 0.155,
+            "min": 0.155,
+            "max": 0.155
+          },
+          "readonly_calls": {
+            "median": 22309,
+            "min": 22309,
+            "max": 22309
+          },
+          "prefetch_seconds": {
+            "median": 0.288,
+            "min": 0.288,
+            "max": 0.288
+          },
+          "prefetch_calls": {
+            "median": 840,
+            "min": 840,
+            "max": 840
+          },
+          "properties_seconds": {
+            "median": 0.124,
+            "min": 0.124,
+            "max": 0.124
+          },
+          "properties_calls": {
+            "median": 52608,
+            "min": 52608,
+            "max": 52608
+          },
+          "machinery_seconds": {
+            "median": 2.909,
+            "min": 2.909,
+            "max": 2.909
+          },
+          "machinery_calls": {
+            "median": 240,
+            "min": 240,
+            "max": 240
+          },
+          "vent_seconds": {
+            "median": 0.415,
+            "min": 0.415,
+            "max": 0.415
+          },
+          "vent_calls": {
+            "median": 44280,
+            "min": 44280,
+            "max": 44280
+          },
+          "scrubber_seconds": {
+            "median": 0.014,
+            "min": 0.014,
+            "max": 0.014
+          },
+          "scrubber_calls": {
+            "median": 428,
+            "min": 428,
+            "max": 428
+          },
+          "scrubber_exposure_seconds": {
+            "median": 0.042,
+            "min": 0.042,
+            "max": 0.042
+          },
+          "scrubber_exposure_calls": {
+            "median": 754,
+            "min": 754,
+            "max": 754
+          },
+          "atoms_seconds": {
+            "median": 0.433,
+            "min": 0.433,
+            "max": 0.433
+          },
+          "atoms_calls": {
+            "median": 120,
+            "min": 120,
+            "max": 120
+          },
+          "heat_pipe_seconds": {
+            "median": 0.1,
+            "min": 0.1,
+            "max": 0.1
+          },
+          "heat_pipe_calls": {
+            "median": 9960,
+            "min": 9960,
+            "max": 9960
+          },
+          "mole_overlays_seconds": {
+            "median": 0.34,
+            "min": 0.34,
+            "max": 0.34
+          },
+          "mole_overlays_calls": {
+            "median": 48553,
+            "min": 48553,
+            "max": 48553
+          },
+          "state_overlays_seconds": {
+            "median": 0.104,
+            "min": 0.104,
+            "max": 0.104
+          },
+          "state_overlays_calls": {
+            "median": 43128,
+            "min": 43128,
+            "max": 43128
+          },
+          "update_visuals_seconds": {
+            "median": 0.067,
+            "min": 0.067,
+            "max": 0.067
+          },
+          "update_visuals_calls": {
+            "median": 5207,
+            "min": 5207,
+            "max": 5207
+          },
+          "property_batches": {
+            "median": 840,
+            "min": 840,
+            "max": 840
+          },
+          "property_hits": {
+            "median": 46347,
+            "min": 46347,
+            "max": 46347
+          },
+          "property_fallbacks": {
+            "median": 6261,
+            "min": 6261,
+            "max": 6261
+          },
+          "publication_values": {
+            "median": 3847824,
+            "min": 3847824,
+            "max": 3847824
+          },
+          "visual_publications": {
+            "median": 42548,
+            "min": 42548,
+            "max": 42548
+          },
+          "scrubber_transfers": {
+            "median": 754,
+            "min": 754,
+            "max": 754
+          },
+          "scrubber_empty_transfers": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "scrubber_transfer_fallbacks": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "scrubber_tile_operations": {
+            "median": 326,
+            "min": 326,
+            "max": 326
+          },
+          "scrubber_tile_moves": {
+            "median": 326,
+            "min": 326,
+            "max": 326
+          },
+          "visual_refreshes": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "scrubber_direct_share_percent": {
+            "median": 43.236074270557026,
+            "min": 43.236074270557026,
+            "max": 43.236074270557026
+          }
+        },
+        "compact": {
+          "total_cpu_percent": {
+            "median": 30.42519396555724,
+            "min": 30.42519396555724,
+            "max": 30.42519396555724
+          },
+          "main_cpu_percent": {
+            "median": 29.933212105688657,
+            "min": 29.933212105688657,
+            "max": 29.933212105688657
+          },
+          "other_cpu_percent": {
+            "median": 0.4919818598685852,
+            "min": 0.4919818598685852,
+            "max": 0.4919818598685852
+          },
+          "worker_cpu_percent": {
+            "median": 0.48720427213527995,
+            "min": 0.48720427213527995,
+            "max": 0.48720427213527995
+          },
+          "cpu_ms_per_tick": {
+            "median": 155.79335623318076,
+            "min": 155.79335623318076,
+            "max": 155.79335623318076
+          },
+          "completed_ticks": {
+            "median": 119,
+            "min": 119,
+            "max": 119
+          },
+          "private_last_mib": {
+            "median": 1854.359375,
+            "min": 1854.359375,
+            "max": 1854.359375
+          },
+          "private_start_mib": {
+            "median": 1844.05078125,
+            "min": 1844.05078125,
+            "max": 1844.05078125
+          },
+          "private_window_delta_mib": {
+            "median": 10.30859375,
+            "min": 10.30859375,
+            "max": 10.30859375
+          },
+          "private_sample_peak_mib": {
+            "median": 1854.36328125,
+            "min": 1854.36328125,
+            "max": 1854.36328125
+          },
+          "lifetime_peak_commit_mib": {
+            "median": 2119.1796875,
+            "min": 2119.1796875,
+            "max": 2119.1796875
+          },
+          "publication_seconds": {
+            "median": 3.696,
+            "min": 3.696,
+            "max": 3.696
+          },
+          "publication_calls": {
+            "median": 833,
+            "min": 833,
+            "max": 833
+          },
+          "refresh_seconds": {
+            "median": 0.947,
+            "min": 0.947,
+            "max": 0.947
+          },
+          "refresh_calls": {
+            "median": 40737,
+            "min": 40737,
+            "max": 40737
+          },
+          "borrow_seconds": {
+            "median": 0.31,
+            "min": 0.31,
+            "max": 0.31
+          },
+          "borrow_calls": {
+            "median": 100592,
+            "min": 100592,
+            "max": 100592
+          },
+          "sync_seconds": {
+            "median": 2.773,
+            "min": 2.773,
+            "max": 2.773
+          },
+          "sync_calls": {
+            "median": 90351,
+            "min": 90351,
+            "max": 90351
+          },
+          "readonly_seconds": {
+            "median": 0.133,
+            "min": 0.133,
+            "max": 0.133
+          },
+          "readonly_calls": {
+            "median": 22105,
+            "min": 22105,
+            "max": 22105
+          },
+          "prefetch_seconds": {
+            "median": 0.285,
+            "min": 0.285,
+            "max": 0.285
+          },
+          "prefetch_calls": {
+            "median": 833,
+            "min": 833,
+            "max": 833
+          },
+          "properties_seconds": {
+            "median": 0.144,
+            "min": 0.144,
+            "max": 0.144
+          },
+          "properties_calls": {
+            "median": 52086,
+            "min": 52086,
+            "max": 52086
+          },
+          "machinery_seconds": {
+            "median": 2.88,
+            "min": 2.88,
+            "max": 2.88
+          },
+          "machinery_calls": {
+            "median": 246,
+            "min": 246,
+            "max": 246
+          },
+          "vent_seconds": {
+            "median": 0.429,
+            "min": 0.429,
+            "max": 0.429
+          },
+          "vent_calls": {
+            "median": 43911,
+            "min": 43911,
+            "max": 43911
+          },
+          "scrubber_seconds": {
+            "median": 0.002,
+            "min": 0.002,
+            "max": 0.002
+          },
+          "scrubber_calls": {
+            "median": 50,
+            "min": 50,
+            "max": 50
+          },
+          "scrubber_exposure_seconds": {
+            "median": 0.022,
+            "min": 0.022,
+            "max": 0.022
+          },
+          "scrubber_exposure_calls": {
+            "median": 681,
+            "min": 681,
+            "max": 681
+          },
+          "atoms_seconds": {
+            "median": 0.39,
+            "min": 0.39,
+            "max": 0.39
+          },
+          "atoms_calls": {
+            "median": 119,
+            "min": 119,
+            "max": 119
+          },
+          "heat_pipe_seconds": {
+            "median": 0.072,
+            "min": 0.072,
+            "max": 0.072
+          },
+          "heat_pipe_calls": {
+            "median": 9877,
+            "min": 9877,
+            "max": 9877
+          },
+          "mole_overlays_seconds": {
+            "median": 0.231,
+            "min": 0.231,
+            "max": 0.231
+          },
+          "mole_overlays_calls": {
+            "median": 37992,
+            "min": 37992,
+            "max": 37992
+          },
+          "state_overlays_seconds": {
+            "median": 0.175,
+            "min": 0.175,
+            "max": 0.175
+          },
+          "state_overlays_calls": {
+            "median": 53032,
+            "min": 53032,
+            "max": 53032
+          },
+          "update_visuals_seconds": {
+            "median": 0.038,
+            "min": 0.038,
+            "max": 0.038
+          },
+          "update_visuals_calls": {
+            "median": 3885,
+            "min": 3885,
+            "max": 3885
+          },
+          "property_batches": {
+            "median": 833,
+            "min": 833,
+            "max": 833
+          },
+          "property_hits": {
+            "median": 46896,
+            "min": 46896,
+            "max": 46896
+          },
+          "property_fallbacks": {
+            "median": 5190,
+            "min": 5190,
+            "max": 5190
+          },
+          "publication_values": {
+            "median": 3564200,
+            "min": 3564200,
+            "max": 3564200
+          },
+          "visual_publications": {
+            "median": 52359,
+            "min": 52359,
+            "max": 52359
+          },
+          "scrubber_transfers": {
+            "median": 681,
+            "min": 681,
+            "max": 681
+          },
+          "scrubber_empty_transfers": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "scrubber_transfer_fallbacks": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "scrubber_tile_operations": {
+            "median": 631,
+            "min": 631,
+            "max": 631
+          },
+          "scrubber_tile_moves": {
+            "median": 631,
+            "min": 631,
+            "max": 631
+          },
+          "visual_refreshes": {
+            "median": 101,
+            "min": 101,
+            "max": 101
+          },
+          "scrubber_direct_share_percent": {
+            "median": 92.65785609397945,
+            "min": 92.65785609397945,
+            "max": 92.65785609397945
+          }
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "No connected players",
+    "Background states can diverge despite fixed startup seed",
+    "Inclusive procedure times overlap; worker CPU is already included in process CPU",
+    "Pipe reactions remain in DM. Profiler adds overhead"
+  ]
+}

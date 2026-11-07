@@ -1,0 +1,360 @@
+// Exercise both sides of the real vent and compare against the ordinary DM procs.
+/obj/machinery/atmospherics/components/unary/passive_vent/banda_passive_probe
+	var/parent_updates = 0
+
+/obj/machinery/atmospherics/components/unary/passive_vent/banda_passive_probe/update_parents()
+	parent_updates++
+
+/datum/controller/subsystem/atmos_phase_test/proc/passive_vent_checks()
+	var/list/checks = list()
+	for(var/mode in list("transfer", "trace_cleanup", "held"))
+		var/list/control = passive_vent_case(mode, FALSE)
+		var/list/candidate = passive_vent_case(mode, TRUE)
+		checks["passive_vent_[mode]_state"] = json_encode(control["state"]) == json_encode(candidate["state"])
+		checks["passive_vent_[mode]_cache"] = candidate["cache"] == (mode == "held") && candidate["owned"] == (mode != "held") && candidate["aliases"]
+		if(!checks["passive_vent_[mode]_state"] || !checks["passive_vent_[mode]_cache"])
+			log_world("Passive vent [mode] DM [json_encode(control)], Rust [json_encode(candidate)]")
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/passive_vent_case(mode, native)
+	var/turf/open/target = floor_at(218, 180)
+	SSair.remove_from_active(target)
+	var/datum/gas_mixture/turf/air = target.air
+	air.moles.Cut()
+	air.temperature = 300
+	air.moles[/datum/gas/nitrogen] = 100
+	air.moles_archive[/datum/gas/carbon_dioxide] = MOLAR_ACCURACY
+	var/obj/machinery/atmospherics/components/unary/passive_vent/banda_passive_probe/vent = new(target)
+	var/datum/gas_mixture/port = vent.airs[1]
+	port.volume = CELL_VOLUME
+	port.temperature = mode == "trace_cleanup" ? 300 : 350
+	port.moles[/datum/gas/nitrogen] = 100
+	port.moles[/datum/gas/plasma] = mode == "trace_cleanup" ? MOLAR_ACCURACY : 25
+	port.moles_archive[/datum/gas/oxygen] = MOLAR_ACCURACY
+	port.moles_archive[/datum/gas/nitrogen] = 7
+	var/datum/banda_atmos_phase/world_adapter/phase
+	var/datum/gas_mixture/held
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		target.banda_air_requested = FALSE
+		phase.register_batch(list(target))
+		phase.native(30)
+		phase.initializing = FALSE
+		if(mode == "held")
+			held = target.get_readonly_air()
+			vent.return_analyzable_air()
+		phase.invoke(CALLBACK(vent, TYPE_PROC_REF(/obj/machinery, process_atmos)), commit_on_error = TRUE)
+		phase.project_changes()
+	else
+		vent.process_atmos()
+	var/owned = !!port.banda_pipe_binding?.native_owned
+	var/list/analyzable = vent.return_analyzable_air()
+	var/cache = !!target.banda_atmos_cell?.cached_air
+	var/datum/gas_mixture/after = target.get_readonly_air()
+	var/list/result = list(
+		"state" = list(banda_atmos_full_packet(after), banda_atmos_full_packet(port), vent.parent_updates, !!target.excited),
+		"cache" = cache,
+		"aliases" = port == analyzable[1] && (!held || held == after),
+		"owned" = owned,
+	)
+	qdel(vent)
+	qdel(phase)
+	return result
+
+/datum/controller/subsystem/atmos_phase_test/proc/shared_device_port_checks()
+	var/list/control = shared_device_port_case(FALSE)
+	var/list/candidate = shared_device_port_case(TRUE)
+	var/matches = json_encode(control["state"]) == json_encode(candidate["state"])
+	if(!matches)
+		log_world("Shared ports DM [json_encode(control)], Rust [json_encode(candidate)]")
+	return list("shared_ports_match_dm" = matches, "same_port_handles_serve_devices_and_network" = candidate["shared"])
+
+/datum/controller/subsystem/atmos_phase_test/proc/shared_device_port_case(native)
+	var/turf/open/outlet = floor_at(210, 179)
+	var/turf/open/inlet = floor_at(214, 179)
+	SSair.remove_from_active(outlet)
+	SSair.remove_from_active(inlet)
+	outlet.air.temperature = 320
+	outlet.air.set_gas(/datum/gas/nitrogen, 300)
+	inlet.air.temperature = 320
+	inlet.air.set_gas(/datum/gas/nitrogen, 200)
+	inlet.air.set_gas(/datum/gas/plasma, 30)
+	var/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe/vent = setup_transfer_vent(outlet)
+	var/obj/machinery/atmospherics/components/unary/vent_scrubber/banda_scrubber_probe/scrubber = setup_scrubber(inlet)
+	vent.external_pressure_bound = 600
+	var/datum/gas_mixture/vent_port = vent.airs[1]
+	var/datum/gas_mixture/scrubber_port = scrubber.airs[1]
+	var/datum/pipeline/network = new
+	var/datum/gas_mixture/network_air = new(300)
+	network_air.temperature = 320
+	network_air.set_gas(/datum/gas/nitrogen, 30)
+	network.air = network_air
+	vent.parents[1] = network
+	scrubber.parents[1] = network
+	network.add_machinery_member(vent)
+	network.add_machinery_member(scrubber)
+	var/datum/banda_atmos_phase/world_adapter/phase
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		outlet.banda_air_requested = FALSE
+		inlet.banda_air_requested = FALSE
+		phase.register_batch(list(outlet, inlet))
+		phase.native(30)
+		phase.initializing = FALSE
+	network.reconcile_air()
+	var/list/vent_handle = vent_port.banda_pipe_binding?.handle
+	var/list/scrubber_handle = scrubber_port.banda_pipe_binding?.handle
+	if(phase)
+		phase.invoke(CALLBACK(src, PROC_REF(run_shared_port_devices), phase, vent, scrubber, inlet), commit_on_error = TRUE)
+		phase.project_changes()
+	else
+		run_shared_port_devices(null, vent, scrubber, inlet)
+	network.reconcile_air()
+	var/shared = phase?.pipe_owned_groups == 2 && phase.pipe_imports == 2 && phase.pipe_owned_transfers == 2 && \
+		vent_port.banda_pipe_binding?.native_owned && scrubber_port.banda_pipe_binding?.native_owned && \
+		vent_handle == vent_port.banda_pipe_binding.handle && scrubber_handle == scrubber_port.banda_pipe_binding.handle && \
+		!length(vent_port.moles) && !length(scrubber_port.moles) && vent.parent_updates == 1 && scrubber.parent_updates == 1
+	vent.return_analyzable_air()
+	scrubber.return_analyzable_air()
+	var/list/result = list("shared" = shared, "state" = list(banda_atmos_full_packet(vent_port), banda_atmos_full_packet(scrubber_port), \
+		banda_atmos_full_packet(network_air), banda_atmos_full_packet(outlet.get_readonly_air()), banda_atmos_full_packet(inlet.get_readonly_air()), vent.parent_updates, scrubber.parent_updates))
+	vent.nullify_pipenet(network)
+	scrubber.nullify_pipenet(network)
+	vent.nodes[1] = null
+	scrubber.nodes[1] = null
+	qdel(vent)
+	qdel(scrubber)
+	qdel(vent_port)
+	qdel(scrubber_port)
+	qdel(network_air)
+	qdel(phase)
+	return result
+
+/datum/controller/subsystem/atmos_phase_test/proc/run_shared_port_devices(datum/banda_atmos_phase/world_adapter/phase, obj/machinery/atmospherics/components/unary/vent_pump/vent, obj/machinery/atmospherics/components/unary/vent_scrubber/scrubber, turf/open/inlet)
+	phase?.prefetch_air_readings(list(vent))
+	vent.process_atmos()
+	scrubber.scrub_exposed_tile(inlet)
+
+/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe
+	var/turf/open/redirect_after_remove
+	var/removed_signals = 0
+
+/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe/proc/redirect_vent(datum/gas_mixture/source)
+	SIGNAL_HANDLER
+	removed_signals++
+	forceMove(redirect_after_remove)
+
+/datum/controller/subsystem/atmos_phase_test/proc/setup_transfer_vent(turf/open/target)
+	var/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe/pump = new(target)
+	pump.nodes[1] = pump
+	pump.set_on(TRUE)
+	pump.set_is_operational(TRUE)
+	var/datum/gas_mixture/port = pump.airs[1]
+	port.temperature = 350
+	port.set_gas(/datum/gas/plasma, 24)
+	port.set_gas(/datum/gas/nitrogen, 100)
+	port.moles_archive[/datum/gas/nitrogen] = 6
+	port.moles_archive[/datum/gas/oxygen] = MOLAR_ACCURACY
+	port.moles_archive[/datum/gas/carbon_dioxide] = 0
+	port.temperature_archived = 325
+	port.last_share = 3
+	return pump
+
+/datum/controller/subsystem/atmos_phase_test/proc/vent_transfer_cases()
+	var/list/cases = list()
+	for(var/mode in list("release", "siphon", "depleted_port", "empty_siphon", "tiny_release", "tiny_siphon", "chain", "held_tile", "port_signal", "siphon_signal", "machine_error"))
+		cases[mode] = list("dm" = vent_transfer_case(mode, FALSE), "rust" = vent_transfer_case(mode, TRUE))
+	return cases
+
+/datum/controller/subsystem/atmos_phase_test/proc/vent_transfer_case(mode, native)
+	var/turf/open/target = floor_at(220, 179)
+	SSair.remove_from_active(target)
+	target.significant_share_ticker = 17
+	target.air.temperature = 295
+	if(mode != "empty_siphon")
+		target.air.set_gas(/datum/gas/nitrogen, 300)
+		target.air.set_gas(/datum/gas/oxygen, 100)
+	target.air.moles_archive[/datum/gas/oxygen] = 12
+	target.air.moles_archive[/datum/gas/carbon_dioxide] = MOLAR_ACCURACY
+	target.air.temperature_archived = 285
+	var/list/reactions = banda_atmos_reactions()
+	target.air.reaction_results[reactions[1]] = 3
+	var/pressure = target.air.return_pressure()
+	var/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe/pump = setup_transfer_vent(target)
+	pump.return_analyzable_air()
+	var/datum/gas_mixture/port = pump.airs[1]
+	port.reaction_results[reactions[1]] = 5
+	var/list/port_moles = port.moles
+	var/list/port_archive = port.moles_archive
+	pump.external_pressure_bound = pressure + (mode == "depleted_port" ? 500 : 40)
+	if(mode == "siphon" || mode == "empty_siphon" || mode == "tiny_siphon" || mode == "siphon_signal")
+		pump.pump_direction = ATMOS_DIRECTION_SIPHONING
+		pump.external_pressure_bound = pressure - 20
+	if(mode == "tiny_release" || mode == "tiny_siphon")
+		// The valve opens, but each gas rounds down to zero moles in the removed sample.
+		pump.external_pressure_bound = pressure + (mode == "tiny_release" ? 0.00004 : -0.00004)
+	var/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe/second
+	if(mode == "chain")
+		second = setup_transfer_vent(target)
+		second.return_analyzable_air()
+		second.pump_direction = ATMOS_DIRECTION_SIPHONING
+		// This vent only siphons if it reads the earlier release in the same phase.
+		second.external_pressure_bound = pressure + 10
+	var/turf/open/other
+	var/port_signal
+	if(mode == "port_signal" || mode == "siphon_signal")
+		other = floor_at(224, 179)
+		SSair.remove_from_active(other)
+		other.air.temperature = 295
+		pump.redirect_after_remove = other
+		port_signal = mode == "port_signal" ? COMSIG_GASMIX_REMOVED : COMSIG_GASMIX_MERGED
+		pump.RegisterSignal(port, port_signal, TYPE_PROC_REF(/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe, redirect_vent))
+	var/datum/banda_atmos_phase/world_adapter/phase
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		target.banda_air_requested = FALSE
+		if(other)
+			other.banda_air_requested = FALSE
+		phase.register_batch(other ? list(target, other) : list(target))
+		phase.native(30)
+		phase.initializing = FALSE
+	var/datum/gas_mixture/held = mode == "held_tile" ? target.get_readonly_air() : null
+	var/list/checks = list()
+	try
+		if(native)
+			phase.invoke(CALLBACK(src, PROC_REF(run_vent_transfer_case), phase, pump, second, mode, checks), commit_on_error = TRUE)
+		else
+			run_vent_transfer_case(null, pump, second, mode, checks)
+	catch(var/exception/error)
+		if(error.name != "BANDA_EXPECTED_VENT_MACHINE_ERROR")
+			throw error
+		checks["caught"] = TRUE
+	var/full_cache = !!target.banda_atmos_cell?.cached_air
+	var/datum/gas_mixture/turf_air = target.get_readonly_air()
+	var/datum/gas_mixture/second_port = second?.airs[1]
+	var/list/state = list(
+		"tile" = banda_atmos_full_packet(turf_air), "port" = banda_atmos_full_packet(port),
+		"other" = other ? banda_atmos_full_packet(other.get_readonly_air()) : null,
+		"second_port" = second_port ? banda_atmos_full_packet(second_port) : null,
+		"updates" = pump.parent_updates, "second_updates" = second?.parent_updates || 0,
+		"excited" = !!target.excited, "ticker" = target.significant_share_ticker,
+		"overlays" = length(target.atmos_overlay_types), "signal_calls" = pump.removed_signals,
+		"redirected" = !!other && pump.loc == other,
+		"caught" = !!checks["caught"],
+	)
+	var/list/result = list(
+		"state" = state, "moves" = phase?.vent_transfers || 0, "empty" = phase?.vent_empty_transfers || 0,
+		"fallbacks" = phase?.vent_transfer_fallbacks || 0, "full_cache" = full_cache,
+		"scope_closed" = !phase?.vent_transfer_scope,
+		"aliases_kept" = pump.airs[1] == port && port.moles == port_moles && port.moles_archive == port_archive && (!held || held == turf_air),
+		"guards" = checks,
+	)
+	if(other)
+		pump.UnregisterSignal(port, port_signal)
+		pump.redirect_after_remove = null
+	if(second)
+		second.nodes[1] = null
+		qdel(second)
+	pump.nodes[1] = null
+	qdel(pump)
+	qdel(phase)
+	return result
+
+/datum/controller/subsystem/atmos_phase_test/proc/run_vent_transfer_case(datum/banda_atmos_phase/world_adapter/phase, obj/machinery/atmospherics/components/unary/vent_pump/pump, obj/machinery/atmospherics/components/unary/vent_pump/second, mode, list/checks)
+	if(phase)
+		phase.prefetch_air_readings(second ? list(second, pump) : list(pump))
+		if(mode == "release")
+			var/turf/open/target = pump.loc
+			var/id = target.banda_atmos_id
+			var/offset = phase.air_reading_offset(target)
+			var/version = phase.air_reading_packet[offset]
+			var/list/stale = list()
+			checks["stale_binding"] = phase.native(55, id, version + 1, pump.airs[1], banda_atmos_gases(), 1, stale) == 1 && !length(stale)
+			try
+				phase.native(55, id, version, pump.airs[1], banda_atmos_gases(), 1, null)
+			catch(var/exception/error)
+				checks["rejected_output"] = findtext(error.name, "Cannot write result list") > 0
+	pump.process_atmos()
+	if(second)
+		second.process_atmos()
+	if(mode == "machine_error")
+		throw EXCEPTION("BANDA_EXPECTED_VENT_MACHINE_ERROR")
+
+/// Time the same number of transfers with fresh tiles and the same direction changes in each mode.
+/datum/controller/subsystem/atmos_phase_test/proc/benchmark_vent_transfers()
+	var/list/rows = list()
+	for(var/repetition in 1 to 3)
+		var/list/modes = repetition % 2 ? list("dm", "rust") : list("rust", "dm")
+		for(var/mode in modes)
+			var/list/targets = list()
+			var/list/pumps = list()
+			for(var/x in 175 to 182)
+				for(var/y in 185 to 188)
+					var/turf/open/target = floor_at(x, y)
+					target.air.temperature = 295
+					target.air.set_gas(/datum/gas/nitrogen, 300)
+					target.air.set_gas(/datum/gas/oxygen, 100)
+					var/obj/machinery/atmospherics/components/unary/vent_pump/pump = setup_transfer_vent(target)
+					var/datum/gas_mixture/port = pump.airs[1]
+					port.temperature = 295
+					port.volume = CELL_VOLUME
+					target.banda_air_requested = FALSE
+					targets += target
+					pumps += pump
+			var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+			SSair.native_atmos = phase
+			if(mode == "dm")
+				phase.vent_transfer_ready = FALSE
+				phase.operations_ready = FALSE // This control must keep the original DM gas path.
+			phase.register_batch(targets)
+			phase.native(30)
+			phase.initializing = FALSE
+			vent_bench_cycles(phase, pumps, 2)
+			var/moves = phase.vent_transfers
+			var/fallbacks = phase.vent_transfer_fallbacks
+			world.Profile(PROFILE_RESTART)
+			vent_bench_cycles(phase, pumps, 320)
+			world.Profile(PROFILE_STOP)
+			var/list/procs = json_decode(world.Profile(PROFILE_REFRESH, format = "json"))
+			var/loop_seconds
+			var/vent_seconds
+			var/publish_seconds
+			for(var/list/row as anything in procs)
+				switch(row["name"])
+					if("/datum/controller/subsystem/atmos_phase_test/proc/vent_bench_cycles")
+						loop_seconds = row["total"]
+					if("/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos")
+						vent_seconds = row["total"]
+					if("/datum/banda_atmos_phase/world_adapter/proc/project_changes")
+						publish_seconds = row["total"]
+			var/list/states = list()
+			var/updates = 0
+			var/caches = 0
+			for(var/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe/pump as anything in pumps)
+				var/turf/open/target = pump.loc
+				caches += !!target.banda_atmos_cell?.cached_air
+				updates += pump.parent_updates - 2
+				pump.return_analyzable_air()
+				states += list(list(banda_atmos_full_packet(target.get_readonly_air()), banda_atmos_full_packet(pump.airs[1])))
+				pump.nodes[1] = null
+				qdel(pump)
+			rows += list(list("mode" = mode, "repeat" = repetition, "loop_seconds" = loop_seconds, "vent_seconds" = vent_seconds,
+				"publish_seconds" = publish_seconds, "moves" = phase.vent_transfers - moves, "fallbacks" = phase.vent_transfer_fallbacks - fallbacks,
+				"updates" = updates, "full_caches" = caches, "states" = states))
+			qdel(phase)
+	return rows
+
+/datum/controller/subsystem/atmos_phase_test/proc/vent_bench_cycles(datum/banda_atmos_phase/world_adapter/phase, list/pumps, cycles)
+	for(var/step in 1 to cycles)
+		phase.invoke(CALLBACK(src, PROC_REF(vent_bench_pass), phase, pumps, step % 2), commit_on_error = TRUE)
+		phase.project_changes()
+
+/datum/controller/subsystem/atmos_phase_test/proc/vent_bench_pass(datum/banda_atmos_phase/world_adapter/phase, list/pumps, releasing)
+	phase.prefetch_air_readings(pumps)
+	for(var/obj/machinery/atmospherics/components/unary/vent_pump/pump as anything in pumps)
+		pump.pump_direction = releasing ? ATMOS_DIRECTION_RELEASING : ATMOS_DIRECTION_SIPHONING
+		pump.external_pressure_bound = releasing ? 450 : 350
+		pump.process_atmos()

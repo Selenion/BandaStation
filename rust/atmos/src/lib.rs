@@ -4,12 +4,15 @@
 #[rustfmt::skip]
 pub mod catalog;
 mod amounts;
+pub mod visibility;
 pub use amounts::GasAmounts;
 #[cfg(feature = "byond")]
 mod byond;
 pub mod cell;
 pub mod network;
+pub mod operations;
 pub mod phase;
+pub mod pipenet;
 mod reactions;
 mod results;
 #[cfg(any(feature = "simd", test))]

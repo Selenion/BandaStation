@@ -234,6 +234,18 @@
 	. = other_airs + air
 	if(list_clear_nulls(.))
 		stack_trace("[src] has one or more null gas mixtures, which may cause bugs. Null mixtures will not be considered in reconcile_air().")
+	// BANDASTATION ADDITION START - Live gas references can escape through the pipeline API.
+	for(var/datum/gas_mixture/mixture as anything in .)
+		mixture.banda_expose_pipe_port()
+	// BANDASTATION ADDITION END
+
+// BANDASTATION ADDITION START - Preserve editable pipe mixtures in View Variables.
+/datum/pipeline/vv_get_var(var_name)
+	if(var_name == NAMEOF(src, other_airs))
+		for(var/datum/gas_mixture/mixture as anything in other_airs)
+			mixture?.banda_expose_pipe_port()
+	return ..()
+// BANDASTATION ADDITION END
 
 /// Called when the pipenet needs to update and mix together all the air mixes
 /datum/pipeline/proc/reconcile_air()
@@ -252,6 +264,13 @@
 			gas_mixture_list += atmos_machine.return_airs_for_reconcilation(src)
 
 	var/total_thermal_energy = 0
+	// BANDASTATION ADDITION START - Native pipe reconciliation preserves DM mixture order and aliases.
+	if(SSair.native_atmos?.pipes_ready && SSair.native_atmos.reconcile_pipes(gas_mixture_list))
+		return
+	if(SSair.native_atmos)
+		for(var/datum/gas_mixture/mixture as anything in gas_mixture_list)
+			mixture?.banda_expose_pipe_port()
+	// BANDASTATION ADDITION END - Native pipe reconciliation preserves DM mixture order and aliases.
 	var/total_heat_capacity = 0
 
 	var/volume_sum = 0

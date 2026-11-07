@@ -258,8 +258,15 @@
 
 	var/percent_integrity = get_integrity_percentage()
 	var/datum/gas_mixture/air_contents = airs[1]
-	var/datum/gas_mixture/environment = us.get_readonly_air() // BANDASTATION EDIT - Pressure checks do not borrow or republish mutable native gas.
-	var/environment_pressure = environment.return_pressure()
+	// BANDASTATION EDIT START - Read scalar checks without creating a full native gas cache.
+	var/datum/banda_atmos_phase/world_adapter/phase = SSair.native_atmos
+	var/offset = phase?.properties_ready ? phase.air_reading_offset(us) : 0
+	var/list/readings = offset ? phase.air_reading_packet : null
+	var/datum/gas_mixture/environment = offset ? null : us.get_readonly_air()
+	var/environment_pressure = offset ? readings[offset + BANDA_ATMOS_PRESSURE] : environment.return_pressure()
+	var/environment_temperature = offset ? readings[offset + BANDA_ATMOS_TEMPERATURE] : environment.temperature
+	var/environment_volume = offset ? readings[offset + BANDA_ATMOS_VOLUME] : environment.volume
+	// BANDASTATION EDIT END
 
 	if(pump_direction & ATMOS_DIRECTION_RELEASING) // internal -> external
 		var/pressure_delta = 10000
@@ -267,17 +274,26 @@
 		if(pressure_checks&ATMOS_EXTERNAL_BOUND)
 			pressure_delta = min(pressure_delta, (external_pressure_bound - environment_pressure))
 		if(pressure_checks&ATMOS_INTERNAL_BOUND)
-			pressure_delta = min(pressure_delta, (air_contents.return_pressure() - internal_pressure_bound))
+			pressure_delta = min(pressure_delta, (air_contents.banda_pipe_pressure() - internal_pressure_bound)) // BANDASTATION EDIT - Use native port pressure when owned.
 
 		if(pressure_delta > 0)
 			if(air_contents.temperature > 0)
 				if(!fan_overclocked && (environment_pressure >= 50 * ONE_ATMOSPHERE))
 					return FALSE
 
-				var/transfer_moles = (pressure_delta * environment.volume) / (air_contents.temperature * R_IDEAL_GAS_EQUATION)
+				var/transfer_moles = (pressure_delta * environment_volume) / (air_contents.temperature * R_IDEAL_GAS_EQUATION) // BANDASTATION EDIT - Scalar native reading.
 				if(!fan_overclocked && (percent_integrity < 1))
 					transfer_moles *= percent_integrity
 
+				// BANDASTATION ADDITION START - The port and tile can exchange gas without a DM sample.
+				if(loc == us && phase?.vent_transfer_ready)
+					var/direct_transfer = phase.try_vent_transfer(us, air_contents, offset, transfer_moles, TRUE)
+					if(!isnull(direct_transfer))
+						if(direct_transfer)
+							update_parents()
+						return
+				// BANDASTATION ADDITION END
+				air_contents.banda_expose_pipe_port() // BANDASTATION ADDITION - Legacy transfer needs the live port mixture.
 				var/datum/gas_mixture/removed = air_contents.remove(transfer_moles)
 
 				if(!removed || !removed.total_moles())
@@ -291,16 +307,25 @@
 		if(pressure_checks&ATMOS_EXTERNAL_BOUND)
 			pressure_delta = min(pressure_delta, (environment_pressure - external_pressure_bound))
 		if(pressure_checks&ATMOS_INTERNAL_BOUND)
-			pressure_delta = min(pressure_delta, (internal_pressure_bound - air_contents.return_pressure()))
+			pressure_delta = min(pressure_delta, (internal_pressure_bound - air_contents.banda_pipe_pressure())) // BANDASTATION EDIT - Use native port pressure when owned.
 
-		if(pressure_delta > 0 && environment.temperature > 0)
-			if(!fan_overclocked && (air_contents.return_pressure() >= 50 * ONE_ATMOSPHERE))
+		if(pressure_delta > 0 && environment_temperature > 0) // BANDASTATION EDIT - Scalar native reading.
+			if(!fan_overclocked && (air_contents.banda_pipe_pressure() >= 50 * ONE_ATMOSPHERE)) // BANDASTATION EDIT - Use native port pressure when owned.
 				return FALSE
 
-			var/transfer_moles = (pressure_delta * air_contents.volume) / (environment.temperature * R_IDEAL_GAS_EQUATION)
+			var/transfer_moles = (pressure_delta * air_contents.volume) / (environment_temperature * R_IDEAL_GAS_EQUATION) // BANDASTATION EDIT - Scalar native reading.
 			if(!fan_overclocked && (percent_integrity < 1))
 				transfer_moles *= percent_integrity
 
+			// BANDASTATION ADDITION START - The port and tile can exchange gas without a DM sample.
+			if(loc == us && phase?.vent_transfer_ready)
+				var/direct_transfer = phase.try_vent_transfer(us, air_contents, offset, transfer_moles, FALSE)
+				if(!isnull(direct_transfer))
+					if(direct_transfer)
+						update_parents()
+					return
+			// BANDASTATION ADDITION END
+			air_contents.banda_expose_pipe_port() // BANDASTATION ADDITION - Legacy transfer needs the live port mixture.
 			var/datum/gas_mixture/removed = loc.remove_air(transfer_moles)
 
 			if(!removed || !removed.total_moles()) //No venting from space 4head

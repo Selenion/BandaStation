@@ -1,0 +1,3915 @@
+{
+  "scope": "Same DLL and DM build, direct pipes in both modes; full gas bridge versus compact scalar/visual publication",
+  "source_sha256": {
+    "code/__DEFINES/atmospherics/atmos_helpers.dm": "c18c2263eaea3b9919cd646bbdd9270fbd8910ab61f387b83f16ebd7785e7f32",
+    "code/controllers/subsystem/air.dm": "ee32d69734353cd269c8516b8f6c9f44e72138e17babad4d96963e56f131414e",
+    "code/game/turfs/open/_open.dm": "7fba14955ac13a96f8fb2c5d58156fcd610edecd0e8f527089e6648135c0605e",
+    "code/modules/atmospherics/environmental/LINDA_turf_tile.dm": "f359f40e10b68d9608fa24ffd6ee27a7a28ab2964860d155b12ec2fd3f1f2ba4",
+    "code/modules/atmospherics/machinery/components/unary_devices/vent_pump.dm": "d52b307c2a08e6530c4e6242a1daa81df6caff565f19d3df9ccb3a6e9e6f825d",
+    "modular_bandastation/atmos_rust/_atmos_rust.dm": "e4d505bfb306242cf07f41dd98e9855a4aeb3f5d20af07606ed76a7211634aab",
+    "modular_bandastation/atmos_rust/_atmos_rust.dme": "09a7d21263f68e5b386325ef423e122e990aeba058c1c6394e5bfdbb3dc5bb72",
+    "modular_bandastation/atmos_rust/code/access.dm": "8abdc1ee66d18262b5aab99eecc0a239a2b6b33d9f3c6e8c934003f4d5e80877",
+    "modular_bandastation/atmos_rust/code/binding.dm": "c9950e101675df914d848186dd7042985e837ccff347dc534ad7a017fbd6f6c4",
+    "modular_bandastation/atmos_rust/code/catalog.dm": "c446cf8d946f0b9aacb05f9cc50150a4f63477bd8e92087d713c0298ab871645",
+    "modular_bandastation/atmos_rust/code/cell.dm": "6e56652fdc99c695ca867921c15be32b755b7a3b902bc09b4a15b465f331d44c",
+    "modular_bandastation/atmos_rust/code/debug.dm": "86bf40b6d4cbd0e0da0eae26d99344e93e0a592871730412889a37858a390dea",
+    "modular_bandastation/atmos_rust/code/hotspot.dm": "9f0043d2470bee9f8fa571c605150591f53702b24fe5a3f270fbd270e52fbdab",
+    "modular_bandastation/atmos_rust/code/mixture.dm": "7e8ddba508125b589db4d2ecd25d3aaec28f8faa21836301289e111abb2b88e4",
+    "modular_bandastation/atmos_rust/code/phase.dm": "86ab62a44df96f15359e4dea68f1e719332569e00d7bc4d1260eebc15765bfbb",
+    "modular_bandastation/atmos_rust/code/pipes.dm": "61280f32254b2b42f8ed6b974b2f5b15c72937cd2f02bfda4a57665234addda9",
+    "modular_bandastation/atmos_rust/code/properties.dm": "49fbb14d3d16fe331cb79cbe868ac3e1cdf29df15fff715aaf9e273bb4fb75c5",
+    "modular_bandastation/atmos_rust/code/safe.dm": "11a61108902152ef2b1213f99eafdec85973b1b9e36908c73cbd8b6e4e457c3a",
+    "modular_bandastation/atmos_rust/code/serialization.dm": "911d95c078b0a2839db97b9376f104a589ac35fb0f62db5263a06d26a1d9756a",
+    "modular_bandastation/atmos_rust/code/world.dm": "ca67b8f04db64dea8dcdc75102466ec25a8c0c7c22857fe8397fedca276f2eac",
+    "rust/atmos/src/amounts.rs": "7ee269fa180dd9d6c2571504a89abf81f002c48cda60db6acbf455480e47aa95",
+    "rust/atmos/src/bin/cell.rs": "610cf621c145634075ff8fa06438f37cb749f18c41e7658bde59ea466e374126",
+    "rust/atmos/src/bin/network.rs": "62067ca54fd0ff3ee5b7d2b071fafa987aaa711c58cf64d00b5f5e9e712a6867",
+    "rust/atmos/src/bin/transport.rs": "c893a1aec02c7c987dc71de5499a1da81f31c64822142d358ccbfdee91facbe7",
+    "rust/atmos/src/byond.rs": "1f799e86d1173a3585064508c52486991265bbb8944637e46561505785db43b7",
+    "rust/atmos/src/byond_packets.rs": "3dc38d7ce8e87d8f8b605c5a61e1e1053dcef2582f86c4114c1f788be4323f28",
+    "rust/atmos/src/byond_pipe_direct.rs": "7d17a3fc699ad1ded69c094658bc277d6d6d30f69758a2ddd3363bb9397f02a5",
+    "rust/atmos/src/byond_pipes.rs": "606670cbeeb3fad59b8511f68988849950c01c53036ae112e6e9f36adcc7ac36",
+    "rust/atmos/src/byond_worker.rs": "5665e969b3963ca9dd8f54572aace4d7320b082f373553cc80ac94f60c719902",
+    "rust/atmos/src/byond_world.rs": "fe992e372002acce4fc0333ed41999d2535c80ccdd4557eb6b5526c936e8a9ba",
+    "rust/atmos/src/catalog.rs": "99ade86eee86cbc0e06028c6f3e17bcb11e22c0df4000830d92e48423dd2e5e7",
+    "rust/atmos/src/cell.rs": "5ff1a5443d7063242d227074b13b8332e6dea7e796b761e134fe8010a284b54c",
+    "rust/atmos/src/lib.rs": "62aac5ce2e7a74309525edd3312e406615ac67936b2375a6bb52b9a41a493251",
+    "rust/atmos/src/main.rs": "d014796fbb17c923b59010437c5df6a96b03b80dac26b499343fe351bdb1f098",
+    "rust/atmos/src/network.rs": "ade41ec358bc188b03eefb4d43741b0136f3408cd3ed61ed2a18e5936d4bbee8",
+    "rust/atmos/src/phase.rs": "a9fa336bc14e8834dccd0b6cf70951ffc7f9106085fa8f8cfc413ab7e5674a6a",
+    "rust/atmos/src/phase_binding.rs": "25d710ed4e2b656a02cbc794d4e8dcb9a67453e2c5d472e09158930c354fb7eb",
+    "rust/atmos/src/phase_tests.rs": "b415e50bfbd51b0bbaf63b315d150816e67aa0e8360be4e5e263d9448d55a15c",
+    "rust/atmos/src/phase_write.rs": "b585830788ae39cd4c134926a4903be2bec3f03b68a9c3b8ff33661a6b677a75",
+    "rust/atmos/src/pipenet.rs": "2d60f00f3f9047f502b50af1a0a36ade329a5973e42372c567317c4522b35a59",
+    "rust/atmos/src/pipenet_pool.rs": "6dea471892ed2c135522baf8b88eda3cc84bdf4eff116dbd1959ef53df99530b",
+    "rust/atmos/src/reactions.rs": "4bb253a2099a104947f273b1a4c5015176c6f8145d3350419fe9afdf953854f0",
+    "rust/atmos/src/results.rs": "dcfdafecf1ae1f9a1cdd34e5eeafe75bc9968a74c8f46de2f08243b3515505c0",
+    "rust/atmos/src/simd.rs": "13ea48a4f890a749ddacfd738e8be0d08f0b3dac9112f1bc7980b2d3f97a5637",
+    "rust/atmos/src/storage.rs": "42bb00c21e76ce71135018067a3f29a10125fbb6df13504f4c4071e69ec1127a",
+    "rust/atmos/src/thermal.rs": "4dfb8dba9a9537d6c597d2ae1d3d61d964a2318649e76da15df4f3c1cc3932d2",
+    "rust/atmos/src/transport.rs": "12c114112f7c2e7c4102bf924ff53a6c6d757f18b079ad580135e193aa0378b6",
+    "rust/atmos/src/visibility.rs": "bd904031401744abb79c14ae1c8114fad86fc6521a3b06b7fd93ba022b836b7d",
+    "rust/atmos/src/worker_profile.rs": "2eca1bfc2a0d365eec900a6a4dbd05844a768153e020544b92e2a782a9d1e522",
+    "tools/profiling/local_profile.dm.in": "461d4267fb7ec9777c30d033e728a35ed56450b4ff70a386417c59a38d454147",
+    "tools/profiling/run.py": "fd620455ca3603bf955425b8291e3b994a0b55324d09afae9b060ecfda874665"
+  },
+  "pairs": [
+    {
+      "scenario": "empty-station",
+      "repeat": 1,
+      "runs": [
+        {
+          "folder": "tmp\\profiling\\airbridge-v2-full-idle-01",
+          "metrics": {
+            "process": {
+              "samples": 60,
+              "sampled_wall_seconds": 59.42829,
+              "cpu_seconds": 10.15625,
+              "cpu_one_core_percent": 17.089924680652935,
+              "working_set_mib": [
+                1787.7578125,
+                1788.98046875
+              ],
+              "private_mib": [
+                1825.23046875,
+                1827.8671875
+              ],
+              "observed_lifetime_peak_working_set_mib": 2065.2421875,
+              "observed_lifetime_peak_commit_mib": 2086.69140625,
+              "main_thread_id": 33560,
+              "main_thread_cpu_seconds": 10.109375,
+              "main_thread_cpu_one_core_percent": 17.01104810520377,
+              "other_threads_cpu_seconds": 0.046875,
+              "other_threads_cpu_one_core_percent": 0.0788765754491674
+            },
+            "native_completed_ticks": 120,
+            "sample_game_seconds": 60,
+            "sample_wall_seconds": 60.1375,
+            "ssair": {
+              "type": "/datum/controller/subsystem/air",
+              "name": "Atmospherics",
+              "cost_ms_rolling": 19.4989,
+              "times_fired": 120,
+              "wait_ds": 5,
+              "tick_usage_rolling": 38.9978,
+              "tick_overrun_rolling": 0
+            },
+            "atmos_start": {
+              "active_turfs": 22,
+              "hotspots": 0,
+              "excited_groups": 5,
+              "pipenets": 296,
+              "cost_turfs": 47.0198,
+              "cost_hotspots": 0,
+              "cost_pipenets": 3.20408,
+              "cost_atmos_machinery": 13.0714,
+              "native_completed_ticks": 52,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 1369,
+              "native_pipe_imports": 24334,
+              "native_pipe_direct_groups": 1369,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1608,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 0,
+              "native_visual_publication_enabled": 0,
+              "native_property_batches": 432,
+              "native_property_hits": 20554,
+              "native_property_fallbacks": 2688,
+              "native_publication_values": 959680,
+              "native_visual_publications": 24802,
+              "native_pipe_records": 1608,
+              "native_pipe_slots": 1608,
+              "native_worker_cpu_seconds": 0.046875,
+              "native_worker_jobs": 52,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 128.044
+            },
+            "atmos_end": {
+              "active_turfs": 29,
+              "hotspots": 0,
+              "excited_groups": 6,
+              "pipenets": 296,
+              "cost_turfs": 46.1554,
+              "cost_hotspots": 0,
+              "cost_pipenets": 1.73526,
+              "cost_atmos_machinery": 13.4473,
+              "native_completed_ticks": 172,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 2776,
+              "native_pipe_imports": 40239,
+              "native_pipe_direct_groups": 2776,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1608,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 0,
+              "native_visual_publication_enabled": 0,
+              "native_property_batches": 432,
+              "native_property_hits": 20554,
+              "native_property_fallbacks": 2688,
+              "native_publication_values": 1226017,
+              "native_visual_publications": 24802,
+              "native_pipe_records": 1608,
+              "native_pipe_slots": 1608,
+              "native_worker_cpu_seconds": 0.09375,
+              "native_worker_jobs": 172,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 209.503
+            },
+            "normalized": {
+              "completed_ticks": 120,
+              "completed_ticks_per_real_second": 1.995427146123467,
+              "real_ms_per_completed_tick": 501.1458333333333,
+              "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+              "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+              "estimated_process_cpu_seconds": 10.27745345482766,
+              "estimated_process_cpu_ms_per_completed_tick": 85.64544545689715,
+              "estimated_main_thread_cpu_seconds": 10.230019054266917,
+              "estimated_main_thread_cpu_ms_per_completed_tick": 85.25015878555764,
+              "estimated_other_threads_cpu_seconds": 0.047434400560743044,
+              "estimated_other_threads_cpu_ms_per_completed_tick": 0.3952866713395254
+            },
+            "worker": {
+              "cpu_seconds": 0.046875,
+              "jobs": 120,
+              "mcycles": 81.45899999999997,
+              "cpu_one_core_percent": 0.07794637289544792,
+              "cpu_ms_per_job": 0.390625,
+              "scope": "Completed numerical jobs through staging, before Byond_Return; jobs may cross window bounds; Windows thread-time counters can be coarse",
+              "simd_available": 1
+            },
+            "private_last_mib": 1827.77734375,
+            "pipe_procs": [
+              {
+                "name": "/datum/controller/subsystem/air/proc/process_pipenets",
+                "self": 0.029,
+                "total": 0.248,
+                "real": 0.255,
+                "over": 0,
+                "calls": 120
+              },
+              {
+                "name": "/datum/pipeline/proc/reconcile_air",
+                "self": 0.012,
+                "total": 0.093,
+                "real": 0.084,
+                "over": 0,
+                "calls": 1407
+              },
+              {
+                "name": "/datum/banda_atmos_phase/proc/reconcile_pipes",
+                "self": 0.034,
+                "total": 0.081,
+                "real": 0.071,
+                "over": 0,
+                "calls": 1407
+              }
+            ],
+            "groups": 1407,
+            "imports": 15905,
+            "packet_imports": 0,
+            "direct_groups": 1407,
+            "private_start_mib": 1824.96484375,
+            "bridge_procs": {
+              "publication": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+                "self": 0.055,
+                "total": 0.311,
+                "real": 0.305,
+                "over": 0.001,
+                "calls": 840
+              },
+              "refresh": {
+                "name": "/datum/banda_atmos_cell/proc/refresh_cache",
+                "self": 0.054,
+                "total": 0.323,
+                "real": 0.333,
+                "over": 0,
+                "calls": 11065
+              },
+              "sync": {
+                "name": "/datum/banda_atmos_cell/proc/sync_air",
+                "self": 0.068,
+                "total": 0.195,
+                "real": 0.197,
+                "over": 0,
+                "calls": 7671
+              },
+              "readonly": {
+                "name": "/turf/open/get_readonly_air",
+                "self": 0.178,
+                "total": 0.597,
+                "real": 0.629,
+                "over": 0,
+                "calls": 69727
+              },
+              "prefetch": {},
+              "properties": {},
+              "machinery": {
+                "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+                "self": 0.286,
+                "total": 3.242,
+                "real": 3.231,
+                "over": 0,
+                "calls": 242
+              },
+              "vent": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+                "self": 0.272,
+                "total": 0.644,
+                "real": 0.673,
+                "over": 0,
+                "calls": 44280
+              },
+              "heat_pipe": {
+                "name": "/obj/machinery/atmospherics/pipe/heat_exchanging/process_atmos",
+                "self": 0.039,
+                "total": 0.281,
+                "real": 0.295,
+                "over": 0,
+                "calls": 9960
+              },
+              "mole_overlays": {
+                "name": "/proc/banda_atmos_update_packet_visuals",
+                "self": 0.024,
+                "total": 0.026,
+                "real": 0.035,
+                "over": 0,
+                "calls": 7619
+              },
+              "state_overlays": {}
+            },
+            "property_batches": 0,
+            "property_hits": 0,
+            "property_fallbacks": 0,
+            "publication_values": 266337,
+            "visual_publications": 0
+          },
+          "runtime": {
+            "status": "clean",
+            "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+            "known_count": 0,
+            "unexpected_count": 0,
+            "known": [],
+            "unexpected": []
+          },
+          "mode": "full",
+          "binary_sha256": "95285ee95faa33a2c1d91ab771cb51da4045948b61e9e64585c358d1bd9988c7",
+          "dll_sha256": "b715cdf1d32f61fc11f7c236cc160c5e066c377414cc0aa0fcc52820c2f2765f",
+          "inputs": {
+            "scenario": "empty-station",
+            "byond": "516.1688",
+            "map": "MetaStation",
+            "startup_seed": "29051994",
+            "seeded_turfs": []
+          },
+          "incident": []
+        },
+        {
+          "folder": "tmp\\profiling\\airbridge-v2-compact-idle-01",
+          "metrics": {
+            "process": {
+              "samples": 60,
+              "sampled_wall_seconds": 59.443145,
+              "cpu_seconds": 12.03125,
+              "cpu_one_core_percent": 20.23992842236056,
+              "working_set_mib": [
+                1835.05078125,
+                1835.66015625
+              ],
+              "private_mib": [
+                1863.17578125,
+                1867.81640625
+              ],
+              "observed_lifetime_peak_working_set_mib": 2128.09375,
+              "observed_lifetime_peak_commit_mib": 2150.26953125,
+              "main_thread_id": 60252,
+              "main_thread_cpu_seconds": 11.75,
+              "main_thread_cpu_one_core_percent": 19.766787238461223,
+              "other_threads_cpu_seconds": 0.28125,
+              "other_threads_cpu_one_core_percent": 0.47314118389933774
+            },
+            "native_completed_ticks": 120,
+            "sample_game_seconds": 60,
+            "sample_wall_seconds": 60.0563,
+            "ssair": {
+              "type": "/datum/controller/subsystem/air",
+              "name": "Atmospherics",
+              "cost_ms_rolling": 19.9112,
+              "times_fired": 120,
+              "wait_ds": 5,
+              "tick_usage_rolling": 39.8224,
+              "tick_overrun_rolling": 0
+            },
+            "atmos_start": {
+              "active_turfs": 43,
+              "hotspots": 0,
+              "excited_groups": 5,
+              "pipenets": 331,
+              "cost_turfs": 45.4531,
+              "cost_hotspots": 0,
+              "cost_pipenets": 3.48453,
+              "cost_atmos_machinery": 15.8612,
+              "native_completed_ticks": 49,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 1667,
+              "native_pipe_imports": 26083,
+              "native_pipe_direct_groups": 1667,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1782,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 1,
+              "native_visual_publication_enabled": 1,
+              "native_property_batches": 461,
+              "native_property_hits": 21703,
+              "native_property_fallbacks": 4203,
+              "native_publication_values": 857098,
+              "native_visual_publications": 20687,
+              "native_pipe_records": 1782,
+              "native_pipe_slots": 1782,
+              "native_worker_cpu_seconds": 0.078125,
+              "native_worker_jobs": 49,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 125.053
+            },
+            "atmos_end": {
+              "active_turfs": 37,
+              "hotspots": 0,
+              "excited_groups": 8,
+              "pipenets": 331,
+              "cost_turfs": 54.7581,
+              "cost_hotspots": 0,
+              "cost_pipenets": 2.13935,
+              "cost_atmos_machinery": 15.6602,
+              "native_completed_ticks": 169,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 3547,
+              "native_pipe_imports": 48463,
+              "native_pipe_direct_groups": 3547,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1782,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 1,
+              "native_visual_publication_enabled": 1,
+              "native_property_batches": 1421,
+              "native_property_hits": 71833,
+              "native_property_fallbacks": 17363,
+              "native_publication_values": 1383488,
+              "native_visual_publications": 30250,
+              "native_pipe_records": 1782,
+              "native_pipe_slots": 1782,
+              "native_worker_cpu_seconds": 0.125,
+              "native_worker_jobs": 169,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 260.494
+            },
+            "normalized": {
+              "completed_ticks": 120,
+              "completed_ticks_per_real_second": 1.9981250926214236,
+              "real_ms_per_completed_tick": 500.4691666666667,
+              "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+              "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+              "estimated_process_cpu_seconds": 12.155352133118125,
+              "estimated_process_cpu_ms_per_completed_tick": 101.29460110931771,
+              "estimated_main_thread_cpu_seconds": 11.871201044291988,
+              "estimated_main_thread_cpu_ms_per_completed_tick": 98.9266753690999,
+              "estimated_other_threads_cpu_seconds": 0.28415108882613793,
+              "estimated_other_threads_cpu_ms_per_completed_tick": 2.367925740217816
+            },
+            "worker": {
+              "cpu_seconds": 0.046875,
+              "jobs": 120,
+              "mcycles": 135.44100000000003,
+              "cpu_one_core_percent": 0.07805176143052436,
+              "cpu_ms_per_job": 0.390625,
+              "scope": "Completed numerical jobs through staging, before Byond_Return; jobs may cross window bounds; Windows thread-time counters can be coarse",
+              "simd_available": 1
+            },
+            "private_last_mib": 1867.79296875,
+            "pipe_procs": [
+              {
+                "name": "/datum/controller/subsystem/air/proc/process_pipenets",
+                "self": 0.056,
+                "total": 0.303,
+                "real": 0.296,
+                "over": 0,
+                "calls": 120
+              },
+              {
+                "name": "/datum/pipeline/proc/reconcile_air",
+                "self": 0.014,
+                "total": 0.124,
+                "real": 0.145,
+                "over": 0,
+                "calls": 1880
+              },
+              {
+                "name": "/datum/banda_atmos_phase/proc/reconcile_pipes",
+                "self": 0.047,
+                "total": 0.108,
+                "real": 0.118,
+                "over": 0,
+                "calls": 1880
+              }
+            ],
+            "groups": 1880,
+            "imports": 22380,
+            "packet_imports": 0,
+            "direct_groups": 1880,
+            "private_start_mib": 1863.17578125,
+            "bridge_procs": {
+              "publication": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+                "self": 0.099,
+                "total": 0.567,
+                "real": 0.558,
+                "over": 0,
+                "calls": 840
+              },
+              "refresh": {
+                "name": "/datum/banda_atmos_cell/proc/refresh_cache",
+                "self": 0.036,
+                "total": 0.142,
+                "real": 0.163,
+                "over": 0,
+                "calls": 7106
+              },
+              "sync": {
+                "name": "/datum/banda_atmos_cell/proc/sync_air",
+                "self": 0.136,
+                "total": 0.366,
+                "real": 0.371,
+                "over": 0,
+                "calls": 15688
+              },
+              "readonly": {
+                "name": "/turf/open/get_readonly_air",
+                "self": 0.08,
+                "total": 0.214,
+                "real": 0.195,
+                "over": 0,
+                "calls": 32496
+              },
+              "prefetch": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/prefetch_air_readings",
+                "self": 0.257,
+                "total": 0.313,
+                "real": 0.353,
+                "over": 0,
+                "calls": 960
+              },
+              "properties": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/air_reading_offset",
+                "self": 0.19,
+                "total": 0.193,
+                "real": 0.191,
+                "over": 0,
+                "calls": 63290
+              },
+              "machinery": {
+                "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+                "self": 0.255,
+                "total": 3.713,
+                "real": 3.729,
+                "over": 0,
+                "calls": 240
+              },
+              "vent": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+                "self": 0.283,
+                "total": 0.607,
+                "real": 0.596,
+                "over": 0,
+                "calls": 48360
+              },
+              "heat_pipe": {
+                "name": "/obj/machinery/atmospherics/pipe/heat_exchanging/process_atmos",
+                "self": 0.062,
+                "total": 0.198,
+                "real": 0.184,
+                "over": 0,
+                "calls": 14640
+              },
+              "mole_overlays": {
+                "name": "/proc/banda_atmos_update_packet_visuals",
+                "self": 0.017,
+                "total": 0.018,
+                "real": 0.022,
+                "over": 0,
+                "calls": 6125
+              },
+              "state_overlays": {
+                "name": "/proc/banda_atmos_update_visual_states",
+                "self": 0.01,
+                "total": 0.013,
+                "real": 0.02,
+                "over": 0,
+                "calls": 9509
+              }
+            },
+            "property_batches": 960,
+            "property_hits": 50130,
+            "property_fallbacks": 13160,
+            "publication_values": 526390,
+            "visual_publications": 9563
+          },
+          "runtime": {
+            "status": "clean",
+            "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+            "known_count": 0,
+            "unexpected_count": 0,
+            "known": [],
+            "unexpected": []
+          },
+          "mode": "compact",
+          "binary_sha256": "95285ee95faa33a2c1d91ab771cb51da4045948b61e9e64585c358d1bd9988c7",
+          "dll_sha256": "b715cdf1d32f61fc11f7c236cc160c5e066c377414cc0aa0fcc52820c2f2765f",
+          "inputs": {
+            "scenario": "empty-station",
+            "byond": "516.1688",
+            "map": "MetaStation",
+            "startup_seed": "29051994",
+            "seeded_turfs": []
+          },
+          "incident": []
+        }
+      ]
+    },
+    {
+      "scenario": "atmos-fire",
+      "repeat": 1,
+      "runs": [
+        {
+          "folder": "tmp\\profiling\\airbridge-v2-full-fire-01",
+          "metrics": {
+            "process": {
+              "samples": 61,
+              "sampled_wall_seconds": 60.347772,
+              "cpu_seconds": 19.625,
+              "cpu_one_core_percent": 32.519841826140656,
+              "working_set_mib": [
+                1824.45703125,
+                1830.01953125
+              ],
+              "private_mib": [
+                1856.22265625,
+                1871.921875
+              ],
+              "observed_lifetime_peak_working_set_mib": 2115.59765625,
+              "observed_lifetime_peak_commit_mib": 2136.71875,
+              "main_thread_id": 21064,
+              "main_thread_cpu_seconds": 19.09375,
+              "main_thread_cpu_one_core_percent": 31.639527636579526,
+              "other_threads_cpu_seconds": 0.53125,
+              "other_threads_cpu_one_core_percent": 0.8803141895611325
+            },
+            "native_completed_ticks": 119,
+            "sample_game_seconds": 60,
+            "sample_wall_seconds": 61.4375,
+            "ssair": {
+              "type": "/datum/controller/subsystem/air",
+              "name": "Atmospherics",
+              "cost_ms_rolling": 28.0657,
+              "times_fired": 120,
+              "wait_ds": 5,
+              "tick_usage_rolling": 56.1315,
+              "tick_overrun_rolling": 0
+            },
+            "atmos_start": {
+              "active_turfs": 107,
+              "hotspots": 0,
+              "excited_groups": 5,
+              "pipenets": 331,
+              "cost_turfs": 42.3056,
+              "cost_hotspots": 0,
+              "cost_pipenets": 3.502,
+              "cost_atmos_machinery": 14.8527,
+              "native_completed_ticks": 49,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 1707,
+              "native_pipe_imports": 26399,
+              "native_pipe_direct_groups": 1707,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1778,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 0,
+              "native_visual_publication_enabled": 0,
+              "native_property_batches": 467,
+              "native_property_hits": 21652,
+              "native_property_fallbacks": 4156,
+              "native_publication_values": 834836,
+              "native_visual_publications": 20113,
+              "native_pipe_records": 1778,
+              "native_pipe_slots": 1778,
+              "native_worker_cpu_seconds": 0.03125,
+              "native_worker_jobs": 49,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 159.954
+            },
+            "atmos_end": {
+              "active_turfs": 635,
+              "hotspots": 1,
+              "excited_groups": 21,
+              "pipenets": 331,
+              "cost_turfs": 92.7329,
+              "cost_hotspots": 0,
+              "cost_pipenets": 3.26171,
+              "cost_atmos_machinery": 15.1025,
+              "native_completed_ticks": 168,
+              "native_worker_pending": 1,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 4468,
+              "native_pipe_imports": 80707,
+              "native_pipe_direct_groups": 4468,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1778,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 0,
+              "native_visual_publication_enabled": 0,
+              "native_property_batches": 467,
+              "native_property_hits": 21652,
+              "native_property_fallbacks": 4156,
+              "native_publication_values": 5081715,
+              "native_visual_publications": 20113,
+              "native_pipe_records": 1778,
+              "native_pipe_slots": 1778,
+              "native_worker_cpu_seconds": 0.5,
+              "native_worker_jobs": 169,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 1261.34
+            },
+            "normalized": {
+              "completed_ticks": 119,
+              "completed_ticks_per_real_second": 1.9369277721261444,
+              "real_ms_per_completed_tick": 516.281512605042,
+              "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+              "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+              "estimated_process_cpu_seconds": 19.979377821935167,
+              "estimated_process_cpu_ms_per_completed_tick": 167.8939312767661,
+              "estimated_main_thread_cpu_seconds": 19.438534791723548,
+              "estimated_main_thread_cpu_ms_per_completed_tick": 163.3490318632231,
+              "estimated_other_threads_cpu_seconds": 0.5408430302116208,
+              "estimated_other_threads_cpu_ms_per_completed_tick": 4.544899413543033
+            },
+            "worker": {
+              "cpu_seconds": 0.46875,
+              "jobs": 120,
+              "mcycles": 1101.386,
+              "cpu_one_core_percent": 0.762970498474059,
+              "cpu_ms_per_job": 3.90625,
+              "scope": "Completed numerical jobs through staging, before Byond_Return; jobs may cross window bounds; Windows thread-time counters can be coarse",
+              "simd_available": 1
+            },
+            "private_last_mib": 1871.921875,
+            "pipe_procs": [
+              {
+                "name": "/datum/controller/subsystem/air/proc/process_pipenets",
+                "self": 0.048,
+                "total": 0.429,
+                "real": 0.424,
+                "over": 0,
+                "calls": 120
+              },
+              {
+                "name": "/datum/pipeline/proc/reconcile_air",
+                "self": 0.034,
+                "total": 0.247,
+                "real": 0.252,
+                "over": 0,
+                "calls": 2761
+              },
+              {
+                "name": "/datum/banda_atmos_phase/proc/reconcile_pipes",
+                "self": 0.098,
+                "total": 0.21,
+                "real": 0.223,
+                "over": 0,
+                "calls": 2761
+              }
+            ],
+            "groups": 2761,
+            "imports": 54308,
+            "packet_imports": 0,
+            "direct_groups": 2761,
+            "private_start_mib": 1854.93359375,
+            "bridge_procs": {
+              "publication": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+                "self": 0.505,
+                "total": 4.254,
+                "real": 4.259,
+                "over": 0.038,
+                "calls": 835
+              },
+              "refresh": {
+                "name": "/datum/banda_atmos_cell/proc/refresh_cache",
+                "self": 0.284,
+                "total": 1.435,
+                "real": 1.465,
+                "over": 0.015,
+                "calls": 61261
+              },
+              "sync": {
+                "name": "/datum/banda_atmos_cell/proc/sync_air",
+                "self": 0.736,
+                "total": 3.331,
+                "real": 3.352,
+                "over": 0.044,
+                "calls": 95507
+              },
+              "readonly": {
+                "name": "/turf/open/get_readonly_air",
+                "self": 0.202,
+                "total": 0.663,
+                "real": 0.667,
+                "over": 0,
+                "calls": 82294
+              },
+              "prefetch": {},
+              "properties": {},
+              "machinery": {
+                "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+                "self": 0.277,
+                "total": 3.63,
+                "real": 3.638,
+                "over": 0,
+                "calls": 246
+              },
+              "vent": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+                "self": 0.27,
+                "total": 0.677,
+                "real": 0.67,
+                "over": 0,
+                "calls": 48120
+              },
+              "heat_pipe": {
+                "name": "/obj/machinery/atmospherics/pipe/heat_exchanging/process_atmos",
+                "self": 0.064,
+                "total": 0.37,
+                "real": 0.4,
+                "over": 0,
+                "calls": 14640
+              },
+              "mole_overlays": {
+                "name": "/proc/banda_atmos_update_packet_visuals",
+                "self": 0.46,
+                "total": 0.55,
+                "real": 0.562,
+                "over": 0.024,
+                "calls": 95374
+              },
+              "state_overlays": {}
+            },
+            "property_batches": 0,
+            "property_hits": 0,
+            "property_fallbacks": 0,
+            "publication_values": 4246879,
+            "visual_publications": 0
+          },
+          "runtime": {
+            "status": "clean",
+            "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+            "known_count": 0,
+            "unexpected_count": 0,
+            "known": [],
+            "unexpected": []
+          },
+          "mode": "full",
+          "binary_sha256": "95285ee95faa33a2c1d91ab771cb51da4045948b61e9e64585c358d1bd9988c7",
+          "dll_sha256": "b715cdf1d32f61fc11f7c236cc160c5e066c377414cc0aa0fcc52820c2f2765f",
+          "inputs": {
+            "scenario": "atmos-fire",
+            "byond": "516.1688",
+            "map": "MetaStation",
+            "startup_seed": "29051994",
+            "seeded_turfs": [
+              [
+                100,
+                100,
+                2
+              ],
+              [
+                100,
+                101,
+                2
+              ],
+              [
+                100,
+                102,
+                2
+              ],
+              [
+                100,
+                103,
+                2
+              ],
+              [
+                100,
+                104,
+                2
+              ],
+              [
+                100,
+                105,
+                2
+              ],
+              [
+                100,
+                106,
+                2
+              ],
+              [
+                100,
+                108,
+                2
+              ],
+              [
+                100,
+                109,
+                2
+              ],
+              [
+                100,
+                110,
+                2
+              ],
+              [
+                100,
+                111,
+                2
+              ],
+              [
+                100,
+                112,
+                2
+              ],
+              [
+                100,
+                113,
+                2
+              ],
+              [
+                100,
+                114,
+                2
+              ],
+              [
+                100,
+                115,
+                2
+              ],
+              [
+                100,
+                116,
+                2
+              ],
+              [
+                100,
+                118,
+                2
+              ],
+              [
+                100,
+                119,
+                2
+              ],
+              [
+                100,
+                120,
+                2
+              ],
+              [
+                100,
+                121,
+                2
+              ],
+              [
+                100,
+                122,
+                2
+              ],
+              [
+                100,
+                123,
+                2
+              ],
+              [
+                100,
+                124,
+                2
+              ],
+              [
+                100,
+                126,
+                2
+              ],
+              [
+                100,
+                127,
+                2
+              ],
+              [
+                100,
+                128,
+                2
+              ],
+              [
+                100,
+                129,
+                2
+              ],
+              [
+                100,
+                130,
+                2
+              ],
+              [
+                100,
+                131,
+                2
+              ],
+              [
+                100,
+                132,
+                2
+              ],
+              [
+                100,
+                133,
+                2
+              ],
+              [
+                100,
+                134,
+                2
+              ],
+              [
+                100,
+                135,
+                2
+              ],
+              [
+                100,
+                136,
+                2
+              ],
+              [
+                100,
+                137,
+                2
+              ],
+              [
+                100,
+                138,
+                2
+              ],
+              [
+                100,
+                142,
+                2
+              ],
+              [
+                100,
+                143,
+                2
+              ],
+              [
+                100,
+                144,
+                2
+              ],
+              [
+                100,
+                145,
+                2
+              ],
+              [
+                100,
+                147,
+                2
+              ],
+              [
+                100,
+                149,
+                2
+              ],
+              [
+                100,
+                150,
+                2
+              ],
+              [
+                101,
+                100,
+                2
+              ],
+              [
+                101,
+                101,
+                2
+              ],
+              [
+                101,
+                102,
+                2
+              ],
+              [
+                101,
+                103,
+                2
+              ],
+              [
+                101,
+                104,
+                2
+              ],
+              [
+                101,
+                105,
+                2
+              ],
+              [
+                101,
+                106,
+                2
+              ],
+              [
+                101,
+                107,
+                2
+              ],
+              [
+                101,
+                108,
+                2
+              ],
+              [
+                101,
+                109,
+                2
+              ],
+              [
+                101,
+                110,
+                2
+              ],
+              [
+                101,
+                111,
+                2
+              ],
+              [
+                101,
+                112,
+                2
+              ],
+              [
+                101,
+                113,
+                2
+              ],
+              [
+                101,
+                114,
+                2
+              ],
+              [
+                101,
+                115,
+                2
+              ],
+              [
+                101,
+                116,
+                2
+              ],
+              [
+                101,
+                126,
+                2
+              ],
+              [
+                101,
+                127,
+                2
+              ],
+              [
+                101,
+                128,
+                2
+              ],
+              [
+                101,
+                129,
+                2
+              ]
+            ]
+          },
+          "incident": []
+        },
+        {
+          "folder": "tmp\\profiling\\airbridge-v2-compact-fire-01",
+          "metrics": {
+            "process": {
+              "samples": 60,
+              "sampled_wall_seconds": 59.419087,
+              "cpu_seconds": 19.28125,
+              "cpu_one_core_percent": 32.449589809415954,
+              "working_set_mib": [
+                1777.68359375,
+                1783.13671875
+              ],
+              "private_mib": [
+                1803.24609375,
+                1813.96484375
+              ],
+              "observed_lifetime_peak_working_set_mib": 2077.27734375,
+              "observed_lifetime_peak_commit_mib": 2100.05859375,
+              "main_thread_id": 52860,
+              "main_thread_cpu_seconds": 19.0,
+              "main_thread_cpu_one_core_percent": 31.976257056928528,
+              "other_threads_cpu_seconds": 0.28125,
+              "other_threads_cpu_one_core_percent": 0.47333275248742884
+            },
+            "native_completed_ticks": 120,
+            "sample_game_seconds": 60,
+            "sample_wall_seconds": 60.3563,
+            "ssair": {
+              "type": "/datum/controller/subsystem/air",
+              "name": "Atmospherics",
+              "cost_ms_rolling": 27.6854,
+              "times_fired": 120,
+              "wait_ds": 5,
+              "tick_usage_rolling": 55.3707,
+              "tick_overrun_rolling": 0
+            },
+            "atmos_start": {
+              "active_turfs": 91,
+              "hotspots": 0,
+              "excited_groups": 3,
+              "pipenets": 296,
+              "cost_turfs": 35.6496,
+              "cost_hotspots": 0,
+              "cost_pipenets": 3.03085,
+              "cost_atmos_machinery": 12.113,
+              "native_completed_ticks": 50,
+              "native_worker_pending": 1,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 1354,
+              "native_pipe_imports": 23992,
+              "native_pipe_direct_groups": 1354,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1608,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 1,
+              "native_visual_publication_enabled": 1,
+              "native_property_batches": 423,
+              "native_property_hits": 20169,
+              "native_property_fallbacks": 2630,
+              "native_publication_values": 840362,
+              "native_visual_publications": 21078,
+              "native_pipe_records": 1608,
+              "native_pipe_slots": 1608,
+              "native_worker_cpu_seconds": 0.015625,
+              "native_worker_jobs": 51,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 124.59
+            },
+            "atmos_end": {
+              "active_turfs": 600,
+              "hotspots": 0,
+              "excited_groups": 20,
+              "pipenets": 296,
+              "cost_turfs": 74.3392,
+              "cost_hotspots": 0,
+              "cost_pipenets": 2.92499,
+              "cost_atmos_machinery": 12.4034,
+              "native_completed_ticks": 170,
+              "native_worker_pending": 1,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 3684,
+              "native_pipe_imports": 72644,
+              "native_pipe_direct_groups": 3684,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1608,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 1,
+              "native_visual_publication_enabled": 1,
+              "native_property_batches": 1263,
+              "native_property_hits": 65866,
+              "native_property_fallbacks": 9542,
+              "native_publication_values": 4663610,
+              "native_visual_publications": 61129,
+              "native_pipe_records": 1608,
+              "native_pipe_slots": 1608,
+              "native_worker_cpu_seconds": 0.265625,
+              "native_worker_jobs": 171,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 1210.32
+            },
+            "normalized": {
+              "completed_ticks": 120,
+              "completed_ticks_per_real_second": 1.9881934445948477,
+              "real_ms_per_completed_tick": 502.96916666666664,
+              "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+              "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+              "estimated_process_cpu_seconds": 19.58537177414052,
+              "estimated_process_cpu_ms_per_completed_tick": 163.211431451171,
+              "estimated_main_thread_cpu_seconds": 19.29968563805095,
+              "estimated_main_thread_cpu_ms_per_completed_tick": 160.83071365042457,
+              "estimated_other_threads_cpu_seconds": 0.28568613608957005,
+              "estimated_other_threads_cpu_ms_per_completed_tick": 2.380717800746417
+            },
+            "worker": {
+              "cpu_seconds": 0.25,
+              "jobs": 120,
+              "mcycles": 1085.73,
+              "cpu_one_core_percent": 0.4142069676239266,
+              "cpu_ms_per_job": 2.0833333333333335,
+              "scope": "Completed numerical jobs through staging, before Byond_Return; jobs may cross window bounds; Windows thread-time counters can be coarse",
+              "simd_available": 1
+            },
+            "private_last_mib": 1813.96484375,
+            "pipe_procs": [
+              {
+                "name": "/datum/controller/subsystem/air/proc/process_pipenets",
+                "self": 0.046,
+                "total": 0.387,
+                "real": 0.388,
+                "over": 0,
+                "calls": 120
+              },
+              {
+                "name": "/datum/pipeline/proc/reconcile_air",
+                "self": 0.019,
+                "total": 0.218,
+                "real": 0.214,
+                "over": 0,
+                "calls": 2330
+              },
+              {
+                "name": "/datum/banda_atmos_phase/proc/reconcile_pipes",
+                "self": 0.098,
+                "total": 0.199,
+                "real": 0.192,
+                "over": 0,
+                "calls": 2330
+              }
+            ],
+            "groups": 2330,
+            "imports": 48652,
+            "packet_imports": 0,
+            "direct_groups": 2330,
+            "private_start_mib": 1802.484375,
+            "bridge_procs": {
+              "publication": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+                "self": 0.549,
+                "total": 4.027,
+                "real": 4.039,
+                "over": 0.007,
+                "calls": 839
+              },
+              "refresh": {
+                "name": "/datum/banda_atmos_cell/proc/refresh_cache",
+                "self": 0.238,
+                "total": 1.208,
+                "real": 1.25,
+                "over": 0.002,
+                "calls": 52820
+              },
+              "sync": {
+                "name": "/datum/banda_atmos_cell/proc/sync_air",
+                "self": 0.736,
+                "total": 3.116,
+                "real": 3.111,
+                "over": 0.009,
+                "calls": 89949
+              },
+              "readonly": {
+                "name": "/turf/open/get_readonly_air",
+                "self": 0.055,
+                "total": 0.165,
+                "real": 0.165,
+                "over": 0,
+                "calls": 24080
+              },
+              "prefetch": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/prefetch_air_readings",
+                "self": 0.225,
+                "total": 0.27,
+                "real": 0.287,
+                "over": 0,
+                "calls": 840
+              },
+              "properties": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/air_reading_offset",
+                "self": 0.132,
+                "total": 0.135,
+                "real": 0.151,
+                "over": 0,
+                "calls": 52609
+              },
+              "machinery": {
+                "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+                "self": 0.223,
+                "total": 2.95,
+                "real": 2.959,
+                "over": 0,
+                "calls": 240
+              },
+              "vent": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+                "self": 0.232,
+                "total": 0.464,
+                "real": 0.456,
+                "over": 0,
+                "calls": 44280
+              },
+              "heat_pipe": {
+                "name": "/obj/machinery/atmospherics/pipe/heat_exchanging/process_atmos",
+                "self": 0.037,
+                "total": 0.085,
+                "real": 0.09,
+                "over": 0,
+                "calls": 9960
+              },
+              "mole_overlays": {
+                "name": "/proc/banda_atmos_update_packet_visuals",
+                "self": 0.303,
+                "total": 0.393,
+                "real": 0.375,
+                "over": 0,
+                "calls": 49898
+              },
+              "state_overlays": {
+                "name": "/proc/banda_atmos_update_visual_states",
+                "self": 0.08,
+                "total": 0.086,
+                "real": 0.109,
+                "over": 0,
+                "calls": 39930
+              }
+            },
+            "property_batches": 840,
+            "property_hits": 45697,
+            "property_fallbacks": 6912,
+            "publication_values": 3823248,
+            "visual_publications": 40051
+          },
+          "runtime": {
+            "status": "clean",
+            "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+            "known_count": 0,
+            "unexpected_count": 0,
+            "known": [],
+            "unexpected": []
+          },
+          "mode": "compact",
+          "binary_sha256": "95285ee95faa33a2c1d91ab771cb51da4045948b61e9e64585c358d1bd9988c7",
+          "dll_sha256": "b715cdf1d32f61fc11f7c236cc160c5e066c377414cc0aa0fcc52820c2f2765f",
+          "inputs": {
+            "scenario": "atmos-fire",
+            "byond": "516.1688",
+            "map": "MetaStation",
+            "startup_seed": "29051994",
+            "seeded_turfs": [
+              [
+                100,
+                100,
+                2
+              ],
+              [
+                100,
+                101,
+                2
+              ],
+              [
+                100,
+                102,
+                2
+              ],
+              [
+                100,
+                103,
+                2
+              ],
+              [
+                100,
+                104,
+                2
+              ],
+              [
+                100,
+                105,
+                2
+              ],
+              [
+                100,
+                106,
+                2
+              ],
+              [
+                100,
+                108,
+                2
+              ],
+              [
+                100,
+                109,
+                2
+              ],
+              [
+                100,
+                110,
+                2
+              ],
+              [
+                100,
+                111,
+                2
+              ],
+              [
+                100,
+                112,
+                2
+              ],
+              [
+                100,
+                113,
+                2
+              ],
+              [
+                100,
+                114,
+                2
+              ],
+              [
+                100,
+                115,
+                2
+              ],
+              [
+                100,
+                116,
+                2
+              ],
+              [
+                100,
+                118,
+                2
+              ],
+              [
+                100,
+                119,
+                2
+              ],
+              [
+                100,
+                120,
+                2
+              ],
+              [
+                100,
+                121,
+                2
+              ],
+              [
+                100,
+                122,
+                2
+              ],
+              [
+                100,
+                123,
+                2
+              ],
+              [
+                100,
+                124,
+                2
+              ],
+              [
+                100,
+                126,
+                2
+              ],
+              [
+                100,
+                127,
+                2
+              ],
+              [
+                100,
+                128,
+                2
+              ],
+              [
+                100,
+                129,
+                2
+              ],
+              [
+                100,
+                130,
+                2
+              ],
+              [
+                100,
+                131,
+                2
+              ],
+              [
+                100,
+                132,
+                2
+              ],
+              [
+                100,
+                133,
+                2
+              ],
+              [
+                100,
+                134,
+                2
+              ],
+              [
+                100,
+                135,
+                2
+              ],
+              [
+                100,
+                136,
+                2
+              ],
+              [
+                100,
+                137,
+                2
+              ],
+              [
+                100,
+                138,
+                2
+              ],
+              [
+                100,
+                142,
+                2
+              ],
+              [
+                100,
+                143,
+                2
+              ],
+              [
+                100,
+                144,
+                2
+              ],
+              [
+                100,
+                145,
+                2
+              ],
+              [
+                100,
+                147,
+                2
+              ],
+              [
+                100,
+                149,
+                2
+              ],
+              [
+                100,
+                150,
+                2
+              ],
+              [
+                101,
+                100,
+                2
+              ],
+              [
+                101,
+                101,
+                2
+              ],
+              [
+                101,
+                102,
+                2
+              ],
+              [
+                101,
+                103,
+                2
+              ],
+              [
+                101,
+                104,
+                2
+              ],
+              [
+                101,
+                105,
+                2
+              ],
+              [
+                101,
+                106,
+                2
+              ],
+              [
+                101,
+                107,
+                2
+              ],
+              [
+                101,
+                108,
+                2
+              ],
+              [
+                101,
+                109,
+                2
+              ],
+              [
+                101,
+                110,
+                2
+              ],
+              [
+                101,
+                111,
+                2
+              ],
+              [
+                101,
+                112,
+                2
+              ],
+              [
+                101,
+                113,
+                2
+              ],
+              [
+                101,
+                114,
+                2
+              ],
+              [
+                101,
+                115,
+                2
+              ],
+              [
+                101,
+                116,
+                2
+              ],
+              [
+                101,
+                126,
+                2
+              ],
+              [
+                101,
+                127,
+                2
+              ],
+              [
+                101,
+                128,
+                2
+              ],
+              [
+                101,
+                129,
+                2
+              ]
+            ]
+          },
+          "incident": []
+        }
+      ]
+    },
+    {
+      "scenario": "sm-plasma",
+      "repeat": 1,
+      "runs": [
+        {
+          "folder": "tmp\\profiling\\airbridge-v2-full-sm-01",
+          "metrics": {
+            "process": {
+              "samples": 66,
+              "sampled_wall_seconds": 65.488309,
+              "cpu_seconds": 30.421875,
+              "cpu_one_core_percent": 46.45390217664652,
+              "working_set_mib": [
+                1785.4921875,
+                1803.328125
+              ],
+              "private_mib": [
+                1824.046875,
+                1836.90234375
+              ],
+              "observed_lifetime_peak_working_set_mib": 2069.4296875,
+              "observed_lifetime_peak_commit_mib": 2090.41015625,
+              "main_thread_id": 15340,
+              "main_thread_cpu_seconds": 30.03125,
+              "main_thread_cpu_one_core_percent": 45.85742166590376,
+              "other_threads_cpu_seconds": 0.390625,
+              "other_threads_cpu_one_core_percent": 0.5964805107427648
+            },
+            "native_completed_ticks": 110,
+            "sample_game_seconds": 60,
+            "sample_wall_seconds": 65.7625,
+            "ssair": {
+              "type": "/datum/controller/subsystem/air",
+              "name": "Atmospherics",
+              "cost_ms_rolling": 30.2596,
+              "times_fired": 110,
+              "wait_ds": 5,
+              "tick_usage_rolling": 60.5193,
+              "tick_overrun_rolling": 0
+            },
+            "atmos_start": {
+              "active_turfs": 55,
+              "hotspots": 0,
+              "excited_groups": 4,
+              "pipenets": 296,
+              "cost_turfs": 35.236,
+              "cost_hotspots": 0,
+              "cost_pipenets": 3.12854,
+              "cost_atmos_machinery": 12.247,
+              "native_completed_ticks": 53,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 1408,
+              "native_pipe_imports": 24868,
+              "native_pipe_direct_groups": 1408,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1608,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 0,
+              "native_visual_publication_enabled": 0,
+              "native_property_batches": 443,
+              "native_property_hits": 20990,
+              "native_property_fallbacks": 2695,
+              "native_publication_values": 949076,
+              "native_visual_publications": 23138,
+              "native_pipe_records": 1608,
+              "native_pipe_slots": 1608,
+              "native_worker_cpu_seconds": 0.03125,
+              "native_worker_jobs": 53,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 148.414
+            },
+            "atmos_end": {
+              "active_turfs": 321,
+              "hotspots": 0,
+              "excited_groups": 6,
+              "pipenets": 384,
+              "cost_turfs": 93.4642,
+              "cost_hotspots": 0,
+              "cost_pipenets": 2.85809,
+              "cost_atmos_machinery": 11.4246,
+              "native_completed_ticks": 163,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 3190,
+              "native_pipe_imports": 57085,
+              "native_pipe_direct_groups": 3190,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1723,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 0,
+              "native_visual_publication_enabled": 0,
+              "native_property_batches": 443,
+              "native_property_hits": 20990,
+              "native_property_fallbacks": 2695,
+              "native_publication_values": 5717122,
+              "native_visual_publications": 23138,
+              "native_pipe_records": 1588,
+              "native_pipe_slots": 1705,
+              "native_worker_cpu_seconds": 0.390625,
+              "native_worker_jobs": 163,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 1296.91
+            },
+            "normalized": {
+              "completed_ticks": 110,
+              "completed_ticks_per_real_second": 1.672685801178483,
+              "real_ms_per_completed_tick": 597.8409090909091,
+              "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+              "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+              "estimated_process_cpu_seconds": 30.54924741891717,
+              "estimated_process_cpu_ms_per_completed_tick": 277.72043108106516,
+              "estimated_main_thread_cpu_seconds": 30.15698692303996,
+              "estimated_main_thread_cpu_ms_per_completed_tick": 274.1544265730905,
+              "estimated_other_threads_cpu_seconds": 0.3922604958772107,
+              "estimated_other_threads_cpu_ms_per_completed_tick": 3.5660045079746427
+            },
+            "worker": {
+              "cpu_seconds": 0.359375,
+              "jobs": 110,
+              "mcycles": 1148.496,
+              "cpu_one_core_percent": 0.5464740543622885,
+              "cpu_ms_per_job": 3.2670454545454546,
+              "scope": "Completed numerical jobs through staging, before Byond_Return; jobs may cross window bounds; Windows thread-time counters can be coarse",
+              "simd_available": 1
+            },
+            "private_last_mib": 1836.84765625,
+            "pipe_procs": [
+              {
+                "name": "/datum/controller/subsystem/air/proc/process_pipenets",
+                "self": 0.047,
+                "total": 0.341,
+                "real": 0.333,
+                "over": 0,
+                "calls": 114
+              },
+              {
+                "name": "/datum/pipeline/proc/reconcile_air",
+                "self": 0.019,
+                "total": 0.163,
+                "real": 0.16,
+                "over": 0,
+                "calls": 1782
+              },
+              {
+                "name": "/datum/banda_atmos_phase/proc/reconcile_pipes",
+                "self": 0.053,
+                "total": 0.142,
+                "real": 0.137,
+                "over": 0,
+                "calls": 1782
+              }
+            ],
+            "groups": 1782,
+            "imports": 32217,
+            "packet_imports": 115,
+            "direct_groups": 1782,
+            "private_start_mib": 1824.0234375,
+            "bridge_procs": {
+              "publication": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+                "self": 0.84,
+                "total": 4.893,
+                "real": 4.894,
+                "over": 0.115,
+                "calls": 770
+              },
+              "refresh": {
+                "name": "/datum/banda_atmos_cell/proc/refresh_cache",
+                "self": 0.376,
+                "total": 1.59,
+                "real": 1.573,
+                "over": 0.056,
+                "calls": 83076
+              },
+              "sync": {
+                "name": "/datum/banda_atmos_cell/proc/sync_air",
+                "self": 1.036,
+                "total": 3.576,
+                "real": 3.624,
+                "over": 0.135,
+                "calls": 140618
+              },
+              "readonly": {
+                "name": "/turf/open/get_readonly_air",
+                "self": 0.143,
+                "total": 0.48,
+                "real": 0.497,
+                "over": 0.003,
+                "calls": 59706
+              },
+              "prefetch": {},
+              "properties": {},
+              "machinery": {
+                "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+                "self": 0.187,
+                "total": 2.592,
+                "real": 2.609,
+                "over": 0,
+                "calls": 242
+              },
+              "vent": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+                "self": 0.249,
+                "total": 0.608,
+                "real": 0.598,
+                "over": 0,
+                "calls": 37510
+              },
+              "heat_pipe": {
+                "name": "/obj/machinery/atmospherics/pipe/heat_exchanging/process_atmos",
+                "self": 0.016,
+                "total": 0.088,
+                "real": 0.087,
+                "over": 0,
+                "calls": 3410
+              },
+              "mole_overlays": {
+                "name": "/proc/banda_atmos_update_packet_visuals",
+                "self": 0.374,
+                "total": 0.406,
+                "real": 0.421,
+                "over": 0.038,
+                "calls": 140510
+              },
+              "state_overlays": {}
+            },
+            "property_batches": 0,
+            "property_hits": 0,
+            "property_fallbacks": 0,
+            "publication_values": 4768046,
+            "visual_publications": 0
+          },
+          "runtime": {
+            "status": "accepted_with_known_runtimes",
+            "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+            "known_count": 4,
+            "unexpected_count": 0,
+            "known": [
+              {
+                "id": "sm_demoralize_missing_location",
+                "message": "runtime error: Cannot read null.z",
+                "proc": "/proc/is_valid_z_level",
+                "source": "code/__HELPERS/levels.dm",
+                "evidence": "tmp/profiling/publish2-dm-01-sm-plasma/data/logs/local-profile/runtime.log.json",
+                "logs": {
+                  "data/logis_logs/local-profile/game.log": 1,
+                  "data/logs/local-profile/runtime.log.json": 1,
+                  "tgstation.log": 1
+                },
+                "count": 1
+              },
+              {
+                "id": "holodeck_power_channels",
+                "message": "runtime error: list index out of bounds",
+                "proc": "/area/proc/removeStaticPower",
+                "source": "code/game/area/areas.dm",
+                "evidence": "tmp/profiling/publish2-dm-01-sm-plasma/data/logs/local-profile/runtime.log.json",
+                "logs": {
+                  "data/logis_logs/local-profile/game.log": 1,
+                  "data/logs/local-profile/runtime.log.json": 1,
+                  "tgstation.log": 1
+                },
+                "count": 1
+              },
+              {
+                "id": "tail_pin_preimpact_missing_target",
+                "message": "runtime error: Cannot read null._listen_lookup",
+                "proc": "/atom/movable/proc/pre_impact",
+                "source": "code/game/atoms_movable.dm",
+                "evidence": "tmp/profiling/final-03-dm-guard-sm-plasma/data/logs/local-profile/runtime.log.json",
+                "logs": {
+                  "data/logis_logs/local-profile/game.log": 1,
+                  "data/logs/local-profile/runtime.log.json": 1,
+                  "tgstation.log": 1
+                },
+                "count": 1
+              },
+              {
+                "id": "tail_pin_impact_missing_target",
+                "message": "runtime error: Cannot execute null.hitby().",
+                "proc": "/atom/movable/proc/throw_impact",
+                "source": "code/game/atoms_movable.dm",
+                "evidence": "tmp/profiling/final-03-dm-guard-sm-plasma/data/logs/local-profile/runtime.log.json",
+                "logs": {
+                  "data/logis_logs/local-profile/game.log": 1,
+                  "data/logs/local-profile/runtime.log.json": 1,
+                  "tgstation.log": 1
+                },
+                "count": 1
+              }
+            ],
+            "unexpected": []
+          },
+          "mode": "full",
+          "binary_sha256": "95285ee95faa33a2c1d91ab771cb51da4045948b61e9e64585c358d1bd9988c7",
+          "dll_sha256": "b715cdf1d32f61fc11f7c236cc160c5e066c377414cc0aa0fcc52820c2f2765f",
+          "inputs": {
+            "scenario": "sm-plasma",
+            "byond": "516.1688",
+            "map": "MetaStation",
+            "startup_seed": "29051994",
+            "seeded_turfs": []
+          },
+          "incident": {
+            "seeded_turfs": [
+              [
+                168,
+                150,
+                2
+              ],
+              [
+                169,
+                150,
+                2
+              ],
+              [
+                170,
+                150,
+                2
+              ],
+              [
+                168,
+                151,
+                2
+              ],
+              [
+                169,
+                151,
+                2
+              ],
+              [
+                170,
+                151,
+                2
+              ],
+              [
+                168,
+                152,
+                2
+              ],
+              [
+                169,
+                152,
+                2
+              ],
+              [
+                170,
+                152,
+                2
+              ],
+              [
+                166,
+                153,
+                2
+              ],
+              [
+                168,
+                153,
+                2
+              ],
+              [
+                169,
+                153,
+                2
+              ],
+              [
+                170,
+                153,
+                2
+              ],
+              [
+                165,
+                154,
+                2
+              ],
+              [
+                166,
+                154,
+                2
+              ],
+              [
+                167,
+                154,
+                2
+              ],
+              [
+                168,
+                154,
+                2
+              ],
+              [
+                169,
+                154,
+                2
+              ],
+              [
+                170,
+                154,
+                2
+              ],
+              [
+                171,
+                154,
+                2
+              ],
+              [
+                166,
+                155,
+                2
+              ],
+              [
+                168,
+                155,
+                2
+              ],
+              [
+                169,
+                155,
+                2
+              ],
+              [
+                170,
+                155,
+                2
+              ],
+              [
+                168,
+                156,
+                2
+              ],
+              [
+                169,
+                156,
+                2
+              ],
+              [
+                170,
+                156,
+                2
+              ],
+              [
+                168,
+                157,
+                2
+              ],
+              [
+                169,
+                157,
+                2
+              ],
+              [
+                170,
+                157,
+                2
+              ],
+              [
+                168,
+                158,
+                2
+              ],
+              [
+                169,
+                158,
+                2
+              ],
+              [
+                170,
+                158,
+                2
+              ]
+            ],
+            "center": [
+              169,
+              154,
+              2
+            ],
+            "plasma_moles_per_turf": 300,
+            "temperature": 1200,
+            "internal_energy": 5000,
+            "gas_heat_power_generation": 1,
+            "strategy": "/datum/sm_delam/explosive",
+            "explosion_radius": 35,
+            "sm_deleted": 1
+          }
+        },
+        {
+          "folder": "tmp\\profiling\\airbridge-v2-compact-sm-01",
+          "metrics": {
+            "process": {
+              "samples": 65,
+              "sampled_wall_seconds": 64.42612,
+              "cpu_seconds": 30.84375,
+              "cpu_one_core_percent": 47.87460427540879,
+              "working_set_mib": [
+                1820.76953125,
+                1836.6875
+              ],
+              "private_mib": [
+                1849.125,
+                1866.98828125
+              ],
+              "observed_lifetime_peak_working_set_mib": 2102.7890625,
+              "observed_lifetime_peak_commit_mib": 2126.5859375,
+              "main_thread_id": 47900,
+              "main_thread_cpu_seconds": 30.4375,
+              "main_thread_cpu_one_core_percent": 47.24403704584414,
+              "other_threads_cpu_seconds": 0.40625,
+              "other_threads_cpu_one_core_percent": 0.6305672295646548
+            },
+            "native_completed_ticks": 107,
+            "sample_game_seconds": 60,
+            "sample_wall_seconds": 65.3938,
+            "ssair": {
+              "type": "/datum/controller/subsystem/air",
+              "name": "Atmospherics",
+              "cost_ms_rolling": 28.0556,
+              "times_fired": 107,
+              "wait_ds": 5,
+              "tick_usage_rolling": 56.1113,
+              "tick_overrun_rolling": 0
+            },
+            "atmos_start": {
+              "active_turfs": 76,
+              "hotspots": 0,
+              "excited_groups": 6,
+              "pipenets": 331,
+              "cost_turfs": 30.9631,
+              "cost_hotspots": 0,
+              "cost_pipenets": 3.36641,
+              "cost_atmos_machinery": 14.8636,
+              "native_completed_ticks": 54,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 1765,
+              "native_pipe_imports": 27932,
+              "native_pipe_direct_groups": 1765,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1782,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 1,
+              "native_visual_publication_enabled": 1,
+              "native_property_batches": 503,
+              "native_property_hits": 23929,
+              "native_property_fallbacks": 4637,
+              "native_publication_values": 942886,
+              "native_visual_publications": 23468,
+              "native_pipe_records": 1782,
+              "native_pipe_slots": 1782,
+              "native_worker_cpu_seconds": 0.03125,
+              "native_worker_jobs": 54,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 132.47
+            },
+            "atmos_end": {
+              "active_turfs": 817,
+              "hotspots": 5,
+              "excited_groups": 7,
+              "pipenets": 407,
+              "cost_turfs": 81.5867,
+              "cost_hotspots": 0,
+              "cost_pipenets": 3.29172,
+              "cost_atmos_machinery": 14.1063,
+              "native_completed_ticks": 161,
+              "native_worker_pending": 0,
+              "native_pipes_enabled": 1,
+              "native_pipe_groups": 3839,
+              "native_pipe_imports": 63953,
+              "native_pipe_direct_groups": 3839,
+              "native_pipe_direct_enabled": 1,
+              "native_pipe_packet_imports": 1885,
+              "native_pipe_fallbacks": 0,
+              "native_properties_enabled": 1,
+              "native_visual_publication_enabled": 1,
+              "native_property_batches": 1263,
+              "native_property_hits": 59201,
+              "native_property_fallbacks": 17364,
+              "native_publication_values": 5446840,
+              "native_visual_publications": 82929,
+              "native_pipe_records": 1755,
+              "native_pipe_slots": 1884,
+              "native_worker_cpu_seconds": 0.4375,
+              "native_worker_jobs": 161,
+              "native_worker_clock_available": 1,
+              "native_simd_available": 1,
+              "native_worker_mcycles": 1241.75
+            },
+            "normalized": {
+              "completed_ticks": 107,
+              "completed_ticks_per_real_second": 1.6362407445354148,
+              "real_ms_per_completed_tick": 611.1570093457943,
+              "scope": "Whole-server CPU divided by completed atmosphere ticks, not isolated atmosphere CPU or latency",
+              "estimate": "Average CPU between in-window OS samples scaled to the full metadata window; boundary samples are missing",
+              "estimated_process_cpu_seconds": 31.307022970652277,
+              "estimated_process_cpu_ms_per_completed_tick": 292.5889997257222,
+              "estimated_main_thread_cpu_seconds": 30.894671097685226,
+              "estimated_main_thread_cpu_ms_per_completed_tick": 288.73524390360024,
+              "estimated_other_threads_cpu_seconds": 0.4123518729670512,
+              "estimated_other_threads_cpu_ms_per_completed_tick": 3.853755822121974
+            },
+            "worker": {
+              "cpu_seconds": 0.40625,
+              "jobs": 107,
+              "mcycles": 1109.28,
+              "cpu_one_core_percent": 0.6212362639883292,
+              "cpu_ms_per_job": 3.796728971962617,
+              "scope": "Completed numerical jobs through staging, before Byond_Return; jobs may cross window bounds; Windows thread-time counters can be coarse",
+              "simd_available": 1
+            },
+            "private_last_mib": 1866.98828125,
+            "pipe_procs": [
+              {
+                "name": "/datum/controller/subsystem/air/proc/process_pipenets",
+                "self": 0.046,
+                "total": 0.361,
+                "real": 0.36,
+                "over": 0,
+                "calls": 108
+              },
+              {
+                "name": "/datum/pipeline/proc/reconcile_air",
+                "self": 0.018,
+                "total": 0.18,
+                "real": 0.19,
+                "over": 0,
+                "calls": 2074
+              },
+              {
+                "name": "/datum/banda_atmos_phase/proc/reconcile_pipes",
+                "self": 0.065,
+                "total": 0.158,
+                "real": 0.163,
+                "over": 0,
+                "calls": 2074
+              }
+            ],
+            "groups": 2074,
+            "imports": 36021,
+            "packet_imports": 103,
+            "direct_groups": 2074,
+            "private_start_mib": 1849.125,
+            "bridge_procs": {
+              "publication": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+                "self": 0.789,
+                "total": 5.011,
+                "real": 5,
+                "over": 0.176,
+                "calls": 749
+              },
+              "refresh": {
+                "name": "/datum/banda_atmos_cell/proc/refresh_cache",
+                "self": 0.35,
+                "total": 1.435,
+                "real": 1.441,
+                "over": 0.093,
+                "calls": 74174
+              },
+              "sync": {
+                "name": "/datum/banda_atmos_cell/proc/sync_air",
+                "self": 0.983,
+                "total": 3.726,
+                "real": 3.783,
+                "over": 0.271,
+                "calls": 131552
+              },
+              "readonly": {
+                "name": "/turf/open/get_readonly_air",
+                "self": 0.069,
+                "total": 0.304,
+                "real": 0.295,
+                "over": 0.002,
+                "calls": 36641
+              },
+              "prefetch": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/prefetch_air_readings",
+                "self": 0.203,
+                "total": 0.253,
+                "real": 0.266,
+                "over": 0,
+                "calls": 761
+              },
+              "properties": {
+                "name": "/datum/banda_atmos_phase/world_adapter/proc/air_reading_offset",
+                "self": 0.098,
+                "total": 0.099,
+                "real": 0.117,
+                "over": 0,
+                "calls": 47999
+              },
+              "machinery": {
+                "name": "/datum/controller/subsystem/air/proc/process_atmos_machinery",
+                "self": 0.218,
+                "total": 3.036,
+                "real": 3.033,
+                "over": 0,
+                "calls": 246
+              },
+              "vent": {
+                "name": "/obj/machinery/atmospherics/components/unary/vent_pump/process_atmos",
+                "self": 0.21,
+                "total": 0.458,
+                "real": 0.483,
+                "over": 0,
+                "calls": 40125
+              },
+              "heat_pipe": {
+                "name": "/obj/machinery/atmospherics/pipe/heat_exchanging/process_atmos",
+                "self": 0.026,
+                "total": 0.136,
+                "real": 0.131,
+                "over": 0,
+                "calls": 7918
+              },
+              "mole_overlays": {
+                "name": "/proc/banda_atmos_update_packet_visuals",
+                "self": 0.189,
+                "total": 0.216,
+                "real": 0.26,
+                "over": 0.049,
+                "calls": 72091
+              },
+              "state_overlays": {
+                "name": "/proc/banda_atmos_update_visual_states",
+                "self": 0.099,
+                "total": 0.115,
+                "real": 0.136,
+                "over": 0.033,
+                "calls": 59351
+              }
+            },
+            "property_batches": 760,
+            "property_hits": 35272,
+            "property_fallbacks": 12727,
+            "publication_values": 4503954,
+            "visual_publications": 59461
+          },
+          "runtime": {
+            "status": "accepted_with_known_runtimes",
+            "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+            "known_count": 3,
+            "unexpected_count": 0,
+            "known": [
+              {
+                "id": "holodeck_power_channels",
+                "message": "runtime error: list index out of bounds",
+                "proc": "/area/proc/removeStaticPower",
+                "source": "code/game/area/areas.dm",
+                "evidence": "tmp/profiling/publish2-dm-01-sm-plasma/data/logs/local-profile/runtime.log.json",
+                "logs": {
+                  "data/logis_logs/local-profile/game.log": 1,
+                  "data/logs/local-profile/runtime.log.json": 1,
+                  "tgstation.log": 1
+                },
+                "count": 1
+              },
+              {
+                "id": "tail_pin_preimpact_missing_target",
+                "message": "runtime error: Cannot read null._listen_lookup",
+                "proc": "/atom/movable/proc/pre_impact",
+                "source": "code/game/atoms_movable.dm",
+                "evidence": "tmp/profiling/final-03-dm-guard-sm-plasma/data/logs/local-profile/runtime.log.json",
+                "logs": {
+                  "data/logis_logs/local-profile/game.log": 1,
+                  "data/logs/local-profile/runtime.log.json": 1,
+                  "tgstation.log": 1
+                },
+                "count": 1
+              },
+              {
+                "id": "tail_pin_impact_missing_target",
+                "message": "runtime error: Cannot execute null.hitby().",
+                "proc": "/atom/movable/proc/throw_impact",
+                "source": "code/game/atoms_movable.dm",
+                "evidence": "tmp/profiling/final-03-dm-guard-sm-plasma/data/logs/local-profile/runtime.log.json",
+                "logs": {
+                  "data/logis_logs/local-profile/game.log": 1,
+                  "data/logs/local-profile/runtime.log.json": 1,
+                  "tgstation.log": 1
+                },
+                "count": 1
+              }
+            ],
+            "unexpected": []
+          },
+          "mode": "compact",
+          "binary_sha256": "95285ee95faa33a2c1d91ab771cb51da4045948b61e9e64585c358d1bd9988c7",
+          "dll_sha256": "b715cdf1d32f61fc11f7c236cc160c5e066c377414cc0aa0fcc52820c2f2765f",
+          "inputs": {
+            "scenario": "sm-plasma",
+            "byond": "516.1688",
+            "map": "MetaStation",
+            "startup_seed": "29051994",
+            "seeded_turfs": []
+          },
+          "incident": {
+            "seeded_turfs": [
+              [
+                168,
+                150,
+                2
+              ],
+              [
+                169,
+                150,
+                2
+              ],
+              [
+                170,
+                150,
+                2
+              ],
+              [
+                168,
+                151,
+                2
+              ],
+              [
+                169,
+                151,
+                2
+              ],
+              [
+                170,
+                151,
+                2
+              ],
+              [
+                168,
+                152,
+                2
+              ],
+              [
+                169,
+                152,
+                2
+              ],
+              [
+                170,
+                152,
+                2
+              ],
+              [
+                166,
+                153,
+                2
+              ],
+              [
+                168,
+                153,
+                2
+              ],
+              [
+                169,
+                153,
+                2
+              ],
+              [
+                170,
+                153,
+                2
+              ],
+              [
+                165,
+                154,
+                2
+              ],
+              [
+                166,
+                154,
+                2
+              ],
+              [
+                167,
+                154,
+                2
+              ],
+              [
+                168,
+                154,
+                2
+              ],
+              [
+                169,
+                154,
+                2
+              ],
+              [
+                170,
+                154,
+                2
+              ],
+              [
+                171,
+                154,
+                2
+              ],
+              [
+                166,
+                155,
+                2
+              ],
+              [
+                168,
+                155,
+                2
+              ],
+              [
+                169,
+                155,
+                2
+              ],
+              [
+                170,
+                155,
+                2
+              ],
+              [
+                168,
+                156,
+                2
+              ],
+              [
+                169,
+                156,
+                2
+              ],
+              [
+                170,
+                156,
+                2
+              ],
+              [
+                168,
+                157,
+                2
+              ],
+              [
+                169,
+                157,
+                2
+              ],
+              [
+                170,
+                157,
+                2
+              ],
+              [
+                168,
+                158,
+                2
+              ],
+              [
+                169,
+                158,
+                2
+              ],
+              [
+                170,
+                158,
+                2
+              ]
+            ],
+            "center": [
+              169,
+              154,
+              2
+            ],
+            "plasma_moles_per_turf": 300,
+            "temperature": 1200,
+            "internal_energy": 5000,
+            "gas_heat_power_generation": 1,
+            "strategy": "/datum/sm_delam/explosive",
+            "explosion_radius": 35,
+            "sm_deleted": 1
+          }
+        }
+      ]
+    }
+  ],
+  "summary": [
+    {
+      "scenario": "empty-station",
+      "modes": {
+        "full": {
+          "total_cpu_percent": {
+            "median": 17.089924680652935,
+            "min": 17.089924680652935,
+            "max": 17.089924680652935
+          },
+          "main_cpu_percent": {
+            "median": 17.01104810520377,
+            "min": 17.01104810520377,
+            "max": 17.01104810520377
+          },
+          "other_cpu_percent": {
+            "median": 0.0788765754491674,
+            "min": 0.0788765754491674,
+            "max": 0.0788765754491674
+          },
+          "worker_cpu_percent": {
+            "median": 0.07794637289544792,
+            "min": 0.07794637289544792,
+            "max": 0.07794637289544792
+          },
+          "cpu_ms_per_tick": {
+            "median": 85.64544545689715,
+            "min": 85.64544545689715,
+            "max": 85.64544545689715
+          },
+          "completed_ticks": {
+            "median": 120,
+            "min": 120,
+            "max": 120
+          },
+          "private_last_mib": {
+            "median": 1827.77734375,
+            "min": 1827.77734375,
+            "max": 1827.77734375
+          },
+          "private_start_mib": {
+            "median": 1824.96484375,
+            "min": 1824.96484375,
+            "max": 1824.96484375
+          },
+          "private_window_delta_mib": {
+            "median": 2.8125,
+            "min": 2.8125,
+            "max": 2.8125
+          },
+          "private_sample_peak_mib": {
+            "median": 1827.8671875,
+            "min": 1827.8671875,
+            "max": 1827.8671875
+          },
+          "lifetime_peak_commit_mib": {
+            "median": 2086.69140625,
+            "min": 2086.69140625,
+            "max": 2086.69140625
+          },
+          "publication_seconds": {
+            "median": 0.311,
+            "min": 0.311,
+            "max": 0.311
+          },
+          "publication_calls": {
+            "median": 840,
+            "min": 840,
+            "max": 840
+          },
+          "refresh_seconds": {
+            "median": 0.323,
+            "min": 0.323,
+            "max": 0.323
+          },
+          "refresh_calls": {
+            "median": 11065,
+            "min": 11065,
+            "max": 11065
+          },
+          "sync_seconds": {
+            "median": 0.195,
+            "min": 0.195,
+            "max": 0.195
+          },
+          "sync_calls": {
+            "median": 7671,
+            "min": 7671,
+            "max": 7671
+          },
+          "readonly_seconds": {
+            "median": 0.597,
+            "min": 0.597,
+            "max": 0.597
+          },
+          "readonly_calls": {
+            "median": 69727,
+            "min": 69727,
+            "max": 69727
+          },
+          "prefetch_seconds": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "prefetch_calls": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "properties_seconds": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "properties_calls": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "machinery_seconds": {
+            "median": 3.242,
+            "min": 3.242,
+            "max": 3.242
+          },
+          "machinery_calls": {
+            "median": 242,
+            "min": 242,
+            "max": 242
+          },
+          "vent_seconds": {
+            "median": 0.644,
+            "min": 0.644,
+            "max": 0.644
+          },
+          "vent_calls": {
+            "median": 44280,
+            "min": 44280,
+            "max": 44280
+          },
+          "heat_pipe_seconds": {
+            "median": 0.281,
+            "min": 0.281,
+            "max": 0.281
+          },
+          "heat_pipe_calls": {
+            "median": 9960,
+            "min": 9960,
+            "max": 9960
+          },
+          "mole_overlays_seconds": {
+            "median": 0.026,
+            "min": 0.026,
+            "max": 0.026
+          },
+          "mole_overlays_calls": {
+            "median": 7619,
+            "min": 7619,
+            "max": 7619
+          },
+          "state_overlays_seconds": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "state_overlays_calls": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "property_batches": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "property_hits": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "property_fallbacks": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "publication_values": {
+            "median": 266337,
+            "min": 266337,
+            "max": 266337
+          },
+          "visual_publications": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          }
+        },
+        "compact": {
+          "total_cpu_percent": {
+            "median": 20.23992842236056,
+            "min": 20.23992842236056,
+            "max": 20.23992842236056
+          },
+          "main_cpu_percent": {
+            "median": 19.766787238461223,
+            "min": 19.766787238461223,
+            "max": 19.766787238461223
+          },
+          "other_cpu_percent": {
+            "median": 0.47314118389933774,
+            "min": 0.47314118389933774,
+            "max": 0.47314118389933774
+          },
+          "worker_cpu_percent": {
+            "median": 0.07805176143052436,
+            "min": 0.07805176143052436,
+            "max": 0.07805176143052436
+          },
+          "cpu_ms_per_tick": {
+            "median": 101.29460110931771,
+            "min": 101.29460110931771,
+            "max": 101.29460110931771
+          },
+          "completed_ticks": {
+            "median": 120,
+            "min": 120,
+            "max": 120
+          },
+          "private_last_mib": {
+            "median": 1867.79296875,
+            "min": 1867.79296875,
+            "max": 1867.79296875
+          },
+          "private_start_mib": {
+            "median": 1863.17578125,
+            "min": 1863.17578125,
+            "max": 1863.17578125
+          },
+          "private_window_delta_mib": {
+            "median": 4.6171875,
+            "min": 4.6171875,
+            "max": 4.6171875
+          },
+          "private_sample_peak_mib": {
+            "median": 1867.81640625,
+            "min": 1867.81640625,
+            "max": 1867.81640625
+          },
+          "lifetime_peak_commit_mib": {
+            "median": 2150.26953125,
+            "min": 2150.26953125,
+            "max": 2150.26953125
+          },
+          "publication_seconds": {
+            "median": 0.567,
+            "min": 0.567,
+            "max": 0.567
+          },
+          "publication_calls": {
+            "median": 840,
+            "min": 840,
+            "max": 840
+          },
+          "refresh_seconds": {
+            "median": 0.142,
+            "min": 0.142,
+            "max": 0.142
+          },
+          "refresh_calls": {
+            "median": 7106,
+            "min": 7106,
+            "max": 7106
+          },
+          "sync_seconds": {
+            "median": 0.366,
+            "min": 0.366,
+            "max": 0.366
+          },
+          "sync_calls": {
+            "median": 15688,
+            "min": 15688,
+            "max": 15688
+          },
+          "readonly_seconds": {
+            "median": 0.214,
+            "min": 0.214,
+            "max": 0.214
+          },
+          "readonly_calls": {
+            "median": 32496,
+            "min": 32496,
+            "max": 32496
+          },
+          "prefetch_seconds": {
+            "median": 0.313,
+            "min": 0.313,
+            "max": 0.313
+          },
+          "prefetch_calls": {
+            "median": 960,
+            "min": 960,
+            "max": 960
+          },
+          "properties_seconds": {
+            "median": 0.193,
+            "min": 0.193,
+            "max": 0.193
+          },
+          "properties_calls": {
+            "median": 63290,
+            "min": 63290,
+            "max": 63290
+          },
+          "machinery_seconds": {
+            "median": 3.713,
+            "min": 3.713,
+            "max": 3.713
+          },
+          "machinery_calls": {
+            "median": 240,
+            "min": 240,
+            "max": 240
+          },
+          "vent_seconds": {
+            "median": 0.607,
+            "min": 0.607,
+            "max": 0.607
+          },
+          "vent_calls": {
+            "median": 48360,
+            "min": 48360,
+            "max": 48360
+          },
+          "heat_pipe_seconds": {
+            "median": 0.198,
+            "min": 0.198,
+            "max": 0.198
+          },
+          "heat_pipe_calls": {
+            "median": 14640,
+            "min": 14640,
+            "max": 14640
+          },
+          "mole_overlays_seconds": {
+            "median": 0.018,
+            "min": 0.018,
+            "max": 0.018
+          },
+          "mole_overlays_calls": {
+            "median": 6125,
+            "min": 6125,
+            "max": 6125
+          },
+          "state_overlays_seconds": {
+            "median": 0.013,
+            "min": 0.013,
+            "max": 0.013
+          },
+          "state_overlays_calls": {
+            "median": 9509,
+            "min": 9509,
+            "max": 9509
+          },
+          "property_batches": {
+            "median": 960,
+            "min": 960,
+            "max": 960
+          },
+          "property_hits": {
+            "median": 50130,
+            "min": 50130,
+            "max": 50130
+          },
+          "property_fallbacks": {
+            "median": 13160,
+            "min": 13160,
+            "max": 13160
+          },
+          "publication_values": {
+            "median": 526390,
+            "min": 526390,
+            "max": 526390
+          },
+          "visual_publications": {
+            "median": 9563,
+            "min": 9563,
+            "max": 9563
+          }
+        }
+      }
+    },
+    {
+      "scenario": "atmos-fire",
+      "modes": {
+        "full": {
+          "total_cpu_percent": {
+            "median": 32.519841826140656,
+            "min": 32.519841826140656,
+            "max": 32.519841826140656
+          },
+          "main_cpu_percent": {
+            "median": 31.639527636579526,
+            "min": 31.639527636579526,
+            "max": 31.639527636579526
+          },
+          "other_cpu_percent": {
+            "median": 0.8803141895611325,
+            "min": 0.8803141895611325,
+            "max": 0.8803141895611325
+          },
+          "worker_cpu_percent": {
+            "median": 0.762970498474059,
+            "min": 0.762970498474059,
+            "max": 0.762970498474059
+          },
+          "cpu_ms_per_tick": {
+            "median": 167.8939312767661,
+            "min": 167.8939312767661,
+            "max": 167.8939312767661
+          },
+          "completed_ticks": {
+            "median": 119,
+            "min": 119,
+            "max": 119
+          },
+          "private_last_mib": {
+            "median": 1871.921875,
+            "min": 1871.921875,
+            "max": 1871.921875
+          },
+          "private_start_mib": {
+            "median": 1854.93359375,
+            "min": 1854.93359375,
+            "max": 1854.93359375
+          },
+          "private_window_delta_mib": {
+            "median": 16.98828125,
+            "min": 16.98828125,
+            "max": 16.98828125
+          },
+          "private_sample_peak_mib": {
+            "median": 1871.921875,
+            "min": 1871.921875,
+            "max": 1871.921875
+          },
+          "lifetime_peak_commit_mib": {
+            "median": 2136.71875,
+            "min": 2136.71875,
+            "max": 2136.71875
+          },
+          "publication_seconds": {
+            "median": 4.254,
+            "min": 4.254,
+            "max": 4.254
+          },
+          "publication_calls": {
+            "median": 835,
+            "min": 835,
+            "max": 835
+          },
+          "refresh_seconds": {
+            "median": 1.435,
+            "min": 1.435,
+            "max": 1.435
+          },
+          "refresh_calls": {
+            "median": 61261,
+            "min": 61261,
+            "max": 61261
+          },
+          "sync_seconds": {
+            "median": 3.331,
+            "min": 3.331,
+            "max": 3.331
+          },
+          "sync_calls": {
+            "median": 95507,
+            "min": 95507,
+            "max": 95507
+          },
+          "readonly_seconds": {
+            "median": 0.663,
+            "min": 0.663,
+            "max": 0.663
+          },
+          "readonly_calls": {
+            "median": 82294,
+            "min": 82294,
+            "max": 82294
+          },
+          "prefetch_seconds": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "prefetch_calls": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "properties_seconds": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "properties_calls": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "machinery_seconds": {
+            "median": 3.63,
+            "min": 3.63,
+            "max": 3.63
+          },
+          "machinery_calls": {
+            "median": 246,
+            "min": 246,
+            "max": 246
+          },
+          "vent_seconds": {
+            "median": 0.677,
+            "min": 0.677,
+            "max": 0.677
+          },
+          "vent_calls": {
+            "median": 48120,
+            "min": 48120,
+            "max": 48120
+          },
+          "heat_pipe_seconds": {
+            "median": 0.37,
+            "min": 0.37,
+            "max": 0.37
+          },
+          "heat_pipe_calls": {
+            "median": 14640,
+            "min": 14640,
+            "max": 14640
+          },
+          "mole_overlays_seconds": {
+            "median": 0.55,
+            "min": 0.55,
+            "max": 0.55
+          },
+          "mole_overlays_calls": {
+            "median": 95374,
+            "min": 95374,
+            "max": 95374
+          },
+          "state_overlays_seconds": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "state_overlays_calls": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "property_batches": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "property_hits": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "property_fallbacks": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "publication_values": {
+            "median": 4246879,
+            "min": 4246879,
+            "max": 4246879
+          },
+          "visual_publications": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          }
+        },
+        "compact": {
+          "total_cpu_percent": {
+            "median": 32.449589809415954,
+            "min": 32.449589809415954,
+            "max": 32.449589809415954
+          },
+          "main_cpu_percent": {
+            "median": 31.976257056928528,
+            "min": 31.976257056928528,
+            "max": 31.976257056928528
+          },
+          "other_cpu_percent": {
+            "median": 0.47333275248742884,
+            "min": 0.47333275248742884,
+            "max": 0.47333275248742884
+          },
+          "worker_cpu_percent": {
+            "median": 0.4142069676239266,
+            "min": 0.4142069676239266,
+            "max": 0.4142069676239266
+          },
+          "cpu_ms_per_tick": {
+            "median": 163.211431451171,
+            "min": 163.211431451171,
+            "max": 163.211431451171
+          },
+          "completed_ticks": {
+            "median": 120,
+            "min": 120,
+            "max": 120
+          },
+          "private_last_mib": {
+            "median": 1813.96484375,
+            "min": 1813.96484375,
+            "max": 1813.96484375
+          },
+          "private_start_mib": {
+            "median": 1802.484375,
+            "min": 1802.484375,
+            "max": 1802.484375
+          },
+          "private_window_delta_mib": {
+            "median": 11.48046875,
+            "min": 11.48046875,
+            "max": 11.48046875
+          },
+          "private_sample_peak_mib": {
+            "median": 1813.96484375,
+            "min": 1813.96484375,
+            "max": 1813.96484375
+          },
+          "lifetime_peak_commit_mib": {
+            "median": 2100.05859375,
+            "min": 2100.05859375,
+            "max": 2100.05859375
+          },
+          "publication_seconds": {
+            "median": 4.027,
+            "min": 4.027,
+            "max": 4.027
+          },
+          "publication_calls": {
+            "median": 839,
+            "min": 839,
+            "max": 839
+          },
+          "refresh_seconds": {
+            "median": 1.208,
+            "min": 1.208,
+            "max": 1.208
+          },
+          "refresh_calls": {
+            "median": 52820,
+            "min": 52820,
+            "max": 52820
+          },
+          "sync_seconds": {
+            "median": 3.116,
+            "min": 3.116,
+            "max": 3.116
+          },
+          "sync_calls": {
+            "median": 89949,
+            "min": 89949,
+            "max": 89949
+          },
+          "readonly_seconds": {
+            "median": 0.165,
+            "min": 0.165,
+            "max": 0.165
+          },
+          "readonly_calls": {
+            "median": 24080,
+            "min": 24080,
+            "max": 24080
+          },
+          "prefetch_seconds": {
+            "median": 0.27,
+            "min": 0.27,
+            "max": 0.27
+          },
+          "prefetch_calls": {
+            "median": 840,
+            "min": 840,
+            "max": 840
+          },
+          "properties_seconds": {
+            "median": 0.135,
+            "min": 0.135,
+            "max": 0.135
+          },
+          "properties_calls": {
+            "median": 52609,
+            "min": 52609,
+            "max": 52609
+          },
+          "machinery_seconds": {
+            "median": 2.95,
+            "min": 2.95,
+            "max": 2.95
+          },
+          "machinery_calls": {
+            "median": 240,
+            "min": 240,
+            "max": 240
+          },
+          "vent_seconds": {
+            "median": 0.464,
+            "min": 0.464,
+            "max": 0.464
+          },
+          "vent_calls": {
+            "median": 44280,
+            "min": 44280,
+            "max": 44280
+          },
+          "heat_pipe_seconds": {
+            "median": 0.085,
+            "min": 0.085,
+            "max": 0.085
+          },
+          "heat_pipe_calls": {
+            "median": 9960,
+            "min": 9960,
+            "max": 9960
+          },
+          "mole_overlays_seconds": {
+            "median": 0.393,
+            "min": 0.393,
+            "max": 0.393
+          },
+          "mole_overlays_calls": {
+            "median": 49898,
+            "min": 49898,
+            "max": 49898
+          },
+          "state_overlays_seconds": {
+            "median": 0.086,
+            "min": 0.086,
+            "max": 0.086
+          },
+          "state_overlays_calls": {
+            "median": 39930,
+            "min": 39930,
+            "max": 39930
+          },
+          "property_batches": {
+            "median": 840,
+            "min": 840,
+            "max": 840
+          },
+          "property_hits": {
+            "median": 45697,
+            "min": 45697,
+            "max": 45697
+          },
+          "property_fallbacks": {
+            "median": 6912,
+            "min": 6912,
+            "max": 6912
+          },
+          "publication_values": {
+            "median": 3823248,
+            "min": 3823248,
+            "max": 3823248
+          },
+          "visual_publications": {
+            "median": 40051,
+            "min": 40051,
+            "max": 40051
+          }
+        }
+      }
+    },
+    {
+      "scenario": "sm-plasma",
+      "modes": {
+        "full": {
+          "total_cpu_percent": {
+            "median": 46.45390217664652,
+            "min": 46.45390217664652,
+            "max": 46.45390217664652
+          },
+          "main_cpu_percent": {
+            "median": 45.85742166590376,
+            "min": 45.85742166590376,
+            "max": 45.85742166590376
+          },
+          "other_cpu_percent": {
+            "median": 0.5964805107427648,
+            "min": 0.5964805107427648,
+            "max": 0.5964805107427648
+          },
+          "worker_cpu_percent": {
+            "median": 0.5464740543622885,
+            "min": 0.5464740543622885,
+            "max": 0.5464740543622885
+          },
+          "cpu_ms_per_tick": {
+            "median": 277.72043108106516,
+            "min": 277.72043108106516,
+            "max": 277.72043108106516
+          },
+          "completed_ticks": {
+            "median": 110,
+            "min": 110,
+            "max": 110
+          },
+          "private_last_mib": {
+            "median": 1836.84765625,
+            "min": 1836.84765625,
+            "max": 1836.84765625
+          },
+          "private_start_mib": {
+            "median": 1824.0234375,
+            "min": 1824.0234375,
+            "max": 1824.0234375
+          },
+          "private_window_delta_mib": {
+            "median": 12.82421875,
+            "min": 12.82421875,
+            "max": 12.82421875
+          },
+          "private_sample_peak_mib": {
+            "median": 1836.90234375,
+            "min": 1836.90234375,
+            "max": 1836.90234375
+          },
+          "lifetime_peak_commit_mib": {
+            "median": 2090.41015625,
+            "min": 2090.41015625,
+            "max": 2090.41015625
+          },
+          "publication_seconds": {
+            "median": 4.893,
+            "min": 4.893,
+            "max": 4.893
+          },
+          "publication_calls": {
+            "median": 770,
+            "min": 770,
+            "max": 770
+          },
+          "refresh_seconds": {
+            "median": 1.59,
+            "min": 1.59,
+            "max": 1.59
+          },
+          "refresh_calls": {
+            "median": 83076,
+            "min": 83076,
+            "max": 83076
+          },
+          "sync_seconds": {
+            "median": 3.576,
+            "min": 3.576,
+            "max": 3.576
+          },
+          "sync_calls": {
+            "median": 140618,
+            "min": 140618,
+            "max": 140618
+          },
+          "readonly_seconds": {
+            "median": 0.48,
+            "min": 0.48,
+            "max": 0.48
+          },
+          "readonly_calls": {
+            "median": 59706,
+            "min": 59706,
+            "max": 59706
+          },
+          "prefetch_seconds": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "prefetch_calls": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "properties_seconds": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "properties_calls": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "machinery_seconds": {
+            "median": 2.592,
+            "min": 2.592,
+            "max": 2.592
+          },
+          "machinery_calls": {
+            "median": 242,
+            "min": 242,
+            "max": 242
+          },
+          "vent_seconds": {
+            "median": 0.608,
+            "min": 0.608,
+            "max": 0.608
+          },
+          "vent_calls": {
+            "median": 37510,
+            "min": 37510,
+            "max": 37510
+          },
+          "heat_pipe_seconds": {
+            "median": 0.088,
+            "min": 0.088,
+            "max": 0.088
+          },
+          "heat_pipe_calls": {
+            "median": 3410,
+            "min": 3410,
+            "max": 3410
+          },
+          "mole_overlays_seconds": {
+            "median": 0.406,
+            "min": 0.406,
+            "max": 0.406
+          },
+          "mole_overlays_calls": {
+            "median": 140510,
+            "min": 140510,
+            "max": 140510
+          },
+          "state_overlays_seconds": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "state_overlays_calls": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "property_batches": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "property_hits": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "property_fallbacks": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          },
+          "publication_values": {
+            "median": 4768046,
+            "min": 4768046,
+            "max": 4768046
+          },
+          "visual_publications": {
+            "median": 0,
+            "min": 0,
+            "max": 0
+          }
+        },
+        "compact": {
+          "total_cpu_percent": {
+            "median": 47.87460427540879,
+            "min": 47.87460427540879,
+            "max": 47.87460427540879
+          },
+          "main_cpu_percent": {
+            "median": 47.24403704584414,
+            "min": 47.24403704584414,
+            "max": 47.24403704584414
+          },
+          "other_cpu_percent": {
+            "median": 0.6305672295646548,
+            "min": 0.6305672295646548,
+            "max": 0.6305672295646548
+          },
+          "worker_cpu_percent": {
+            "median": 0.6212362639883292,
+            "min": 0.6212362639883292,
+            "max": 0.6212362639883292
+          },
+          "cpu_ms_per_tick": {
+            "median": 292.5889997257222,
+            "min": 292.5889997257222,
+            "max": 292.5889997257222
+          },
+          "completed_ticks": {
+            "median": 107,
+            "min": 107,
+            "max": 107
+          },
+          "private_last_mib": {
+            "median": 1866.98828125,
+            "min": 1866.98828125,
+            "max": 1866.98828125
+          },
+          "private_start_mib": {
+            "median": 1849.125,
+            "min": 1849.125,
+            "max": 1849.125
+          },
+          "private_window_delta_mib": {
+            "median": 17.86328125,
+            "min": 17.86328125,
+            "max": 17.86328125
+          },
+          "private_sample_peak_mib": {
+            "median": 1866.98828125,
+            "min": 1866.98828125,
+            "max": 1866.98828125
+          },
+          "lifetime_peak_commit_mib": {
+            "median": 2126.5859375,
+            "min": 2126.5859375,
+            "max": 2126.5859375
+          },
+          "publication_seconds": {
+            "median": 5.011,
+            "min": 5.011,
+            "max": 5.011
+          },
+          "publication_calls": {
+            "median": 749,
+            "min": 749,
+            "max": 749
+          },
+          "refresh_seconds": {
+            "median": 1.435,
+            "min": 1.435,
+            "max": 1.435
+          },
+          "refresh_calls": {
+            "median": 74174,
+            "min": 74174,
+            "max": 74174
+          },
+          "sync_seconds": {
+            "median": 3.726,
+            "min": 3.726,
+            "max": 3.726
+          },
+          "sync_calls": {
+            "median": 131552,
+            "min": 131552,
+            "max": 131552
+          },
+          "readonly_seconds": {
+            "median": 0.304,
+            "min": 0.304,
+            "max": 0.304
+          },
+          "readonly_calls": {
+            "median": 36641,
+            "min": 36641,
+            "max": 36641
+          },
+          "prefetch_seconds": {
+            "median": 0.253,
+            "min": 0.253,
+            "max": 0.253
+          },
+          "prefetch_calls": {
+            "median": 761,
+            "min": 761,
+            "max": 761
+          },
+          "properties_seconds": {
+            "median": 0.099,
+            "min": 0.099,
+            "max": 0.099
+          },
+          "properties_calls": {
+            "median": 47999,
+            "min": 47999,
+            "max": 47999
+          },
+          "machinery_seconds": {
+            "median": 3.036,
+            "min": 3.036,
+            "max": 3.036
+          },
+          "machinery_calls": {
+            "median": 246,
+            "min": 246,
+            "max": 246
+          },
+          "vent_seconds": {
+            "median": 0.458,
+            "min": 0.458,
+            "max": 0.458
+          },
+          "vent_calls": {
+            "median": 40125,
+            "min": 40125,
+            "max": 40125
+          },
+          "heat_pipe_seconds": {
+            "median": 0.136,
+            "min": 0.136,
+            "max": 0.136
+          },
+          "heat_pipe_calls": {
+            "median": 7918,
+            "min": 7918,
+            "max": 7918
+          },
+          "mole_overlays_seconds": {
+            "median": 0.216,
+            "min": 0.216,
+            "max": 0.216
+          },
+          "mole_overlays_calls": {
+            "median": 72091,
+            "min": 72091,
+            "max": 72091
+          },
+          "state_overlays_seconds": {
+            "median": 0.115,
+            "min": 0.115,
+            "max": 0.115
+          },
+          "state_overlays_calls": {
+            "median": 59351,
+            "min": 59351,
+            "max": 59351
+          },
+          "property_batches": {
+            "median": 760,
+            "min": 760,
+            "max": 760
+          },
+          "property_hits": {
+            "median": 35272,
+            "min": 35272,
+            "max": 35272
+          },
+          "property_fallbacks": {
+            "median": 12727,
+            "min": 12727,
+            "max": 12727
+          },
+          "publication_values": {
+            "median": 4503954,
+            "min": 4503954,
+            "max": 4503954
+          },
+          "visual_publications": {
+            "median": 59461,
+            "min": 59461,
+            "max": 59461
+          }
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "No connected players",
+    "Background states can diverge despite fixed startup seed",
+    "Inclusive procedure times overlap; worker CPU is already included in process CPU",
+    "Device mutations and pipe reactions remain in DM; profiler adds overhead"
+  ]
+}

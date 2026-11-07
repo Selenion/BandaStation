@@ -37,31 +37,32 @@
 		source.RegisterSignal(source.loc, COMSIG_TURF_EXPOSE, TYPE_PROC_REF(/atom, check_atmos_process))
 	source.atmos_conditions_changed() //Make sure you're properly registered
 
-/atom/proc/check_atmos_process(datum/source, datum/gas_mixture/air, exposed_temperature)
+/atom/proc/check_atmos_process(datum/source, datum/gas_mixture/air, exposed_temperature, native_keys) // BANDASTATION EDIT - Compact gas key presence for scrubbers.
 	SIGNAL_HANDLER
-	if(should_atmos_process(air, exposed_temperature))
+	if(should_atmos_process(air, exposed_temperature, native_keys)) // BANDASTATION EDIT - Forward compact key presence.
 		if(flags_1 & ATMOS_IS_PROCESSING_1)
 			return
 		SSair.atom_process += src
 		flags_1 |= ATMOS_IS_PROCESSING_1
 	else if(flags_1 & ATMOS_IS_PROCESSING_1)
-		atmos_end()
-		SSair.atom_process -= src
-		flags_1 &= ~ATMOS_IS_PROCESSING_1
+		stop_atmos_exposure() // BANDASTATION EDIT - Share exposure cleanup with the native path.
+
+// BANDASTATION ADDITION START - Share exposure cleanup with the native path.
+/atom/proc/stop_atmos_exposure()
+	atmos_end()
+	SSair.atom_process -= src
+	flags_1 &= ~ATMOS_IS_PROCESSING_1
+// BANDASTATION ADDITION END
 
 /atom/proc/process_exposure()
 	var/turf/open/spot = loc
 	if(!isopenturf(loc))
 		//If you end up in a locker or a wall reconsider your life decisions
-		atmos_end()
-		SSair.atom_process -= src
-		flags_1 &= ~ATMOS_IS_PROCESSING_1
+		stop_atmos_exposure() // BANDASTATION EDIT - Share exposure cleanup with the native path.
 		return
 	var/datum/gas_mixture/environment = spot.return_air() // BANDASTATION ADDITION - SSair executes exposure in a safe native phase.
 	if(!should_atmos_process(environment, environment.temperature)) //Things can change without a tile becoming active // BANDASTATION EDIT
-		atmos_end()
-		SSair.atom_process -= src
-		flags_1 &= ~ATMOS_IS_PROCESSING_1
+		stop_atmos_exposure() // BANDASTATION EDIT - Share exposure cleanup with the native path.
 		return
 	atmos_expose(environment, environment.temperature) // BANDASTATION EDIT - Exposure may modify native gas.
 
@@ -75,7 +76,7 @@
 	atmos_expose(environment, environment.temperature) // BANDASTATION EDIT - Safe native gas access.
 
 ///We use this proc to check if we should start processing an item, or continue processing it. Returns true/false as expected
-/atom/proc/should_atmos_process(datum/gas_mixture/air, exposed_temperature)
+/atom/proc/should_atmos_process(datum/gas_mixture/air, exposed_temperature, native_keys) // BANDASTATION EDIT - Optional compact key presence.
 	return FALSE
 
 ///This is your process() proc

@@ -1,0 +1,95 @@
+/// Real helper/API checks, including a receiver that already used the returned gas before an error.
+/datum/controller/subsystem/atmos_phase_test/proc/operation_protocol_checks()
+	var/list/checks = list()
+	var/turf/open/target = floor_at(225, 202)
+	target.air.temperature = 300
+	target.air.set_gas(/datum/gas/nitrogen, 30)
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target))
+	phase.native(30)
+	phase.initializing = FALSE
+	checks["operations_available"] = phase.operations_ready
+	target.atmos_spawn_air("n2=10;TEMP=300")
+	var/datum/banda_atmos_cell/cell = target.banda_atmos_cell
+	checks["operations_source_avoids_full_cache"] = !cell.cached_air && !cell.readonly_air
+	var/datum/gas_mixture/state = cell.read_air()
+	checks["operations_source_archives_like_banda"] = state.moles[/datum/gas/nitrogen] == 40 && state.moles_archive[/datum/gas/nitrogen] == 40 && state.temperature_archived == 300 && target.archived_cycle == SSair.times_fired
+	var/datum/gas_mixture/taken = target.remove_air(50)
+	checks["operations_take_caps_before_returning"] = taken.moles[/datum/gas/nitrogen] == 40 && cell.read_air().total_moles() == 0 && !cell.cached_air
+	checks["operations_empty_take_returns_null"] = isnull(target.remove_air(50))
+	var/caught = FALSE
+	try
+		phase.native(83, list(0, cell.native_id, cell.binding_version), list(1, 2, 4, 2, 1, 10, 3, 2, 20, 1), FALSE, list())
+	catch
+		caught = TRUE
+	checks["operations_invalid_tail_is_atomic"] = caught && cell.read_air().total_moles() == 0
+	phase.invoke(CALLBACK(src, PROC_REF(operation_materialization_case), target))
+	checks["operations_legacy_read_keeps_pending_gas"] = cell.read_air().moles[/datum/gas/nitrogen] == 15 && !phase.operation_transaction && !length(phase.operation_cells)
+	qdel(phase)
+
+	target = floor_at(226, 202)
+	target.air.temperature = 300
+	target.air.set_gas(/datum/gas/nitrogen, 30)
+	target.banda_air_requested = FALSE
+	phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target))
+	phase.native(30)
+	phase.initializing = FALSE
+	phase.invoke(CALLBACK(src, PROC_REF(operation_replacement_case), target))
+	phase.apply_frame() // ChangeTurf queues its native reattachment while the callback is active.
+	target = locate(236, 202, 1)
+	checks["operations_inherited_floor_keeps_pending_gas"] = target.banda_atmos_cell.read_air().moles[/datum/gas/nitrogen] == 40 && !phase.operation_transaction
+	var/datum/gas_mixture/held = target.get_readonly_air()
+	var/list/moles = target.banda_atmos_cell.cached_air.moles
+	target.atmos_spawn_air("n2=10;TEMP=300")
+	checks["operations_issued_mixture_keeps_alias"] = held == target.get_readonly_air() && held.moles[/datum/gas/nitrogen] == 50 && moles == target.banda_atmos_cell.cached_air.moles
+	qdel(phase)
+
+	var/list/errors = list()
+	for(var/mode in list("dm", "legacy", "operations"))
+		target = floor_at(227, 202)
+		target.air.temperature = 300
+		target.air.set_gas(/datum/gas/nitrogen, 30)
+		target.banda_air_requested = FALSE
+		phase = null
+		if(mode != "dm")
+			phase = new("bandastation_atmos.dll")
+			SSair.native_atmos = phase
+			phase.register_batch(list(target))
+			phase.native(30)
+			phase.initializing = FALSE
+			if(mode == "legacy")
+				phase.operations_ready = FALSE
+		var/datum/gas_mixture/receiver = new()
+		caught = FALSE
+		try
+			if(phase)
+				phase.invoke(CALLBACK(src, PROC_REF(operation_receiver_error), target, receiver))
+			else
+				operation_receiver_error(target, receiver)
+		catch(var/exception/error)
+			caught = error.name == "BANDA_EXPECTED_OPERATION_RECEIVER_ERROR"
+		state = phase ? target.banda_atmos_cell.read_air() : target.air
+		errors[mode] = list("caught" = caught, "source" = state.moles[/datum/gas/nitrogen] || 0, "receiver" = receiver.moles[/datum/gas/nitrogen] || 0)
+		qdel(phase)
+	checks["operations_receiver_error_caught"] = errors["dm"]["caught"] && errors["legacy"]["caught"] && errors["operations"]["caught"]
+	checks["operations_receiver_error_preserves_banda_gas"] = errors["dm"]["source"] == errors["operations"]["source"] && errors["dm"]["receiver"] == errors["operations"]["receiver"]
+	WRITE_FILE(file("operation-observations.json"), json_encode(errors))
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/operation_materialization_case(turf/open/target)
+	target.atmos_spawn_air("n2=10;TEMP=300")
+	var/datum/gas_mixture/air = target.get_mutable_air()
+	air.adjust_gas(/datum/gas/nitrogen, 5)
+
+/datum/controller/subsystem/atmos_phase_test/proc/operation_replacement_case(turf/open/target)
+	target.atmos_spawn_air("n2=10;TEMP=300")
+	target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+
+/datum/controller/subsystem/atmos_phase_test/proc/operation_receiver_error(turf/open/target, datum/gas_mixture/receiver)
+	var/datum/gas_mixture/removed = target.remove_air(50)
+	receiver.merge(removed)
+	throw EXCEPTION("BANDA_EXPECTED_OPERATION_RECEIVER_ERROR")

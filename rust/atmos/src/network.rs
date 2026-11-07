@@ -159,10 +159,7 @@ impl TileState {
             && self.archived.same_bits(&other.archived)
             && self.last_share.to_bits() == other.last_share.to_bits()
             && self.pressure.to_bits() == other.pressure.to_bits()
-            && self.terrain.temperature.to_bits() == other.terrain.temperature.to_bits()
-            && self.terrain.archived.to_bits() == other.terrain.archived.to_bits()
-            && self.terrain.capacity.to_bits() == other.terrain.capacity.to_bits()
-            && self.terrain.conductivity.to_bits() == other.terrain.conductivity.to_bits()
+            && self.terrain.same_bits(&other.terrain)
     }
 }
 

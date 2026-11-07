@@ -11,6 +11,17 @@ SUBSYSTEM_DEF(local_profile)
 	Master.sleep_offline_after_initializations = FALSE
 	SSticker.start_immediately = TRUE
 	SSticker.delay_end = TRUE
+	#ifdef BANDA_ATMOS_CATALOG_SIGNATURE
+	if(SSair.native_atmos && world.params["profile-legacy-vent-transfer"] == "1")
+		SSair.native_atmos.vent_transfer_ready = FALSE
+	if(SSair.native_atmos && world.params["profile-legacy-scrubber-transfer"] == "1")
+		SSair.native_atmos.scrubber_transfer_ready = FALSE
+		SSair.native_atmos.scrubber_tile_ready = FALSE
+	if(SSair.native_atmos && world.params["profile-legacy-scrubber-tile"] == "1")
+		SSair.native_atmos.scrubber_tile_ready = FALSE
+	if(SSair.native_atmos && world.params["profile-legacy-visual-refresh"] == "1")
+		SSair.native_atmos.visual_refresh_enabled = FALSE
+	#endif
 	SSticker.OnRoundstart(CALLBACK(src, PROC_REF(measure)))
 	return SS_INIT_SUCCESS
 
@@ -32,16 +43,35 @@ SUBSYSTEM_DEF(local_profile)
 		log_world("LOCAL_PROFILE_WRONG_BACKEND")
 		shutdown()
 		return
+	#ifdef BANDA_ATMOS_CATALOG_SIGNATURE
+	if(rust_enabled && world.params["profile-pipe-packets"] == "1")
+		SSair.native_atmos.pipe_direct_ready = FALSE
+	if(rust_enabled && world.params["profile-legacy-air-bridge"] == "1")
+		SSair.native_atmos.properties_ready = FALSE
+		SSair.native_atmos.visual_publication_ready = FALSE
+		SSair.native_atmos.clear_air_readings()
+	#endif
 	var/scenario = world.params["profile-scenario"] || "empty-station"
 	var/list/seeded_turfs = list()
 	if(scenario == "atmos-fire" || scenario == "atmos-flood")
 		seeded_turfs = seed_fire(scenario == "atmos-flood")
 	var/list/incident = list()
+	var/list/vent_outlets
 	var/obj/machinery/power/supermatter_crystal/sm
 	if(scenario == "sm-plasma")
 		sm = seed_sm(incident)
 		if(!sm || !length(incident["seeded_turfs"]))
 			log_world("LOCAL_PROFILE_NO_SM_INCIDENT")
+			shutdown()
+			return
+	if(scenario == "atmos-decompression" && !prepare_decompression(incident))
+		log_world("LOCAL_PROFILE_NO_DECOMPRESSION_CHAMBER")
+		shutdown()
+		return
+	if(scenario == "pipe-plasma-flood")
+		vent_outlets = find_plasma_outlets(incident)
+		if(!length(vent_outlets))
+			log_world("LOCAL_PROFILE_NO_DISTRIBUTION_NETWORK")
 			shutdown()
 			return
 	var/start_unix = rustg_unix_timestamp()
@@ -59,12 +89,26 @@ SUBSYSTEM_DEF(local_profile)
 		sm_reference = WEAKREF(sm)
 		sm.force_delam()
 		sm = null
+	if(scenario == "atmos-decompression")
+		open_decompression_breach(incident)
+	if(vent_outlets)
+		flood_distribution_network(vent_outlets, incident)
 	sleep(60 SECONDS)
+	var/sample_game_seconds = (world.time - start_time) / 10
+	var/sample_wall_seconds = (REALTIMEOFDAY - start_real) / 10
 	world.Profile(PROFILE_STOP)
 	world.Profile(PROFILE_STOP, type = "sendmaps")
 	var/end_unix = rustg_unix_timestamp()
 	if(sm_reference)
 		incident["sm_deleted"] = !sm_reference.resolve()
+	var/list/end_atmos = atmos_state()
+	if(scenario == "atmos-decompression")
+		var/list/inputs = incident["inputs"]
+		var/list/probe = inputs["probe"]
+		var/turf/open/target = locate(probe[1], probe[2], probe[3])
+		incident["pressure_after"] = target.return_air()?.return_pressure()
+	if(vent_outlets)
+		incident["contaminated_outlets"] = count_plasma_outlets(incident)
 	WRITE_FILE(file("profile-procs.json"), world.Profile(PROFILE_REFRESH, format = "json"))
 	WRITE_FILE(file("profile-sendmaps.json"), world.Profile(PROFILE_REFRESH, type = "sendmaps", format = "json"))
 	var/list/subsystem_data = list()
@@ -92,12 +136,12 @@ SUBSYSTEM_DEF(local_profile)
 		"map" = SSmapping.current_map.map_name,
 		"connected_clients" = length(GLOB.clients),
 		"warmup_seconds" = 30,
-		"sample_game_seconds" = (world.time - start_time) / 10,
-		"sample_wall_seconds" = (REALTIMEOFDAY - start_real) / 10,
+		"sample_game_seconds" = sample_game_seconds,
+		"sample_wall_seconds" = sample_wall_seconds,
 		"fps" = world.fps,
 		"map_cpu" = world.map_cpu,
 		"subsystems" = subsystem_data,
-		"atmos" = atmos_state(),
+		"atmos" = end_atmos,
 	)
 	WRITE_FILE(file("profile-metadata.json"), json_encode(metadata))
 	log_world("LOCAL_PROFILE_SAMPLE_END")
@@ -118,6 +162,44 @@ SUBSYSTEM_DEF(local_profile)
 		state["excited_groups"] = counts[3]
 		state["native_completed_ticks"] = SSair.native_atmos.completed_ticks
 		state["native_worker_pending"] = !!SSair.native_atmos.worker_cycle
+		state["native_pipes_enabled"] = SSair.native_atmos.pipes_ready
+		state["native_pipe_groups"] = SSair.native_atmos.pipe_groups
+		state["native_pipe_imports"] = SSair.native_atmos.pipe_imports
+		state["native_pipe_direct_groups"] = SSair.native_atmos.pipe_direct_groups
+		state["native_pipe_direct_enabled"] = SSair.native_atmos.pipe_direct_ready
+		state["native_pipe_owned_enabled"] = SSair.native_atmos.pipe_owned_ready
+		state["native_pipe_owned_groups"] = SSair.native_atmos.pipe_owned_groups
+		state["native_pipe_owned_ports"] = SSair.native_atmos.pipe_owned_ports
+		state["native_pipe_owned_exposures"] = SSair.native_atmos.pipe_owned_exposures
+		state["native_pipe_owned_transfers"] = SSair.native_atmos.pipe_owned_transfers
+		state["native_pipe_packet_imports"] = SSair.native_atmos.pipe_packet_imports
+		state["native_pipe_fallbacks"] = SSair.native_atmos.pipe_fallbacks
+		state["native_properties_enabled"] = SSair.native_atmos.properties_ready
+		state["native_visual_publication_enabled"] = SSair.native_atmos.visual_publication_ready
+		state["native_visual_refresh_enabled"] = SSair.native_atmos.visual_refresh_enabled
+		state["native_visual_refreshes"] = SSair.native_atmos.visual_refreshes
+		state["native_property_batches"] = SSair.native_atmos.property_batches
+		state["native_property_hits"] = SSair.native_atmos.property_hits
+		state["native_property_fallbacks"] = SSair.native_atmos.property_fallbacks
+		state["native_publication_values"] = SSair.native_atmos.publication_values
+		state["native_visual_publications"] = SSair.native_atmos.visual_publications
+		state["native_service_publications_skipped"] = SSair.native_atmos.service_publications_skipped
+		state["native_vent_transfer_enabled"] = SSair.native_atmos.vent_transfer_ready
+		state["native_vent_transfers"] = SSair.native_atmos.vent_transfers
+		state["native_vent_empty_transfers"] = SSair.native_atmos.vent_empty_transfers
+		state["native_vent_transfer_fallbacks"] = SSair.native_atmos.vent_transfer_fallbacks
+		state["native_scrubber_transfer_enabled"] = SSair.native_atmos.scrubber_transfer_ready
+		state["native_scrubber_tile_enabled"] = SSair.native_atmos.scrubber_tile_ready
+		state["native_scrubber_tile_operations"] = SSair.native_atmos.scrubber_tile_operations
+		state["native_scrubber_tile_moves"] = SSair.native_atmos.scrubber_tile_moves
+		state["native_scrubber_transfers"] = SSair.native_atmos.scrubber_transfers
+		state["native_scrubber_empty_transfers"] = SSair.native_atmos.scrubber_empty_transfers
+		state["native_scrubber_transfer_fallbacks"] = SSair.native_atmos.scrubber_transfer_fallbacks
+		if(SSair.native_atmos.pipes_ready)
+			var/list/pipe_counts = list()
+			SSair.native_atmos.native(47, pipe_counts)
+			state["native_pipe_records"] = pipe_counts[1]
+			state["native_pipe_slots"] = pipe_counts[2]
 		// Optional diagnostic DLLs count CPU on the numerical worker itself, before Byond_Return.
 		var/list/worker_profile = list()
 		try
@@ -195,3 +277,107 @@ SUBSYSTEM_DEF(local_profile)
 	incident["strategy"] = "[sm.delamination_strategy.type]"
 	incident["explosion_radius"] = sm.delamination_strategy.calculate_explosion(sm)
 	return sm
+
+/turf/open/floor/iron/local_profile_pressurized
+	// Triple the stock turf mixture through ordinary initialization, without borrowing every tile's gas.
+	initial_gas_mix = GAS_O2 + "=66;" + GAS_N2 + "=246;TEMP=293.15"
+
+/// Reserve a vacuum margin so the test does not depend on the station's layout or generated ruins.
+/datum/controller/subsystem/local_profile/proc/prepare_decompression(list/incident)
+	var/side = 32
+	var/datum/turf_reservation/reservation
+	for(var/level in SSmapping.levels_by_trait(ZTRAIT_RESERVED))
+		reservation = SSmapping.request_turf_block_reservation(side + 4, side + 4, z_reservation = level)
+		if(reservation)
+			break
+	if(!reservation)
+		return FALSE
+	var/turf/corner = reservation.bottom_left_turfs[1]
+	var/x = corner.x + 1
+	var/y = corner.y + 1
+	var/z = corner.z
+	for(var/column in x to x + side + 1)
+		for(var/row in y to y + side + 1)
+			var/turf/tile = locate(column, row, z)
+			if(column == x || column == x + side + 1 || row == y || row == y + side + 1)
+				tile.ChangeTurf(/turf/closed/wall, /turf/open/space, CHANGETURF_IGNORE_AIR)
+			else
+				tile.ChangeTurf(/turf/open/floor/iron/local_profile_pressurized, /turf/open/space, CHANGETURF_IGNORE_AIR)
+	var/middle = y + side / 2
+	incident["inputs"] = list("origin" = list(x, y, z), "side" = side, "breach_width" = 3,
+		"breach" = list(x, middle, z), "probe" = list(x + 2, middle, z), "pressure" = 3 * ONE_ATMOSPHERE)
+	return TRUE
+
+/datum/controller/subsystem/local_profile/proc/open_decompression_breach(list/incident)
+	var/list/inputs = incident["inputs"]
+	var/list/probe = inputs["probe"]
+	var/turf/open/sample = locate(probe[1], probe[2], probe[3])
+	incident["pressure_before"] = sample.return_air()?.return_pressure()
+	var/list/breach = inputs["breach"]
+	for(var/y in breach[2] - 1 to breach[2] + 1)
+		var/turf/wall = locate(breach[1], y, breach[3])
+		wall.ChangeTurf(/turf/open/space, /turf/open/space, CHANGETURF_IGNORE_AIR | CHANGETURF_RECALC_ADJACENT)
+
+/// Select the largest connected station distribution network without changing the map's pipes.
+/datum/controller/subsystem/local_profile/proc/find_plasma_outlets(list/incident)
+	var/list/station_levels = SSmapping.levels_by_trait(ZTRAIT_STATION)
+	var/station_z = station_levels[1]
+	var/list/by_position = list()
+	var/list/positions = list()
+	for(var/obj/machinery/atmospherics/components/unary/vent_pump/vent in SSair.atmos_machinery)
+		if(vent.z != station_z || !isfloorturf(vent.loc) || !vent.is_operational || vent.welded || !vent.nodes[1] || !(vent.pump_direction & ATMOS_DIRECTION_RELEASING))
+			continue
+		var/datum/pipeline/network = vent.parents[1]
+		if(!network?.air?.volume || network.building)
+			continue
+		var/position = (vent.x - 1) * world.maxy + vent.y
+		if(!by_position["[position]"])
+			positions += position
+			by_position["[position]"] = vent
+	sortTim(positions)
+	var/list/by_network = list()
+	for(var/position in positions)
+		var/obj/machinery/atmospherics/components/unary/vent_pump/vent = by_position["[position]"]
+		var/datum/pipeline/network = vent.parents[1]
+		if(!by_network[network])
+			by_network[network] = list()
+		var/list/outlets = by_network[network]
+		outlets += vent
+	var/list/chosen
+	for(var/datum/pipeline/network as anything in by_network)
+		var/list/outlets = by_network[network]
+		if(length(outlets) > length(chosen))
+			chosen = outlets
+	if(length(chosen) < 16)
+		return null
+	var/list/coordinates = list()
+	for(var/obj/machinery/atmospherics/components/unary/vent_pump/vent as anything in chosen)
+		coordinates += list(list(vent.x, vent.y, vent.z))
+	var/obj/machinery/atmospherics/components/unary/vent_pump/first = chosen[1]
+	var/datum/pipeline/network = first.parents[1]
+	incident["inputs"] = list("outlets" = coordinates, "pipe_volume" = network.air.volume, "pipe_count" = length(network.members),
+		"plasma_moles" = length(chosen) * 1200, "target_pressure" = 225, "temperature" = T20C)
+	return chosen
+
+/datum/controller/subsystem/local_profile/proc/flood_distribution_network(list/outlets, list/incident)
+	var/obj/machinery/atmospherics/components/unary/vent_pump/first = outlets[1]
+	var/datum/pipeline/network = first.parents[1]
+	var/list/inputs = incident["inputs"]
+	network.air.moles.Cut()
+	network.air.temperature = inputs["temperature"]
+	network.air.set_gas(/datum/gas/plasma, inputs["plasma_moles"])
+	network.update = TRUE
+	for(var/obj/machinery/atmospherics/components/unary/vent_pump/vent as anything in outlets)
+		vent.pressure_checks = ATMOS_EXTERNAL_BOUND
+		vent.external_pressure_bound = inputs["target_pressure"]
+		vent.set_on(TRUE)
+
+/datum/controller/subsystem/local_profile/proc/count_plasma_outlets(list/incident)
+	var/list/inputs = incident["inputs"]
+	var/count = 0
+	for(var/list/position as anything in inputs["outlets"])
+		var/turf/target = locate(position[1], position[2], position[3])
+		var/datum/gas_mixture/air = target.return_air()
+		if(air && air.moles[/datum/gas/plasma] >= 1)
+			count++
+	return count

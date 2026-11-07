@@ -105,20 +105,21 @@ def windows_process_sample(pid, main_thread_id=None):
         kernel.CloseHandle(handle)
 
 
-def capture(daemon, output, scenario, rust_enabled=False, rust_threaded=False):
+def capture(daemon, output, scenario, rust_enabled=False, rust_threaded=False, pipe_packets=False, legacy_air_bridge=False, legacy_vent_transfer=False, legacy_scrubber_transfer=False, legacy_scrubber_tile=False, legacy_visual_refresh=False):
     samples = []
     main_thread_id = None
+    timeout_seconds = 900 if scenario == "pipe-plasma-flood" else 600
     with (output / "launcher.log").open("w", encoding="utf-8") as log:
         process = subprocess.Popen([str(daemon), "tgstation.dmb", "-trusted", "-close", "-invisible", "-ip", "127.0.0.1",
-                                    "-logself", "-params", f"log-directory=local-profile&profile-scenario={scenario}&profile-rust={int(rust_enabled)}&profile-threaded={int(rust_threaded)}"],
+                                    "-logself", "-params", f"log-directory=local-profile&profile-scenario={scenario}&profile-rust={int(rust_enabled)}&profile-threaded={int(rust_threaded)}&profile-pipe-packets={int(pipe_packets)}&profile-legacy-air-bridge={int(legacy_air_bridge)}&profile-legacy-vent-transfer={int(legacy_vent_transfer)}&profile-legacy-scrubber-transfer={int(legacy_scrubber_transfer)}&profile-legacy-scrubber-tile={int(legacy_scrubber_tile)}&profile-legacy-visual-refresh={int(legacy_visual_refresh)}"],
                                    cwd=output, stdout=log, stderr=subprocess.STDOUT)
         started = time.monotonic()
         try:
             while process.poll() is None:
-                if time.monotonic() - started > 600:
+                if time.monotonic() - started > timeout_seconds:
                     process.kill()
                     process.wait()
-                    raise TimeoutError("Local profiling run exceeded 600 seconds")
+                    raise TimeoutError(f"Local profiling run exceeded {timeout_seconds} seconds")
                 if os.name == "nt":
                     sample = windows_process_sample(process.pid, main_thread_id)
                     if sample:
@@ -176,7 +177,19 @@ def finish_capture(output, manifest, elapsed):
     if not metadata_path.exists():
         raise SystemExit(f"No completed profile. Inspect {output / 'tgstation.log'}")
     manifest["total_wall_seconds"] = elapsed
-    manifest["metadata"] = json.loads(metadata_path.read_text(encoding="utf-8-sig"))
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8-sig"))
+    if metadata["scenario"] == "atmos-decompression":
+        incident = metadata["incident"]
+        initial = incident["inputs"]["pressure"]
+        before = incident["pressure_before"]
+        after = incident["pressure_after"]
+        if before is None or after is None or abs(before - initial) > 0.05 * initial or after > 0.75 * before:
+            raise SystemExit(f"The chamber was not pressurized and decompressed as expected: {metadata_path}")
+    if metadata["scenario"] == "pipe-plasma-flood":
+        incident = metadata["incident"]
+        if 2 * incident["contaminated_outlets"] < len(incident["inputs"]["outlets"]):
+            raise SystemExit(f"Fewer than half the outlets discharged measurable plasma: {metadata_path}")
+    manifest["metadata"] = metadata
     manifest["binary_sha256"] = hashlib.sha256((output / "tgstation.dmb").read_bytes()).hexdigest()
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
     if validation["known_count"]:
@@ -189,15 +202,34 @@ def main():
     parser.add_argument("--byond", type=Path, required=True)
     parser.add_argument("--map", default="metastation")
     parser.add_argument("--name", default="baseline")
-    parser.add_argument("--scenario", choices=["empty-station", "atmos-fire", "atmos-flood", "sm-plasma"], default="empty-station")
+    parser.add_argument("--scenario", choices=["empty-station", "atmos-fire", "atmos-flood", "sm-plasma",
+                                                "atmos-decompression", "pipe-plasma-flood"], default="empty-station")
     parser.add_argument("--source-root", type=Path, default=ROOT)
     parser.add_argument("--compiled-binary", type=Path)
     parser.add_argument("--rust-dll", type=Path)
     parser.add_argument("--threaded", action="store_true")
+    parser.add_argument("--pipe-packets", action="store_true", help="Diagnostic control: retain the previous pipe packet path during sampling")
+    parser.add_argument("--legacy-air-bridge", action="store_true", help="Diagnostic control: disable compact readings and visual publication during sampling")
+    parser.add_argument("--legacy-vent-transfer", action="store_true", help="Diagnostic control: keep the DM vent exchange from startup")
+    parser.add_argument("--legacy-scrubber-transfer", action="store_true", help="Diagnostic control: keep the DM scrubber exchange from startup")
+    parser.add_argument("--legacy-scrubber-tile", action="store_true", help="Diagnostic control: Rust scrubber transfer still borrows the DM tile mixture")
+    parser.add_argument("--legacy-visual-refresh", action="store_true", help="Diagnostic control: ordinary icon refresh reads a full DM tile mixture")
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()
     if args.threaded and not args.rust_dll:
         parser.error("--threaded requires --rust-dll")
+    if args.pipe_packets and not args.rust_dll:
+        parser.error("--pipe-packets requires --rust-dll")
+    if args.legacy_air_bridge and not args.rust_dll:
+        parser.error("--legacy-air-bridge requires --rust-dll")
+    if args.legacy_vent_transfer and not args.rust_dll:
+        parser.error("--legacy-vent-transfer requires --rust-dll")
+    if args.legacy_scrubber_transfer and not args.rust_dll:
+        parser.error("--legacy-scrubber-transfer requires --rust-dll")
+    if args.legacy_scrubber_tile and (not args.rust_dll or args.legacy_scrubber_transfer):
+        parser.error("--legacy-scrubber-tile requires an enabled Rust scrubber transfer")
+    if args.legacy_visual_refresh and not args.rust_dll:
+        parser.error("--legacy-visual-refresh requires --rust-dll")
     if not args.name.replace("-", "").replace("_", "").isalnum():
         parser.error("--name must contain letters, digits, hyphens or underscores")
     source_root = args.source_root.resolve()
@@ -224,6 +256,9 @@ def main():
     shutil.copy2(map_source, output / "data/next_map.json")
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     manifest = dict(revision=revision, map=args.map, scenario=args.scenario, warmup_seconds=30,
+                    pipe_packets=args.pipe_packets, legacy_air_bridge=args.legacy_air_bridge, legacy_vent_transfer=args.legacy_vent_transfer,
+                    legacy_scrubber_transfer=args.legacy_scrubber_transfer, legacy_scrubber_tile=args.legacy_scrubber_tile,
+                    legacy_visual_refresh=args.legacy_visual_refresh,
                     sample_seconds=60, profiler="BYOND world.Profile", rust_enabled=bool(args.rust_dll), rust_threaded=args.threaded, source_root=str(source_root),
                     baseline_source=json.loads((source_root / "baseline-source.json").read_text(encoding="utf-8")) if (source_root / "baseline-source.json").exists() else None,
                     harness_sha256=hashlib.sha256((ROOT / "tools/profiling/local_profile.dm.in").read_bytes()).hexdigest(),
@@ -244,7 +279,9 @@ def main():
     for extension in ("dmb", "rsc"):
         shutil.copy2(binary.with_suffix("." + extension), output / ("tgstation." + extension))
     daemon = args.byond / ("dd.exe" if os.name == "nt" else "DreamDaemon")
-    elapsed = capture(daemon, output, args.scenario, bool(args.rust_dll), args.threaded)
+    elapsed = capture(daemon, output, args.scenario, bool(args.rust_dll), args.threaded, args.pipe_packets,
+                      args.legacy_air_bridge, args.legacy_vent_transfer, args.legacy_scrubber_transfer,
+                      args.legacy_scrubber_tile, args.legacy_visual_refresh)
     finish_capture(output, manifest, elapsed)
 
 

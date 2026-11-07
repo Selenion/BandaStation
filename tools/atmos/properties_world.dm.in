@@ -1,0 +1,229 @@
+/// Independent scalar oracle from ordinary Banda mixtures, followed by live cache invalidation.
+/datum/controller/subsystem/atmos_phase_test/proc/property_world_checks()
+	var/list/checks = list()
+	var/turf/open/hot = floor_at(190, 160)
+	var/list/gases = banda_atmos_gases()
+	for(var/index in 1 to length(gases))
+		hot.air.moles[gases[index]] = index * 0.25
+	hot.air.temperature = 333
+	var/turf/open/vacuum = floor_at(195, 160)
+	vacuum.air.temperature = 800
+	var/turf/open/plain = floor_at(200, 160)
+	plain.air = new /datum/gas_mixture(100)
+	var/turf/open/space/space = floor_at(205, 160)
+	space = space.ChangeTurf(/turf/open/space)
+	var/turf/open/solid = floor_at(210, 160)
+	solid = solid.ChangeTurf(/turf/open/indestructible/airblock)
+	var/list/targets = list(hot, vacuum, plain, space, solid)
+	var/list/expected = list()
+	for(var/turf/open/target as anything in targets)
+		target.banda_air_requested = FALSE
+		if(target.air)
+			expected += list(list(target.air.return_pressure(), target.air.temperature, target.air.volume, target.air.heat_capacity()))
+		else
+			expected += list(list())
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(targets)
+	phase.native(30)
+	phase.initializing = FALSE
+	checks["property_capability"] = phase.properties_ready
+	var/list/ids = list()
+	for(var/turf/target as anything in targets)
+		ids += target.banda_atmos_id
+	var/list/output = list()
+	phase.native(51, ids, output)
+	checks["property_packet_has_ordered_statuses"] = output[1] == 1 && output[3] == 5 && output[4] == 1 && output[28] == 2
+	var/matches = TRUE
+	var/no_caches = TRUE
+	for(var/index in 1 to length(targets))
+		var/turf/target = targets[index]
+		no_caches = no_caches && !target.banda_atmos_cell
+		var/list/wanted = expected[index]
+		for(var/field in 1 to length(wanted))
+			var/actual = output[3 + (index - 1) * 6 + 2 + field]
+			if(abs(actual - wanted[field]) > max(0.00002, abs(wanted[field]) * 0.00002))
+				matches = FALSE
+	checks["properties_match_dm_all_gases_vacuum_plain_space"] = matches
+	checks["properties_create_no_lazy_bindings"] = no_caches
+	var/list/reading = phase.read_air_temperature_and_gas(hot, /datum/gas/antinoblium)
+	checks["compact_gas_read_has_no_cache"] = reading?[1] == 333 && reading?[2] == gases.Find(/datum/gas/antinoblium) * 0.25 && !hot.banda_atmos_cell
+	var/list/schedule = list()
+	var/list/legacy_schedule = list()
+	phase.native(63, schedule)
+	phase.native(17, legacy_schedule)
+	checks["compact_schedule_preserves_input_order"] = length(legacy_schedule) > length(schedule) && json_encode(schedule) == json_encode(legacy_schedule.Copy(1, length(schedule) + 1))
+	hot.temperature = 444
+	hot.temperature_archived = 222
+	phase.mark_dirty(hot)
+	phase.flush_inputs()
+	var/list/terrain = list()
+	phase.native(12, hot.banda_atmos_id, terrain)
+	checks["compact_inputs_keep_direct_dm_terrain_writes"] = terrain[1] == 444 && terrain[2] == 222
+	var/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe/pump = new(hot)
+	var/obj/machinery/atmospherics/components/unary/vent_pump/banda_api_probe/other_pump = new(vacuum)
+	phase.invoke(CALLBACK(src, PROC_REF(property_callback), phase, pump, other_pump, hot, vacuum, checks))
+	qdel(other_pump)
+	checks["property_scope_cleared_after_callback"] = !length(phase.air_readings) && !phase.air_reading_packet && !phase.air_reading_ids
+	phase.invoke(CALLBACK(src, PROC_REF(property_held_callback), phase, pump, hot, checks))
+	pump.forceMove(vacuum)
+	var/caught = FALSE
+	try
+		phase.invoke(CALLBACK(src, PROC_REF(property_throw_callback), phase, pump))
+	catch(var/exception/error)
+		caught = error.name == "BANDA_ATMOS_EXPECTED_PROPERTY_ERROR"
+	checks["property_scope_cleared_after_error"] = caught && !length(phase.air_readings) && !phase.air_reading_packet && !phase.air_reading_ids
+	phase.invoke(CALLBACK(src, PROC_REF(property_rebind_callback), phase, pump, vacuum, checks))
+	checks["close_fixture_has_pending_rebind"] = vacuum.banda_atmos_cell.pending_rebind
+	var/datum/gas_mixture/held_replacement = vacuum.air
+	var/list/replacement_state = banda_atmos_full_packet(held_replacement)
+	qdel(pump)
+	qdel(phase)
+	checks["closing_pending_rebind_restores_held_mixture"] = vacuum.air == held_replacement && json_encode(banda_atmos_full_packet(vacuum.air)) == json_encode(replacement_state)
+	checks["closing_pending_rebind_detaches_native_owner"] = !vacuum.banda_atmos_cell && !vacuum.banda_atmos_id && !SSair.native_atmos
+	checks += visual_publication_checks()
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/property_callback(datum/banda_atmos_phase/world_adapter/phase, obj/machinery/pump, obj/machinery/other_pump, turf/open/target, turf/open/vacuum, list/checks)
+	phase.prefetch_air_readings(list(pump, other_pump, pump))
+	var/offset = phase.air_reading_offset(target)
+	var/other_offset = phase.air_reading_offset(vacuum)
+	checks["prefetch_deduplicates_same_turf"] = length(phase.air_readings) == 2 && !!offset
+	checks["prefetch_reads_second_row"] = other_offset > offset && vacuum.GetTemperature() == 800 && phase.air_reading_packet[other_offset + BANDA_ATMOS_PRESSURE] == 0 && !vacuum.banda_atmos_cell
+	checks["scalar_getters_use_prefetch"] = offset && target.GetTemperature() == 333 && abs(target.GetHeatCapacity() - phase.air_reading_packet[offset + BANDA_ATMOS_HEAT_CAPACITY]) < 0.001
+	checks["scalar_getters_do_not_create_full_mixtures"] = !target.banda_atmos_cell
+	var/datum/gas_mixture/replacement = new(CELL_VOLUME)
+	replacement.temperature = 444
+	replacement.set_gas(/datum/gas/nitrogen, 17)
+	phase.native(3, target.banda_atmos_id, 0, 1, banda_atmos_air_packet(replacement))
+	checks["native_write_invalidates_prefetched_reading"] = !phase.air_reading_offset(target)
+	phase.prefetch_air_readings(list(pump))
+	checks["repeat_prefetch_observes_native_write"] = target.GetTemperature() == 444 && !target.banda_atmos_cell
+	var/datum/gas_mixture/working = target.get_mutable_air()
+	working.temperature = 555
+	checks["mutable_alias_has_priority_over_prefetch"] = !phase.air_reading_offset(target) && target.GetTemperature() == 555
+	checks["compact_gas_read_defers_to_mutable_alias"] = isnull(phase.read_air_temperature_and_gas(target, /datum/gas/antinoblium))
+
+/datum/controller/subsystem/atmos_phase_test/proc/property_held_callback(datum/banda_atmos_phase/world_adapter/phase, obj/machinery/pump, turf/open/target, list/checks)
+	phase.prefetch_air_readings(list(pump))
+	checks["held_full_mixture_uses_legacy_reading"] = !phase.air_reading_offset(target) && target.GetTemperature() == 555
+
+/datum/controller/subsystem/atmos_phase_test/proc/property_throw_callback(datum/banda_atmos_phase/world_adapter/phase, obj/machinery/pump)
+	phase.prefetch_air_readings(list(pump))
+	throw EXCEPTION("BANDA_ATMOS_EXPECTED_PROPERTY_ERROR")
+
+/datum/controller/subsystem/atmos_phase_test/proc/property_rebind_callback(datum/banda_atmos_phase/world_adapter/phase, obj/machinery/pump, turf/open/target, list/checks)
+	phase.prefetch_air_readings(list(pump))
+	checks["cold_replacement_starts_with_reading"] = !!phase.air_reading_offset(target)
+	target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+	checks["floor_replacement_invalidates_reading"] = !phase.air_reading_offset(target)
+
+/turf/open/floor/iron/banda_visual_state_probe
+	var/overlay_applications = 0
+
+/turf/open/floor/iron/banda_visual_state_probe/apply_gas_overlays(list/new_overlay_types)
+	overlay_applications++
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/visual_publication_checks()
+	var/list/checks = list()
+	var/turf/open/floor/base = floor_at(215, 165)
+	var/turf/open/floor/iron/banda_visual_state_probe/target = base.ChangeTurf(/turf/open/floor/iron/banda_visual_state_probe)
+	var/turf/open/other = floor_at(215, 165, 2)
+	target.banda_air_requested = FALSE
+	other.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target, other))
+	phase.native(30)
+	phase.initializing = FALSE
+	checks["visual_publication_capability"] = phase.visual_publication_ready
+	var/list/gases = banda_atmos_gases()
+	var/datum/gas_mixture/turf/air = new(CELL_VOLUME)
+	air.temperature = 333
+	var/matches = TRUE
+	var/refresh_matches = TRUE
+	var/skips_unchanged = TRUE
+	var/smaller = TRUE
+	for(var/test_amount in list(0, 0.25, 0.250001, 0.5, 0.500001, 7.5, 7.500001, 15, 15.000001, 20, 20.000001, 100))
+		air.moles.Cut()
+		// The overlay order follows mixture insertion, not the catalog's gas order.
+		for(var/index = length(gases); index >= 1; index--)
+			air.moles[gases[index]] = test_amount
+		var/list/expected
+		GAS_OVERLAYS(air.moles, expected, target)
+		phase.native(3, target.banda_atmos_id, 0, 1, banda_atmos_air_packet(air))
+		phase.native(3, other.banda_atmos_id, 0, 1, banda_atmos_air_packet(air))
+		target.update_visuals()
+		refresh_matches = refresh_matches && same_visual_refs(expected, target.atmos_overlay_types)
+		GAS_OVERLAYS(air.moles, expected, other)
+		other.update_visuals()
+		refresh_matches = refresh_matches && same_visual_refs(expected, other.atmos_overlay_types)
+		target.update_visuals(list())
+		other.update_visuals(list())
+		phase.project_changes()
+		GAS_OVERLAYS(air.moles, expected, target)
+		matches = matches && same_visual_refs(expected, target.atmos_overlay_types)
+		GAS_OVERLAYS(air.moles, expected, other)
+		matches = matches && same_visual_refs(expected, other.atmos_overlay_types)
+		var/list/compact = list()
+		var/list/legacy = list()
+		phase.native(53, list(target.banda_atmos_id, FALSE), compact)
+		phase.native(35, list(target.banda_atmos_id, FALSE), legacy)
+		smaller = smaller && length(compact) < length(legacy) && compact[7] == 1 && compact[10] == 0 && compact[11] == 0
+		var/applications = target.overlay_applications
+		banda_atmos_update_visual_states(target, compact, 8)
+		skips_unchanged = skips_unchanged && applications == target.overlay_applications
+	checks["visual_states_match_dm_thresholds_order_and_planes"] = matches
+	checks["visual_publications_have_no_full_gas_payload"] = smaller
+	checks["unchanged_visual_states_skip_image_updates"] = skips_unchanged
+	checks["visual_publication_does_not_create_full_caches"] = !target.banda_atmos_cell.cached_air && !other.banda_atmos_cell.cached_air
+	checks["icon_refresh_reads_native_overlays_before_publication"] = refresh_matches && phase.visual_refreshes == 24
+	checks["icon_refresh_keeps_cold_tiles_without_a_dm_mixture"] = !target.banda_atmos_cell.cached_air && !other.banda_atmos_cell.cached_air
+	var/list/explicit_moles = list(/datum/gas/freon = 40)
+	var/list/expected_explicit
+	GAS_OVERLAYS(explicit_moles, expected_explicit, target)
+	target.update_visuals(explicit_moles)
+	checks["icon_refresh_keeps_explicit_moles_authoritative"] = same_visual_refs(expected_explicit, target.atmos_overlay_types) && phase.visual_refreshes == 24
+	air.moles.Cut()
+	phase.native(3, target.banda_atmos_id, 0, 1, banda_atmos_air_packet(air))
+	target.update_visuals()
+	checks["icon_refresh_removes_the_last_overlay_without_borrowing"] = !length(target.atmos_overlay_types) && phase.visual_refreshes == 25 && !target.banda_atmos_cell.cached_air
+	// Start with a stale visible overlay to exercise clearing from an empty publication row.
+	target.update_visuals(explicit_moles)
+	var/list/empty_presentation = list()
+	phase.native(65, list(target.banda_atmos_id, FALSE), empty_presentation)
+	checks["empty_presentation_has_only_service_fields"] = empty_presentation[7] == 1 && empty_presentation[8] == 0 && empty_presentation[9] == 12
+	phase.project_changes()
+	checks["last_visible_gas_is_removed"] = !length(target.atmos_overlay_types)
+	var/datum/gas_mixture/held = target.get_readonly_air()
+	var/list/held_moles = held.moles
+	air.moles[/datum/gas/plasma] = 1
+	air.temperature = 444
+	phase.native(3, target.banda_atmos_id, 0, 1, banda_atmos_air_packet(air))
+	var/list/mixed = list()
+	phase.native(53, list(other.banda_atmos_id, FALSE, target.banda_atmos_id, TRUE), mixed)
+	var/second_row = 10 + mixed[8] + mixed[9 + mixed[8]]
+	checks["mixed_publication_distinguishes_full_and_visual_records"] = mixed[7] == 1 && mixed[second_row + 6] == 0
+	phase.project_changes()
+	checks["visual_protocol_keeps_held_full_cache_fresh"] = held == target.get_readonly_air() && held.moles == held_moles && held.temperature == 444 && held.moles[/datum/gas/plasma] == 1
+	checks["icon_refresh_uses_unpublished_working_dm_air"] = phase.invoke(CALLBACK(src, PROC_REF(visual_working_air), target)) && phase.visual_refreshes == 25
+	qdel(phase)
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/visual_working_air(turf/open/target)
+	var/datum/gas_mixture/working = target.get_mutable_air()
+	working.moles.Cut()
+	working.moles[/datum/gas/freon] = 40
+	var/list/expected
+	GAS_OVERLAYS(working.moles, expected, target)
+	target.update_visuals()
+	return same_visual_refs(expected, target.atmos_overlay_types)
+
+/datum/controller/subsystem/atmos_phase_test/proc/same_visual_refs(list/expected, list/actual)
+	if(length(expected) != length(actual))
+		return FALSE
+	for(var/index in 1 to length(expected))
+		if(expected[index] != actual[index])
+			return FALSE
+	return TRUE

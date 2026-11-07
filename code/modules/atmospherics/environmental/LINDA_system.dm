@@ -219,6 +219,8 @@
 	// BANDASTATION ADDITION START - All gas-producing items use the same safe native API.
 	if(SSair.native_atmos && banda_atmos_id && !SSair.native_atmos.in_safe_callback)
 		return SSair.native_atmos.invoke(CALLBACK(src, TYPE_PROC_REF(/atom, atmos_spawn_air), text))
+	if(SSair.native_atmos?.try_spawn_air_operation(src, text))
+		return
 	var/datum/gas_mixture/working_air = get_mutable_air()
 	if(!working_air)
 		return

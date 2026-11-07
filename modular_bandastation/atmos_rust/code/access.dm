@@ -45,13 +45,17 @@
 	enter_safe_phase()
 	// Synchronous callers need no queued wrapper datum or boxed return value.
 	var/previous_safe = in_safe_callback
+	var/previous_vent_scope = vent_transfer_scope
 	in_safe_callback = TRUE
+	vent_transfer_scope = commit_on_error && !previous_safe
 	try
 		. = operation.Invoke()
 	catch(var/exception/error)
 		// Equipment keeps Banda's completed and partial writes even if a later machine throws.
+		vent_transfer_scope = previous_vent_scope
 		finish_callback(previous_safe, !commit_on_error)
 		throw error
+	vent_transfer_scope = previous_vent_scope
 	finish_callback(previous_safe)
 
 /datum/banda_atmos_cell
@@ -61,13 +65,18 @@
 	var/cache_current = FALSE
 	var/cache_cycle = -1
 	/// Baseline for direct field/list writes, which bypass gas mutator hooks.
-	var/list/committed_air
+	var/committed_air
+	/// Only a decoded native packet establishes the order and contents omitted by thermal publications.
+	var/committed_from_native = FALSE
 
 /// Cache objects are allocated on access, never for every registered coordinate.
 /datum/banda_atmos_phase/world_adapter/proc/read_air(turf/open/target)
 	var/datum/banda_atmos_cell/cell = ensure_binding(target)
 	if(cell.pending_rebind)
 		return cell.read_pending_air()
+	materialize_operation_cell(cell)
+	if(scrubber_tile_pending && !cell.cached_air)
+		materialize_scrubber_tile(cell)
 	// Ordinary gas is refreshed by publication; space also has a globally shared last_share.
 	if(!cell.cache_current || cell.cache_cycle < 0 || (cell.native_air_kind == 3 && cell.cache_cycle != air_cycle))
 		cell.refresh_cache()
@@ -90,15 +99,64 @@
 		mixture.banda_cell = src
 		mixture.banda_version = binding_version
 	cache_current = TRUE
-	remember_air(cached_air)
+	remember_air(cached_air, TRUE)
 	if(owner.world_owned)
 		var/datum/banda_atmos_phase/world_adapter/phase = owner
 		cache_cycle = phase.air_cycle
 	if(readonly_air)
 		copy_readonly(cached_air)
 
-/datum/banda_atmos_cell/proc/remember_air(datum/gas_mixture/air)
-	committed_air = list(air.temperature, air.temperature_archived, air.volume, air.moles.Copy(), air.moles_archive.Copy(), air.reaction_results.Copy())
+/datum/banda_atmos_cell/proc/remember_air(datum/gas_mixture/air, from_native = FALSE)
+	if(owner.world_owned && owner.native_baselines_ready)
+		owner.native(78, native_id, air)
+		committed_air = TRUE
+	else
+		committed_air = list(air.temperature, air.temperature_archived, air.volume, air.moles.Copy(), air.moles_archive.Copy(), air.reaction_results.Copy())
+	committed_from_native = from_native
+
+/datum/banda_atmos_cell/proc/forget_committed_air()
+	if(committed_air && owner?.native_id && owner.native_baselines_ready)
+		owner.native(80, native_id)
+	committed_air = null
+
+/// Only the legacy packet path needs to materialize a baseline in DM.
+/datum/banda_atmos_cell/proc/committed_snapshot()
+	if(owner.world_owned && owner.native_baselines_ready)
+		var/list/output = list()
+		owner.native(81, native_id, output)
+		return output
+	return committed_air
+
+/datum/banda_atmos_cell/proc/refresh_thermal_cache(temperature, list/metadata, metadata_offset, has_archive, list/baseline)
+	// Restore any direct edits through held aliases exactly as the full packet would.
+	var/list/moles = baseline[4]
+	if(!banda_atmos_same_gases(cached_air.moles, moles))
+		cached_air.moles.Cut()
+		for(var/gas, amount in moles)
+			cached_air.moles[gas] = amount
+	var/list/results = baseline[6]
+	cached_air.reaction_results = results.Copy()
+	cached_air.temperature = temperature
+	cached_air.volume = baseline[3]
+	var/list/archived_moles = baseline[5]
+	if(has_archive)
+		cached_air.moles_archive = list()
+		banda_atmos_decode_archive(cached_air, metadata, metadata_offset, banda_atmos_gases())
+		archived_moles = cached_air.moles_archive.Copy()
+	else
+		cached_air.temperature_archived = baseline[2]
+		cached_air.moles_archive = archived_moles.Copy()
+		cached_air.last_share = metadata[metadata_offset + 7]
+	if(owner.world_owned && owner.native_baselines_ready)
+		remember_air(cached_air, TRUE)
+	else
+		committed_air = list(temperature, cached_air.temperature_archived, cached_air.volume, moles, archived_moles, results)
+		committed_from_native = TRUE
+	cache_current = TRUE
+	var/datum/banda_atmos_phase/world_adapter/phase = owner
+	cache_cycle = phase.air_cycle
+	if(readonly_air)
+		copy_readonly(cached_air)
 
 /// Held mutable aliases may have changed; never let a metadata-only packet hide those writes.
 /datum/banda_atmos_cell/proc/can_reuse_air_cache()
@@ -118,6 +176,8 @@
 		copy_readonly(cached_air)
 
 /datum/banda_atmos_cell/proc/matches_committed_air(datum/gas_mixture/air)
+	if(owner.world_owned && owner.native_baselines_ready)
+		return committed_air && owner.native(79, native_id, air) == 2
 	return committed_air && air.temperature && air.temperature == committed_air[1] && air.temperature_archived && air.temperature_archived == committed_air[2] && air.volume == committed_air[3] && \
 		banda_atmos_same_gases(air.moles, committed_air[4]) && banda_atmos_same_gases(air.moles_archive, committed_air[5]) && banda_atmos_same_gases(air.reaction_results, committed_air[6])
 
@@ -202,6 +262,30 @@
 	if(visible_count != length(current))
 		target.update_visuals(banda_atmos_packet_moles(input, input_offset))
 
+/// Compare actual image refs so plane changes remain visible even when gas/state IDs match.
+/proc/banda_atmos_update_visual_states(turf/open/target, list/input, input_offset = 0)
+	var/list/gases = banda_atmos_gases()
+	var/list/overlays = GAS_META[META_GAS_OVERLAY]
+	var/list/current = target.atmos_overlay_types
+	var/count = input[input_offset + 4]
+	var/plane_offset = GET_TURF_PLANE_OFFSET(target) + 1
+	var/changed = count != length(current)
+	var/index = input_offset + 5
+	for(var/entry in 1 to count)
+		var/list/states = overlays[gases[input[index] + 1]][plane_offset]
+		if(entry > length(current) || current[entry] != states[input[index + 1]])
+			changed = TRUE
+		index += 2
+	if(!changed)
+		return
+	var/list/new_overlays = list()
+	index = input_offset + 5
+	for(var/entry in 1 to count)
+		var/list/states = overlays[gases[input[index] + 1]][plane_offset]
+		new_overlays += states[input[index + 1]]
+		index += 2
+	target.apply_gas_overlays(new_overlays)
+
 /turf/proc/atmos_electrolyze(working_power, list/electrolyzer_args = list())
 	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
 		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(atmos_electrolyze), working_power, electrolyzer_args))
@@ -217,6 +301,8 @@
 	if(!phase.in_safe_callback)
 		return phase.invoke(CALLBACK(src, PROC_REF(replace_turf_air), replacement))
 	var/datum/banda_atmos_cell/cell = phase.ensure_binding(src)
+	if(phase.scrubber_tile_pending && !cell.cached_air)
+		phase.materialize_scrubber_tile(cell)
 	if(istype(cell.cached_air, /datum/gas_mixture/turf))
 		var/datum/gas_mixture/turf/old_air = cell.cached_air
 		old_air.banda_cell = null

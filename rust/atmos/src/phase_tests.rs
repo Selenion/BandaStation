@@ -14,23 +14,125 @@ fn publication_flags_distinguish_service_updates_and_merge_pending_full_changes(
     let completed = store.begin().unwrap().calculate();
     store.finish(completed).unwrap();
     store.take_commands().unwrap();
-    assert_eq!(store.take_publication_changes().unwrap(), [(id, true)]);
-    for expected in [false, true] {
-        store.write(Write::Control(id, 0)).unwrap();
-        if !expected {
-            store.take_changes().unwrap();
-        }
-        let completed = store.begin().unwrap().calculate();
-        store.finish(completed).unwrap();
-        store.take_commands().unwrap();
-        assert_eq!(store.take_publication_changes().unwrap(), [(id, expected)]);
-        assert!(store.take_publication_changes().unwrap().is_empty());
+    assert_eq!(
+        store.take_publication_changes().unwrap(),
+        [(id, Publication::Thermal)]
+    );
+    for mode in 0..=5 {
+        store.write(Write::Control(id, mode)).unwrap();
+        assert_eq!(
+            store.take_publication_changes().unwrap(),
+            [(id, Publication::Service)]
+        );
     }
+    let mut terrain = store.snapshot().schedule.tiles[&id].terrain.clone();
+    terrain.temperature = 345.0;
+    for write in [
+        Write::Terrain(id, terrain),
+        Write::ArchiveMetadata(id, 3, 340.0),
+        Write::Topology(id, vec![], [None; 4]),
+        Write::HotspotState(id, None),
+    ] {
+        store.write(write).unwrap();
+        assert_eq!(
+            store.take_publication_changes().unwrap(),
+            [(id, Publication::Service)]
+        );
+    }
+    let snapshot = store.snapshot();
+    assert_eq!(snapshot.schedule.tiles[&id].archived_cycle, 3);
+    assert_eq!(snapshot.schedule.tiles[&id].terrain.archived, 340.0);
+    assert_eq!(snapshot.cells[&id].air.temperature, T20C);
+    drop(snapshot);
     let mut air = store.snapshot().cells[&id].air.clone();
     air.results[0] = Some(0.0);
     let archive = store.snapshot().schedule.tiles[&id].archived.clone();
     store.write(Write::Commit(id, air, archive, false)).unwrap();
-    assert_eq!(store.take_publication_changes().unwrap(), [(id, true)]);
+    store.write(Write::Control(id, 0)).unwrap();
+    assert_eq!(
+        store.take_publication_changes().unwrap(),
+        [(id, Publication::Full)]
+    );
+    assert!(store.take_publication_changes().unwrap().is_empty());
+}
+
+#[test]
+fn thermal_updates_require_identical_live_gas_keys_bits_volume_and_results() {
+    let mut store = Store::default();
+    let mut air = Mixture::new(T20C, CELL_VOLUME, true);
+    air.set(NITROGEN, 100.0);
+    air.set(OXYGEN, 40.0);
+    air.results[0] = Some(1.0);
+    let tile = Tile::new([1, 1, 1], &air, false);
+    let id = store
+        .register(Cell::new(air, Context::default()), tile)
+        .unwrap();
+    let before = store.snapshot();
+    let mut next = (*before).clone();
+    next.cells.get_mut(&id).unwrap().air.temperature += 1.0;
+    let publication = |frame: &Frame| frame.changed_cells(&before, [id].into_iter())[&id];
+    assert_eq!(publication(&next), Publication::Temperature);
+    next.schedule
+        .tiles
+        .get_mut(&id)
+        .unwrap()
+        .archived
+        .set(NITROGEN, 90.0);
+    let thermal = next.clone();
+    assert_eq!(publication(&thermal), Publication::Thermal);
+
+    for mutate in [
+        (|air: &mut Mixture| air.order.swap(0, 1)) as fn(&mut Mixture),
+        |air| air.set(OXYGEN, -0.0),
+        |air| air.volume += 1.0,
+        |air| air.turf_heat_capacity = false,
+        |air| air.results[0] = None,
+        |air| air.results[0] = Some(-0.0),
+    ] {
+        let mut frame = thermal.clone();
+        mutate(&mut frame.cells.get_mut(&id).unwrap().air);
+        assert_eq!(publication(&frame), Publication::Full);
+    }
+    // Even identical zeros can be rewritten to the opposite sign during projection.
+    let mut air = thermal.cells[&id].air.clone();
+    air.results[0] = Some(0.0);
+    assert!(!same_live_air(&air, &air));
+}
+
+#[test]
+fn queued_control_keeps_gas_publication_on_completion_and_abort() {
+    for finish in [true, false] {
+        let mut store = Store::default();
+        let air = Mixture::new(T20C, CELL_VOLUME, true);
+        let ids = [1, 2].map(|x| {
+            let mut tile = Tile::new([x, 1, 1], &air, false);
+            tile.excited = false;
+            store
+                .register(Cell::new(air.clone(), Context::default()), tile)
+                .unwrap()
+        });
+        store.discard_changes().unwrap();
+        let job = store.begin().unwrap();
+        let mut added = Mixture::new(T20C, CELL_VOLUME, false);
+        added.set(NITROGEN, 5.0);
+        store.write(Write::Release(ids[0], added)).unwrap();
+        for id in ids {
+            store.write(Write::Control(id, 0)).unwrap();
+        }
+        if finish {
+            store.finish(job.calculate()).unwrap();
+        } else {
+            store.abort();
+        }
+        assert_eq!(
+            store.take_publication_changes().unwrap(),
+            [(ids[0], Publication::Full), (ids[1], Publication::Service)]
+        );
+        let snapshot = store.snapshot();
+        assert_eq!(snapshot.schedule.active, ids);
+        assert_eq!(snapshot.cells[&ids[0]].air.moles[NITROGEN], 5.0);
+        assert!(snapshot.cells[&ids[1]].air.keys().is_empty());
+    }
 }
 
 #[test]
@@ -61,6 +163,90 @@ fn staged_worker_keeps_old_snapshot_until_safe_publication_and_merges_external_g
     assert_eq!(store.snapshot().cells[&id].air.moles[OXYGEN], 3.0);
     store.publish_ready(42).unwrap();
     assert_eq!(store.snapshot().cells[&id].air.moles[OXYGEN], 3.0);
+}
+
+#[test]
+fn next_calculation_must_include_previous_effect_feedback_before_archiving() {
+    fn simulate(early: bool) -> (f32, f32, f32) {
+        let mut store = Store::default();
+        for x in 1..=2 {
+            let mut air = Mixture::new(T20C, CELL_VOLUME, true);
+            air.set(NITROGEN, 100.0);
+            let tile = Tile::new([x, 1, 1], &air, false);
+            store
+                .register(Cell::new(air, Context::default()), tile)
+                .unwrap();
+        }
+        store.write(Write::Neighbors(1, vec![2])).unwrap();
+        store.write(Write::Neighbors(2, vec![1])).unwrap();
+        store.discard_changes().unwrap();
+        let mut feedback = Mixture::new(T20C, CELL_VOLUME, false);
+        feedback.set(NITROGEN, 100.0);
+        // An effect of the previous frame must join this calculation, not its output journal.
+        let job = if early {
+            let job = store.begin_at(42).unwrap();
+            store.write(Write::Release(1, feedback)).unwrap();
+            job
+        } else {
+            store.write(Write::Release(1, feedback)).unwrap();
+            store.begin_at(42).unwrap()
+        };
+        store.finish(job.calculate()).unwrap();
+        let frame = store.snapshot();
+        (
+            frame.schedule.tiles[&1].archived.moles[NITROGEN],
+            frame.cells[&1].air.moles[NITROGEN],
+            frame.cells[&2].air.moles[NITROGEN],
+        )
+    }
+    let ordered = simulate(false);
+    let early = simulate(true);
+    eprintln!("effect feedback: ordered={ordered:?}, early={early:?}");
+    assert_eq!(ordered.0, 200.0);
+    assert_eq!(early, (100.0, 200.0, 100.0));
+    assert!(ordered.2 > early.2);
+    assert_ne!(ordered.1.to_bits(), early.1.to_bits());
+}
+
+#[test]
+fn late_full_mixture_commit_overwrites_transport_instead_of_replaying_feedback() {
+    let mut store = Store::default();
+    for x in 1..=2 {
+        let mut air = Mixture::new(T20C, CELL_VOLUME, true);
+        if x == 1 {
+            air.set(NITROGEN, 100.0);
+        }
+        let tile = Tile::new([x, 1, 1], &air, false);
+        store
+            .register(Cell::new(air, Context::default()), tile)
+            .unwrap();
+    }
+    store.write(Write::Neighbors(1, vec![2])).unwrap();
+    store.write(Write::Neighbors(2, vec![1])).unwrap();
+    store.discard_changes().unwrap();
+    let (mut stale_air, archive) = {
+        let frame = store.snapshot();
+        (
+            frame.cells[&1].air.clone(),
+            frame.schedule.tiles[&1].archived.clone(),
+        )
+    };
+    let job = store.begin_at(42).unwrap();
+    // Mirrors commit_air after an effect edits a mixture borrowed from the previous frame.
+    stale_air.set(NITROGEN, 110.0);
+    store
+        .write(Write::Commit(1, stale_air, archive, false))
+        .unwrap();
+    store.finish(job.calculate()).unwrap();
+    let frame = store.snapshot();
+    let first = frame.cells[&1].air.moles[NITROGEN];
+    let second = frame.cells[&2].air.moles[NITROGEN];
+    eprintln!(
+        "late absolute feedback: first={first}, second={second}, total={}",
+        first + second
+    );
+    assert_eq!((first, second), (110.0, 50.0));
+    assert_eq!(first + second, 160.0);
 }
 
 #[test]
@@ -416,6 +602,48 @@ fn unchanged_input_writes_do_not_project_air_but_still_update_worker_context() {
     // A rejected receiver volume still needs publication to repair a caller's cached value.
     assert_eq!(store.take_changes().unwrap(), [1]);
     assert_eq!(store.snapshot().cells[&1].air.volume, CELL_VOLUME);
+}
+
+#[test]
+fn compact_environment_skips_unchanged_writes_and_synchronizes_changes() {
+    let mut store = Store::default();
+    let air = Mixture::new(293.15, CELL_VOLUME, true);
+    let id = store
+        .register(
+            Cell::new(air.clone(), Context::default()),
+            Tile::new([1, 1, 1], &air, false),
+        )
+        .unwrap();
+    assert_full_scan(&mut store);
+    store.take_changes().unwrap();
+    let snapshot = store.snapshot();
+    let mut terrain = snapshot.schedule.tiles[&id].terrain.clone();
+    store
+        .write_environment(id, Context::default(), true, false, terrain.clone())
+        .unwrap();
+    assert!(Arc::ptr_eq(&snapshot, &store.snapshot()));
+    assert!(store.take_changes().unwrap().is_empty());
+
+    terrain.temperature = 440.0;
+    terrain.archived = -0.0;
+    let context = Context {
+        foam: true,
+        ..Context::default()
+    };
+    store
+        .write_environment(id, context, false, false, terrain)
+        .unwrap();
+    assert_eq!(store.take_changes().unwrap(), [id]);
+    assert_full_scan(&mut store);
+    let current = store.snapshot();
+    assert!(current.cells[&id].context.foam);
+    assert!(!current.cells[&id].freeze_leaves_permafrost);
+    assert_eq!(current.schedule.tiles[&id].terrain.temperature, 440.0);
+    assert_eq!(
+        current.schedule.tiles[&id].terrain.archived.to_bits(),
+        (-0.0_f32).to_bits()
+    );
+    assert_ne!(snapshot.schedule.tiles[&id].terrain.temperature, 440.0);
 }
 
 #[test]

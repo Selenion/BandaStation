@@ -1,0 +1,1222 @@
+{
+  "date": "2026-11-07",
+  "comparison": "Current Rust AVX2 worker before/after service-publication changes; both include the prior empty-temperature-exposure optimization. This is not an original-DM comparison.",
+  "protocol": {
+    "map": "MetaStation",
+    "byond": "516.1688",
+    "seed": "29051994",
+    "warmup_game_seconds": 30,
+    "sample_game_seconds": 60,
+    "clients": 0,
+    "captures_per_variant_per_scenario": 1,
+    "overlapping_sample_windows": false,
+    "dll_sha256": {
+      "bandastation_atmos.dll": "ebc2202ca5e6b26602890790d410096a2a74f5666e48e4da270a7fec27b5ef0b",
+      "dreamluau.dll": "8ddbe0029144f1d372b840b1a44b06318d2459697276b9c8dc48dabb9d914bfa",
+      "librust_utils.dll": "a0b47c46a12407be962b0e612edc3ad7d52b45cd1d2b43828a39e11ded075373",
+      "rust_g.dll": "51130b5597a992b01c06fa620ec3b45862247f7aa8d5e85285f271d15ac83b24"
+    },
+    "harness_sha256": "1c4c4fa1ce0d04b70d1202245a70b7dcef6b1e930bab7a934c8d3fa8b5ee8acc",
+    "peak_td_method": "Maximum rolling 10-game-second window from MC game and monotonic wall timestamps; linear interpolation between samples.",
+    "cpu_method": "Only DreamDaemon PID; Windows CPU-time deltas interpolated at sample UTC edges. Main thread measured separately. Worker task CPU measured in the common DLL. Total includes other threads; total/calculations is not isolated solver CPU.",
+    "memory_method": "Private bytes and working set of DreamDaemon PID, polled about every 0.26 seconds by this frozen local fixture. Peaks inside the measured window.",
+    "inputs": "Identical map, seed, incident inputs, seeded turfs, BYOND, DLL hashes and harness hash asserted by service.py collect."
+  },
+  "compatibility": {
+    "report": "tmp/atmos-phase/service-publication-02/report.json",
+    "report_sha256": "eaf9404b8de9bc346d159d321138347bee73720c9d76042cd7f31be9727b586b",
+    "new_checks": {
+      "service_publication_updates_changed_dm_fields": 1,
+      "duplicate_cold_service_omits_dm_projection": 1,
+      "publication_reuses_existing_binding": 1,
+      "service_publication_repairs_direct_terrain_edits": 1,
+      "service_publication_clears_stale_overlays": 1,
+      "service_publication_reconciles_pending_hotspots": 1,
+      "visible_cold_publication_omits_absent_hotspot_work": 1,
+      "service_publication_preserves_held_snapshot_contract": 1,
+      "service_publication_repairs_held_mixture_edits": 1,
+      "service_publication_keeps_archive_metadata_current": 1,
+      "service_publication_distinguishes_null_and_zero": 1
+    },
+    "all_exchange_checks": 61,
+    "failures": []
+  },
+  "runs": [
+    {
+      "scenario": "atmos-fire",
+      "version": "before",
+      "folder": "tmp/profiling/service-publication-atmos-fire-before-1",
+      "binary_sha256": "d751cdae6a0f1559804b8388d3e98e0b65111d38efeff9f96a387ef1b01cc33f",
+      "runtime": {
+        "status": "clean",
+        "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+        "known_count": 0,
+        "unexpected_count": 0,
+        "known": [],
+        "unexpected": []
+      },
+      "wall_seconds": 60.4592,
+      "calculations": 119,
+      "peak_td_percent": 4.058279999999992,
+      "mc_interval_ms": {
+        "count": 1199,
+        "p50": 50.0,
+        "p95": 60.5687,
+        "p99": 101.05087999999999,
+        "max": 134.966
+      },
+      "process": {
+        "os_window_seconds": 60.45922303199768,
+        "cpu_seconds": 19.86623152354224,
+        "cpu_one_core_percent": 32.85889319654034,
+        "cpu_ms_per_calculation": 166.94312204657345,
+        "main_cpu_seconds": 19.17873152354224,
+        "main_cpu_one_core_percent": 31.721763135116724,
+        "main_cpu_ms_per_calculation": 161.16581112220368,
+        "worker_cpu_seconds": 0.640625,
+        "worker_one_core_percent": 1.0595988699817398,
+        "worker_jobs": 119,
+        "worker_mcycles": 1185.993,
+        "private_peak_mib": 1857.15625,
+        "working_set_peak_mib": 1820.51171875,
+        "lifetime_peak_commit_mib": 2122.2265625
+      },
+      "skipped_service_rows": 0,
+      "publication_procs": [
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/ensure_binding",
+          "self": 0.444,
+          "total": 0.482,
+          "real": 0.564,
+          "over": 0.114,
+          "calls": 286626
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.606,
+          "total": 3.684,
+          "real": 3.719,
+          "over": 0.028,
+          "calls": 833
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_air",
+          "self": 0.699,
+          "total": 2.692,
+          "real": 2.685,
+          "over": 0.034,
+          "calls": 96250
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_hotspot",
+          "self": 0.1,
+          "total": 0.711,
+          "real": 0.722,
+          "over": 0.01,
+          "calls": 51626
+        }
+      ]
+    },
+    {
+      "scenario": "atmos-fire",
+      "version": "after",
+      "folder": "tmp/profiling/service-publication-atmos-fire-after-1",
+      "binary_sha256": "4720f12b5d5af920fdcdcc50bdf05adfa726e6ec6bffd05dbb1d52640a4c1c5d",
+      "runtime": {
+        "status": "clean",
+        "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+        "known_count": 0,
+        "unexpected_count": 0,
+        "known": [],
+        "unexpected": []
+      },
+      "wall_seconds": 61.5773,
+      "calculations": 120,
+      "peak_td_percent": 7.0961300000000005,
+      "mc_interval_ms": {
+        "count": 1199,
+        "p50": 46.9,
+        "p95": 77.9,
+        "p99": 108.12119999999999,
+        "max": 156.009
+      },
+      "process": {
+        "os_window_seconds": 61.57733106613159,
+        "cpu_seconds": 21.153838678630393,
+        "cpu_one_core_percent": 34.35328929068396,
+        "cpu_ms_per_calculation": 176.28198898858662,
+        "main_cpu_seconds": 20.700713678630393,
+        "main_cpu_one_core_percent": 33.61742595891116,
+        "main_cpu_ms_per_calculation": 172.50594732191993,
+        "worker_cpu_seconds": 0.453125,
+        "worker_one_core_percent": 0.7358637030204312,
+        "worker_jobs": 120,
+        "worker_mcycles": 1194.746,
+        "private_peak_mib": 1848.13671875,
+        "working_set_peak_mib": 1817.06640625,
+        "lifetime_peak_commit_mib": 2127.86328125
+      },
+      "skipped_service_rows": 476,
+      "publication_procs": [
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/ensure_binding",
+          "self": 0.312,
+          "total": 0.359,
+          "real": 0.353,
+          "over": 0.183,
+          "calls": 193056
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.712,
+          "total": 3.557,
+          "real": 3.566,
+          "over": 0.03,
+          "calls": 840
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_air",
+          "self": 0.71,
+          "total": 2.594,
+          "real": 2.599,
+          "over": 0.045,
+          "calls": 96764
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_hotspot",
+          "self": 0.047,
+          "total": 0.624,
+          "real": 0.654,
+          "over": 0.008,
+          "calls": 6761
+        }
+      ]
+    },
+    {
+      "scenario": "pipe-plasma-flood",
+      "version": "before",
+      "folder": "tmp/profiling/service-publication-pipe-plasma-flood-before-1",
+      "binary_sha256": "d751cdae6a0f1559804b8388d3e98e0b65111d38efeff9f96a387ef1b01cc33f",
+      "runtime": {
+        "status": "clean",
+        "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+        "known_count": 0,
+        "unexpected_count": 0,
+        "known": [],
+        "unexpected": []
+      },
+      "wall_seconds": 86.1854,
+      "calculations": 107,
+      "peak_td_percent": 81.48325999999999,
+      "mc_interval_ms": {
+        "count": 1198,
+        "p50": 47.0,
+        "p95": 232.205,
+        "p99": 465.13000000000005,
+        "max": 567.1
+      },
+      "process": {
+        "os_window_seconds": 86.18546485900879,
+        "cpu_seconds": 47.99878072022307,
+        "cpu_one_core_percent": 55.6924311990943,
+        "cpu_ms_per_calculation": 448.5867357030193,
+        "main_cpu_seconds": 45.68628072022307,
+        "main_cpu_one_core_percent": 53.00926414327691,
+        "main_cpu_ms_per_calculation": 426.97458617030907,
+        "worker_cpu_seconds": 2.23438,
+        "worker_one_core_percent": 2.5925272726006954,
+        "worker_jobs": 107,
+        "worker_mcycles": 6140.742,
+        "private_peak_mib": 2194.07421875,
+        "working_set_peak_mib": 2172.03515625,
+        "lifetime_peak_commit_mib": 2197.74609375
+      },
+      "skipped_service_rows": 0,
+      "publication_procs": [
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/ensure_binding",
+          "self": 2.431,
+          "total": 2.682,
+          "real": 2.972,
+          "over": 2.106,
+          "calls": 1402570
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 3.991,
+          "total": 16.72,
+          "real": 16.719,
+          "over": 2.978,
+          "calls": 749
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_air",
+          "self": 4.598,
+          "total": 10.632,
+          "real": 10.718,
+          "over": 3.422,
+          "calls": 622094
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_hotspot",
+          "self": 0.885,
+          "total": 0.974,
+          "real": 1.082,
+          "over": 0.646,
+          "calls": 604101
+        }
+      ]
+    },
+    {
+      "scenario": "pipe-plasma-flood",
+      "version": "after",
+      "folder": "tmp/profiling/service-publication-pipe-plasma-flood-after-1",
+      "binary_sha256": "4720f12b5d5af920fdcdcc50bdf05adfa726e6ec6bffd05dbb1d52640a4c1c5d",
+      "runtime": {
+        "status": "clean",
+        "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+        "known_count": 0,
+        "unexpected_count": 0,
+        "known": [],
+        "unexpected": []
+      },
+      "wall_seconds": 84.2287,
+      "calculations": 108,
+      "peak_td_percent": 76.78576,
+      "mc_interval_ms": {
+        "count": 1198,
+        "p50": 47.0,
+        "p95": 217.315,
+        "p99": 445.033,
+        "max": 465.011
+      },
+      "process": {
+        "os_window_seconds": 84.22876000404358,
+        "cpu_seconds": 45.548858009270305,
+        "cpu_one_core_percent": 54.07755973978916,
+        "cpu_ms_per_calculation": 421.7486852710213,
+        "main_cpu_seconds": 43.423858009270305,
+        "main_cpu_one_core_percent": 51.554668508934064,
+        "main_cpu_ms_per_calculation": 402.0727593450954,
+        "worker_cpu_seconds": 2.078125,
+        "worker_one_core_percent": 2.4672409760568548,
+        "worker_jobs": 107,
+        "worker_mcycles": 6001.311,
+        "private_peak_mib": 2171.4296875,
+        "working_set_peak_mib": 2150.09765625,
+        "lifetime_peak_commit_mib": 2171.7890625
+      },
+      "skipped_service_rows": 427,
+      "publication_procs": [
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/ensure_binding",
+          "self": 1.379,
+          "total": 1.59,
+          "real": 1.854,
+          "over": 1.344,
+          "calls": 786327
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 4.176,
+          "total": 14.78,
+          "real": 14.771,
+          "over": 2.988,
+          "calls": 754
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_air",
+          "self": 4.245,
+          "total": 9.347,
+          "real": 9.481,
+          "over": 3.009,
+          "calls": 619704
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/sync_hotspot",
+          "self": 0.001,
+          "total": 0.02,
+          "real": 0.03,
+          "over": 0.001,
+          "calls": 113
+        }
+      ]
+    }
+  ],
+  "raw_results": "tmp/atmos-service-publication/results.json",
+  "limits": "One local capture per variant/scenario, no players. Background events and timing vary. RAM differences do not establish an allocation improvement. Publication packets still arrive; only redundant DM application and empty helper calls are skipped.",
+  "fire_followup": {
+    "date": "2026-11-07",
+    "purpose": "Recheck the initial fire CPU/TD increase and separate direct publication cost from other game work.",
+    "protocol": {
+      "new_normal_pairs": 2,
+      "original_pair_kept": true,
+      "new_capture_order": [
+        "after-2",
+        "before-2",
+        "before-3",
+        "after-3"
+      ],
+      "fixed_binaries": true,
+      "common_dll": true,
+      "overlapping_captures": false,
+      "production_code_changed": false,
+      "stage_tracing": "Separate before/after diagnostic captures, excluded from the ordinary CPU series. SS spans shorter than 1ms are omitted.",
+      "interpretation": "Inclusive proc totals are never added to child totals. Self groups are name-based classifications, not an exact partition of OS CPU. Different initial game state and background work remain confounders."
+    },
+    "pairs": [
+      {
+        "repetition": 1,
+        "total_cpu_change_percent": 6.481386032183756,
+        "main_cpu_change_percent": 7.935781118891483,
+        "publication_ms_per_calculation_change_percent": -4.251945349258057
+      },
+      {
+        "repetition": 2,
+        "total_cpu_change_percent": -0.0877844342446088,
+        "main_cpu_change_percent": -0.765674421938578,
+        "publication_ms_per_calculation_change_percent": -7.012515952802101
+      },
+      {
+        "repetition": 3,
+        "total_cpu_change_percent": -0.9731982413720863,
+        "main_cpu_change_percent": -0.30081143241266206,
+        "publication_ms_per_calculation_change_percent": -3.25203252032521
+      }
+    ],
+    "fresh_pairs_combined": {
+      "before": {
+        "cpu_seconds": 41.81640217002433,
+        "calculations": 238,
+        "cpu_ms_per_calculation": 175.69916878161484
+      },
+      "after": {
+        "cpu_seconds": 41.596558239396984,
+        "calculations": 237,
+        "cpu_ms_per_calculation": 175.51290396370035
+      }
+    },
+    "median_publication_ms_per_calculation": {
+      "before": 31.008403361344538,
+      "after": 29.641666666666666
+    },
+    "normal_runs": [
+      {
+        "repetition": 1,
+        "version": "before",
+        "folder": "tmp/profiling/service-publication-atmos-fire-before-1",
+        "binary_sha256": "d751cdae6a0f1559804b8388d3e98e0b65111d38efeff9f96a387ef1b01cc33f",
+        "wall_seconds": 60.4592,
+        "calculations": 119,
+        "peak_td_percent": 4.058279999999992,
+        "peak_td_game_offset_s": 0.05,
+        "cpu_seconds": 19.86623152354224,
+        "main_cpu_seconds": 19.17873152354224,
+        "worker_cpu_seconds": 0.640625,
+        "cpu_ms_per_calculation": 166.94312204657345,
+        "private_peak_mib": 1857.15625,
+        "cpu_endpoint_sample_bounds": {
+          "cpu_seconds": [
+            19.765625,
+            20.0
+          ],
+          "main_thread_cpu_seconds": [
+            19.078125,
+            19.3125
+          ]
+        },
+        "poll_spacing_median_s": 0.26310157775878906,
+        "runtime": {
+          "status": "clean",
+          "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+          "known_count": 0,
+          "unexpected_count": 0,
+          "known": [],
+          "unexpected": []
+        },
+        "runtime_timing": [],
+        "stage_inclusive_seconds": {
+          "publication": 3.684,
+          "apply_air": 2.692,
+          "hotspot": 0.711,
+          "binding": 0.482,
+          "effects": 2.655,
+          "machines": 3.846,
+          "pipes": 0.565,
+          "ai": 1.975,
+          "pathfinding": 1.338,
+          "mobs": 1.235,
+          "timers": 0.509,
+          "power_rebuild": 0
+        },
+        "affected_proc_self_seconds": {
+          "publication": 0.606,
+          "apply_air": 0.699,
+          "hotspot": 0.1,
+          "binding": 0.444
+        },
+        "selected_call_counts": {
+          "publication": 833,
+          "apply_air": 96250,
+          "hotspot": 51626,
+          "binding": 286626,
+          "mob_life": 13585,
+          "ai_selector": 39933,
+          "cable_connections": 0
+        },
+        "skipped_service_rows": 0
+      },
+      {
+        "repetition": 1,
+        "version": "after",
+        "folder": "tmp/profiling/service-publication-atmos-fire-after-1",
+        "binary_sha256": "4720f12b5d5af920fdcdcc50bdf05adfa726e6ec6bffd05dbb1d52640a4c1c5d",
+        "wall_seconds": 61.5773,
+        "calculations": 120,
+        "peak_td_percent": 7.0961300000000005,
+        "peak_td_game_offset_s": 0.05,
+        "cpu_seconds": 21.153838678630393,
+        "main_cpu_seconds": 20.700713678630393,
+        "worker_cpu_seconds": 0.453125,
+        "cpu_ms_per_calculation": 176.28198898858662,
+        "private_peak_mib": 1848.13671875,
+        "cpu_endpoint_sample_bounds": {
+          "cpu_seconds": [
+            21.109375,
+            21.390625
+          ],
+          "main_thread_cpu_seconds": [
+            20.65625,
+            20.9375
+          ]
+        },
+        "poll_spacing_median_s": 0.2629220485687256,
+        "runtime": {
+          "status": "clean",
+          "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+          "known_count": 0,
+          "unexpected_count": 0,
+          "known": [],
+          "unexpected": []
+        },
+        "runtime_timing": [],
+        "stage_inclusive_seconds": {
+          "publication": 3.557,
+          "apply_air": 2.594,
+          "hotspot": 0.624,
+          "binding": 0.359,
+          "effects": 2.669,
+          "machines": 3.79,
+          "pipes": 0.562,
+          "ai": 2.237,
+          "pathfinding": 1.084,
+          "mobs": 1.517,
+          "timers": 0.777,
+          "power_rebuild": 0.206
+        },
+        "affected_proc_self_seconds": {
+          "publication": 0.712,
+          "apply_air": 0.71,
+          "hotspot": 0.047,
+          "binding": 0.312
+        },
+        "selected_call_counts": {
+          "publication": 840,
+          "apply_air": 96764,
+          "hotspot": 6761,
+          "binding": 193056,
+          "mob_life": 14191,
+          "ai_selector": 39446,
+          "cable_connections": 9371
+        },
+        "skipped_service_rows": 476
+      },
+      {
+        "repetition": 2,
+        "version": "before",
+        "folder": "tmp/profiling/service-fire-repeat-before-2",
+        "binary_sha256": "d751cdae6a0f1559804b8388d3e98e0b65111d38efeff9f96a387ef1b01cc33f",
+        "wall_seconds": 60.2085,
+        "calculations": 119,
+        "peak_td_percent": 1.16695,
+        "peak_td_game_offset_s": 7.0,
+        "cpu_seconds": 21.132780897493603,
+        "main_cpu_seconds": 20.789030897493603,
+        "worker_cpu_seconds": 0.34375,
+        "cpu_ms_per_calculation": 177.5863940965849,
+        "private_peak_mib": 1864.7265625,
+        "cpu_endpoint_sample_bounds": {
+          "cpu_seconds": [
+            20.9375,
+            21.15625
+          ],
+          "main_thread_cpu_seconds": [
+            20.59375,
+            20.8125
+          ]
+        },
+        "poll_spacing_median_s": 0.2629408836364746,
+        "runtime": {
+          "status": "clean",
+          "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+          "known_count": 0,
+          "unexpected_count": 0,
+          "known": [],
+          "unexpected": []
+        },
+        "runtime_timing": [],
+        "stage_inclusive_seconds": {
+          "publication": 3.785,
+          "apply_air": 2.675,
+          "hotspot": 0.718,
+          "binding": 0.499,
+          "effects": 2.683,
+          "machines": 3.783,
+          "pipes": 0.567,
+          "ai": 2.056,
+          "pathfinding": 1.259,
+          "mobs": 1.022,
+          "timers": 0.71,
+          "power_rebuild": 0.209
+        },
+        "affected_proc_self_seconds": {
+          "publication": 0.695,
+          "apply_air": 0.667,
+          "hotspot": 0.098,
+          "binding": 0.438
+        },
+        "selected_call_counts": {
+          "publication": 833,
+          "apply_air": 99248,
+          "hotspot": 51912,
+          "binding": 291262,
+          "mob_life": 13427,
+          "ai_selector": 38278,
+          "cable_connections": 9284
+        },
+        "skipped_service_rows": 0
+      },
+      {
+        "repetition": 2,
+        "version": "after",
+        "folder": "tmp/profiling/service-fire-repeat-after-2-attempt-2",
+        "binary_sha256": "4720f12b5d5af920fdcdcc50bdf05adfa726e6ec6bffd05dbb1d52640a4c1c5d",
+        "wall_seconds": 60.4307,
+        "calculations": 118,
+        "peak_td_percent": 2.890349999999997,
+        "peak_td_game_offset_s": 0.0,
+        "cpu_seconds": 21.114229605342587,
+        "main_cpu_seconds": 20.629854605342587,
+        "worker_cpu_seconds": 0.421875,
+        "cpu_ms_per_calculation": 178.93414919781853,
+        "private_peak_mib": 2160.1953125,
+        "cpu_endpoint_sample_bounds": {
+          "cpu_seconds": [
+            21.0,
+            21.21875
+          ],
+          "main_thread_cpu_seconds": [
+            20.515625,
+            20.734375
+          ]
+        },
+        "poll_spacing_median_s": 0.26187241077423096,
+        "runtime": {
+          "status": "clean",
+          "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+          "known_count": 0,
+          "unexpected_count": 0,
+          "known": [],
+          "unexpected": []
+        },
+        "runtime_timing": [],
+        "stage_inclusive_seconds": {
+          "publication": 3.49,
+          "apply_air": 2.554,
+          "hotspot": 0.62,
+          "binding": 0.299,
+          "effects": 2.655,
+          "machines": 3.724,
+          "pipes": 0.551,
+          "ai": 2.569,
+          "pathfinding": 0.996,
+          "mobs": 0.991,
+          "timers": 0.857,
+          "power_rebuild": 0.066
+        },
+        "affected_proc_self_seconds": {
+          "publication": 0.709,
+          "apply_air": 0.649,
+          "hotspot": 0.025,
+          "binding": 0.26
+        },
+        "selected_call_counts": {
+          "publication": 826,
+          "apply_air": 97695,
+          "hotspot": 6656,
+          "binding": 193248,
+          "mob_life": 13788,
+          "ai_selector": 45805,
+          "cable_connections": 3125
+        },
+        "skipped_service_rows": 550
+      },
+      {
+        "repetition": 3,
+        "version": "before",
+        "folder": "tmp/profiling/service-fire-repeat-before-3",
+        "binary_sha256": "d751cdae6a0f1559804b8388d3e98e0b65111d38efeff9f96a387ef1b01cc33f",
+        "wall_seconds": 60.6759,
+        "calculations": 119,
+        "peak_td_percent": 3.517429999999999,
+        "peak_td_game_offset_s": 0.15,
+        "cpu_seconds": 20.68362127253073,
+        "main_cpu_seconds": 20.16799627253073,
+        "worker_cpu_seconds": 0.5,
+        "cpu_ms_per_calculation": 173.8119434666448,
+        "private_peak_mib": 1858.63671875,
+        "cpu_endpoint_sample_bounds": {
+          "cpu_seconds": [
+            20.59375,
+            20.890625
+          ],
+          "main_thread_cpu_seconds": [
+            20.078125,
+            20.375
+          ]
+        },
+        "poll_spacing_median_s": 0.2623109817504883,
+        "runtime": {
+          "status": "clean",
+          "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+          "known_count": 0,
+          "unexpected_count": 0,
+          "known": [],
+          "unexpected": []
+        },
+        "runtime_timing": [],
+        "stage_inclusive_seconds": {
+          "publication": 3.69,
+          "apply_air": 2.645,
+          "hotspot": 0.676,
+          "binding": 0.506,
+          "effects": 2.656,
+          "machines": 3.58,
+          "pipes": 0.522,
+          "ai": 2.641,
+          "pathfinding": 0.922,
+          "mobs": 1.691,
+          "timers": 0.567,
+          "power_rebuild": 0
+        },
+        "affected_proc_self_seconds": {
+          "publication": 0.629,
+          "apply_air": 0.682,
+          "hotspot": 0.104,
+          "binding": 0.452
+        },
+        "selected_call_counts": {
+          "publication": 833,
+          "apply_air": 95927,
+          "hotspot": 51645,
+          "binding": 286350,
+          "mob_life": 13824,
+          "ai_selector": 46117,
+          "cable_connections": 0
+        },
+        "skipped_service_rows": 0
+      },
+      {
+        "repetition": 3,
+        "version": "after",
+        "folder": "tmp/profiling/service-fire-repeat-after-3",
+        "binary_sha256": "4720f12b5d5af920fdcdcc50bdf05adfa726e6ec6bffd05dbb1d52640a4c1c5d",
+        "wall_seconds": 60.2087,
+        "calculations": 119,
+        "peak_td_percent": 1.3286499999999979,
+        "peak_td_game_offset_s": 0.2,
+        "cpu_seconds": 20.482328634054397,
+        "main_cpu_seconds": 20.107328634054397,
+        "worker_cpu_seconds": 0.328125,
+        "cpu_ms_per_calculation": 172.12040868953275,
+        "private_peak_mib": 1859.86328125,
+        "cpu_endpoint_sample_bounds": {
+          "cpu_seconds": [
+            20.34375,
+            20.515625
+          ],
+          "main_thread_cpu_seconds": [
+            19.96875,
+            20.140625
+          ]
+        },
+        "poll_spacing_median_s": 0.2631645202636719,
+        "runtime": {
+          "status": "accepted_with_known_runtimes",
+          "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+          "known_count": 1,
+          "unexpected_count": 0,
+          "known": [
+            {
+              "id": "corpse_organ_throw_after_delete",
+              "message": "runtime error: Qdeleted thing being thrown around.",
+              "proc": "/atom/movable/proc/throw_at",
+              "source": "code/game/atoms_movable.dm",
+              "evidence": "tmp/profiling/final-03-dm-atmos-fire/data/logs/local-profile/runtime.log.json",
+              "logs": {
+                "data/logis_logs/local-profile/game.log": 1,
+                "data/logs/local-profile/runtime.log.json": 1,
+                "tgstation.log": 1
+              },
+              "count": 1
+            }
+          ],
+          "unexpected": []
+        },
+        "runtime_timing": [
+          {
+            "offset_from_window_s": -253.8727569580078,
+            "inside_window": false,
+            "description": [
+              "runtime error: Qdeleted thing being thrown around.",
+              "proc name: throw at (/atom/movable/proc/throw_at)"
+            ]
+          }
+        ],
+        "stage_inclusive_seconds": {
+          "publication": 3.57,
+          "apply_air": 2.583,
+          "hotspot": 0.621,
+          "binding": 0.341,
+          "effects": 2.646,
+          "machines": 3.776,
+          "pipes": 0.546,
+          "ai": 1.956,
+          "pathfinding": 1.011,
+          "mobs": 0.936,
+          "timers": 0.8,
+          "power_rebuild": 0.265
+        },
+        "affected_proc_self_seconds": {
+          "publication": 0.779,
+          "apply_air": 0.687,
+          "hotspot": 0.031,
+          "binding": 0.289
+        },
+        "selected_call_counts": {
+          "publication": 833,
+          "apply_air": 99170,
+          "hotspot": 6778,
+          "binding": 193439,
+          "mob_life": 13482,
+          "ai_selector": 39585,
+          "cable_connections": 12467
+        },
+        "skipped_service_rows": 489
+      }
+    ],
+    "diagnostic_traces": [
+      {
+        "version": "before",
+        "folder": "tmp/profiling/service-fire-trace-before-1",
+        "binary_sha256": "c65297b708fdaa97b308eed7ff6c465a40441b5ea7a958136323704eb4e74a8a",
+        "harness_sha256": "1d58c9c3ff1fa91e35baa0622e455790c7bfd36102c7aa43f27cbb057ae7b981",
+        "runtime": {
+          "status": "clean",
+          "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+          "known_count": 0,
+          "unexpected_count": 0,
+          "known": [],
+          "unexpected": []
+        },
+        "runtime_timing": [],
+        "peak_td_percent": 3.6999900000000085,
+        "peak_td_game_offset_s": 0.2,
+        "peak_window_parts_ms": {
+          "other_or_idle": 6534.415,
+          "publication_apply": 864.565,
+          "rust_effects": 840.709,
+          "ss_machinery": 337.009,
+          "ss:/datum/controller/subsystem/ai_controllers": 288.825,
+          "ss:/datum/controller/subsystem/lighting": 193.694,
+          "ss:/datum/controller/subsystem/mobs": 167.093,
+          "ss:/datum/controller/subsystem/machines": 154.934,
+          "ss:/datum/controller/subsystem/pathfinder": 122.793,
+          "rust_inputs": 112.545,
+          "ss_pipenets": 107.443,
+          "ss:/datum/controller/subsystem/timer": 97.395,
+          "ss:/datum/controller/subsystem/movement/conveyors": 85.097,
+          "ss:/datum/controller/subsystem/processing": 65.913,
+          "ss:/datum/controller/subsystem/weather": 48.95,
+          "ss:/datum/controller/subsystem/ai_controllers/low_priority_ai_controllers": 41.546,
+          "ss_atoms": 32.207,
+          "ss:/datum/controller/subsystem/radiation": 28.807,
+          "ss:/datum/controller/subsystem/processing/dcs": 26.643,
+          "publication_prepare": 26.629,
+          "publication_ffi": 25.777,
+          "ss:/datum/controller/subsystem/processing/obj": 24.597,
+          "ss:/datum/controller/subsystem/processing/blood_drying": 22.577,
+          "ss:/datum/controller/subsystem/movement": 18.59,
+          "ss:/datum/controller/subsystem/processing/digital_clock": 14.941,
+          "ss:/datum/controller/subsystem/icon_smooth": 14.602,
+          "ss:/datum/controller/subsystem/processing/plumbing": 13.636,
+          "rust_effect_packet": 11.284,
+          "ss:/datum/controller/subsystem/movement/ai_movement": 11.077,
+          "ss:/datum/controller/subsystem/processing/burning": 6.997,
+          "ss:/datum/controller/subsystem/air": 5.921,
+          "ss:/datum/controller/subsystem/garbage": 5.425,
+          "ss:/datum/controller/subsystem/timer/sound_loops": 5.328,
+          "rust_worker_wait": 4.498,
+          "rust_publish_worker_sync": 2.671,
+          "rust_topology": 2.413,
+          "rust_publish": 2.025,
+          "ss_adjacent": 0.428
+        },
+        "whole_window_parts_ms": {
+          "other_or_idle": 42433.848999999755,
+          "publication_apply": 3302.1850000000013,
+          "rust_effects": 3169.241999999999,
+          "ss_machinery": 1859.456,
+          "ss:/datum/controller/subsystem/ai_controllers": 1679.3330000000005,
+          "ss:/datum/controller/subsystem/pathfinder": 1017.189,
+          "ss:/datum/controller/subsystem/mobs": 969.3500000000008,
+          "ss:/datum/controller/subsystem/machines": 901.9530000000002,
+          "rust_inputs": 792.2959999999994,
+          "ss:/datum/controller/subsystem/movement/conveyors": 543.3249999999996,
+          "ss_pipenets": 525.6199999999997,
+          "ss:/datum/controller/subsystem/lighting": 457.83600000000007,
+          "ss:/datum/controller/subsystem/processing": 388.32099999999997,
+          "ss:/datum/controller/subsystem/timer": 317.22600000000006,
+          "ss:/datum/controller/subsystem/weather": 234.02600000000015,
+          "publication_prepare": 216.6609999999998,
+          "publication_ffi": 193.3909999999995,
+          "ss:/datum/controller/subsystem/ai_controllers/low_priority_ai_controllers": 179.37600000000003,
+          "ss:/datum/controller/subsystem/radiation": 167.8810000000003,
+          "ss:/datum/controller/subsystem/processing/obj": 154.559,
+          "ss:/datum/controller/subsystem/processing/dcs": 154.44699999999995,
+          "ss_atoms": 145.77199999999982,
+          "ss:/datum/controller/subsystem/processing/blood_drying": 138.87800000000001,
+          "ss:/datum/controller/subsystem/processing/digital_clock": 87.84400000000004,
+          "ss:/datum/controller/subsystem/processing/plumbing": 81.45699999999994,
+          "power_rebuild": 67.29999999999998,
+          "rust_effect_packet": 63.22400000000001,
+          "ss:/datum/controller/subsystem/movement/ai_movement": 39.58400000000001,
+          "ss:/datum/controller/subsystem/timer/sound_loops": 36.092000000000006,
+          "rust_worker_wait": 30.814000000000014,
+          "ss:/datum/controller/subsystem/air": 30.60600000000008,
+          "rust_publish_worker_sync": 21.002000000000027,
+          "ss:/datum/controller/subsystem/movement": 18.59,
+          "ss:/datum/controller/subsystem/icon_smooth": 18.081,
+          "rust_publish": 12.162999999999967,
+          "ss:/datum/controller/subsystem/garbage": 12.118,
+          "ss:/datum/controller/subsystem/processing/burning": 11.459,
+          "rust_topology": 6.4549999999999965,
+          "ss:/datum/controller/subsystem/wardrobe": 5.1,
+          "ss_adjacent": 0.539
+        },
+        "longest_mc_gaps": [
+          {
+            "game_offset_s": 0.35,
+            "wall_offset_s": 0.341335,
+            "duration_ms": 147.942,
+            "parts_ms": {
+              "rust_effects": 71.556,
+              "publication_apply": 64.17,
+              "ss:/datum/controller/subsystem/timer": 5.977,
+              "other_or_idle": 3.296,
+              "ss:/datum/controller/subsystem/processing/obj": 0.943,
+              "publication_ffi": 0.78,
+              "publication_prepare": 0.647,
+              "rust_effect_packet": 0.316,
+              "rust_worker_wait": 0.113,
+              "rust_publish": 0.075,
+              "rust_publish_worker_sync": 0.069
+            }
+          },
+          {
+            "game_offset_s": 19.0,
+            "wall_offset_s": 19.4562,
+            "duration_ms": 119.7,
+            "parts_ms": {
+              "power_rebuild": 67.2,
+              "rust_effects": 22.7,
+              "publication_apply": 21.5,
+              "other_or_idle": 3.6,
+              "publication_prepare": 1.7,
+              "publication_ffi": 1.5,
+              "ss:/datum/controller/subsystem/timer": 0.7,
+              "rust_effect_packet": 0.5,
+              "rust_worker_wait": 0.2,
+              "rust_publish_worker_sync": 0.1
+            }
+          },
+          {
+            "game_offset_s": 6.85,
+            "wall_offset_s": 7.082303,
+            "duration_ms": 112.961,
+            "parts_ms": {
+              "rust_effects": 56.827,
+              "publication_apply": 42.259,
+              "other_or_idle": 6.152,
+              "ss:/datum/controller/subsystem/processing/dcs": 2.605,
+              "publication_prepare": 1.422,
+              "ss:/datum/controller/subsystem/radiation": 1.375,
+              "publication_ffi": 1.296,
+              "rust_effect_packet": 0.561,
+              "rust_worker_wait": 0.255,
+              "rust_publish_worker_sync": 0.152,
+              "rust_publish": 0.057
+            }
+          }
+        ],
+        "selected_stage_ms": {
+          "publication_prepare": {
+            "count": 580,
+            "total_ms": 216.661,
+            "p50_ms": 0.4215,
+            "p95_ms": 0.6,
+            "max_ms": 0.9
+          },
+          "publication_ffi": {
+            "count": 580,
+            "total_ms": 193.391,
+            "p50_ms": 0.4,
+            "p95_ms": 0.6,
+            "max_ms": 0.756
+          },
+          "publication_apply": {
+            "count": 580,
+            "total_ms": 3302.185,
+            "p50_ms": 6.0,
+            "p95_ms": 15.30855,
+            "max_ms": 64.006
+          },
+          "rust_worker_wait": {
+            "count": 119,
+            "total_ms": 30.814,
+            "p50_ms": 0.277,
+            "p95_ms": 0.3,
+            "max_ms": 0.4
+          },
+          "rust_effects": {
+            "count": 119,
+            "total_ms": 3169.242,
+            "p50_ms": 22.9,
+            "p95_ms": 45.7785,
+            "max_ms": 71.556
+          },
+          "power_rebuild": {
+            "count": 3,
+            "total_ms": 67.3,
+            "p50_ms": 0.1,
+            "p95_ms": 60.39999999999999,
+            "max_ms": 67.1
+          }
+        }
+      },
+      {
+        "version": "after",
+        "folder": "tmp/profiling/service-fire-trace-after-1",
+        "binary_sha256": "e86db9c0271b1191152209999873d83435c577049c3b4a195df14ef05fc98ac7",
+        "harness_sha256": "1d58c9c3ff1fa91e35baa0622e455790c7bfd36102c7aa43f27cbb057ae7b981",
+        "runtime": {
+          "status": "clean",
+          "count_method": "Maximum occurrences per signature in any one log; mirrored logs are not added",
+          "known_count": 0,
+          "unexpected_count": 0,
+          "known": [],
+          "unexpected": []
+        },
+        "runtime_timing": [],
+        "peak_td_percent": 2.8410000000000046,
+        "peak_td_game_offset_s": 0.0,
+        "peak_window_parts_ms": {
+          "other_or_idle": 6631.637,
+          "publication_apply": 803.418,
+          "rust_effects": 799.815,
+          "ss_machinery": 324.165,
+          "ss:/datum/controller/subsystem/ai_controllers": 295.557,
+          "ss:/datum/controller/subsystem/lighting": 177.796,
+          "ss:/datum/controller/subsystem/mobs": 154.579,
+          "ss:/datum/controller/subsystem/machines": 149.326,
+          "ss:/datum/controller/subsystem/movement/conveyors": 108.243,
+          "ss_pipenets": 107.249,
+          "rust_inputs": 106.1,
+          "ss:/datum/controller/subsystem/pathfinder": 94.523,
+          "ss:/datum/controller/subsystem/timer": 92.009,
+          "ss:/datum/controller/subsystem/processing": 65.482,
+          "ss:/datum/controller/subsystem/radiation": 58.206,
+          "ss:/datum/controller/subsystem/weather": 36.68,
+          "ss_atoms": 33.925,
+          "ss:/datum/controller/subsystem/ai_controllers/low_priority_ai_controllers": 30.174,
+          "ss:/datum/controller/subsystem/movement": 28.213,
+          "publication_prepare": 24.229,
+          "ss:/datum/controller/subsystem/processing/dcs": 23.49,
+          "ss:/datum/controller/subsystem/processing/obj": 23.191,
+          "publication_ffi": 20.941,
+          "ss:/datum/controller/subsystem/processing/blood_drying": 17.145,
+          "ss:/datum/controller/subsystem/processing/digital_clock": 14.792,
+          "ss:/datum/controller/subsystem/processing/plumbing": 13.294,
+          "ss:/datum/controller/subsystem/icon_smooth": 11.986,
+          "rust_effect_packet": 8.61,
+          "ss:/datum/controller/subsystem/garbage": 5.229,
+          "ss:/datum/controller/subsystem/air": 5.156,
+          "ss:/datum/controller/subsystem/processing/burning": 5.039,
+          "rust_worker_wait": 4.085,
+          "ss:/datum/controller/subsystem/movement/ai_movement": 2.518,
+          "rust_publish_worker_sync": 2.317,
+          "rust_publish": 1.909,
+          "rust_topology": 1.845,
+          "ss:/datum/controller/subsystem/timer/sound_loops": 1.109,
+          "ss_adjacent": 0.118
+        },
+        "whole_window_parts_ms": {
+          "other_or_idle": 42786.6139999998,
+          "rust_effects": 3127.692999999999,
+          "publication_apply": 3109.936000000001,
+          "ss_machinery": 1855.4999999999995,
+          "ss:/datum/controller/subsystem/ai_controllers": 1771.877,
+          "ss:/datum/controller/subsystem/mobs": 940.4350000000001,
+          "ss:/datum/controller/subsystem/machines": 865.524,
+          "rust_inputs": 771.3649999999997,
+          "ss:/datum/controller/subsystem/pathfinder": 748.9000000000003,
+          "ss:/datum/controller/subsystem/movement/conveyors": 643.0729999999999,
+          "ss_pipenets": 545.9790000000006,
+          "ss:/datum/controller/subsystem/lighting": 433.13599999999997,
+          "ss:/datum/controller/subsystem/processing": 394.455,
+          "ss:/datum/controller/subsystem/radiation": 347.47200000000004,
+          "ss:/datum/controller/subsystem/timer": 303.278,
+          "ss:/datum/controller/subsystem/weather": 224.94400000000005,
+          "publication_prepare": 203.80100000000013,
+          "publication_ffi": 163.17000000000047,
+          "ss:/datum/controller/subsystem/ai_controllers/low_priority_ai_controllers": 153.44399999999996,
+          "ss:/datum/controller/subsystem/processing/obj": 145.662,
+          "ss_atoms": 145.64999999999978,
+          "ss:/datum/controller/subsystem/processing/dcs": 141.17500000000004,
+          "ss:/datum/controller/subsystem/processing/blood_drying": 129.56299999999996,
+          "ss:/datum/controller/subsystem/processing/digital_clock": 86.15500000000003,
+          "ss:/datum/controller/subsystem/processing/plumbing": 78.94499999999992,
+          "ss:/datum/controller/subsystem/movement/ai_movement": 57.601,
+          "rust_effect_packet": 50.46499999999991,
+          "rust_worker_wait": 30.055000000000017,
+          "ss:/datum/controller/subsystem/air": 29.67800000000009,
+          "ss:/datum/controller/subsystem/movement": 29.413,
+          "rust_publish_worker_sync": 18.331999999999987,
+          "ss:/datum/controller/subsystem/icon_smooth": 15.430999999999997,
+          "ss:/datum/controller/subsystem/garbage": 11.441,
+          "rust_publish": 11.064999999999966,
+          "ss:/datum/controller/subsystem/processing/burning": 9.318,
+          "rust_topology": 5.1279999999999974,
+          "ss:/datum/controller/subsystem/wardrobe": 5.0,
+          "ss:/datum/controller/subsystem/timer/sound_loops": 4.209,
+          "ss_adjacent": 0.118
+        },
+        "longest_mc_gaps": [
+          {
+            "game_offset_s": 0.45,
+            "wall_offset_s": 0.441105,
+            "duration_ms": 145.63,
+            "parts_ms": {
+              "rust_effects": 64.61,
+              "publication_apply": 60.698,
+              "ss:/datum/controller/subsystem/machines": 15.178,
+              "other_or_idle": 3.732,
+              "publication_ffi": 0.506,
+              "publication_prepare": 0.455,
+              "rust_effect_packet": 0.195,
+              "rust_worker_wait": 0.124,
+              "rust_publish_worker_sync": 0.066,
+              "rust_publish": 0.066
+            }
+          },
+          {
+            "game_offset_s": 8.45,
+            "wall_offset_s": 8.634571,
+            "duration_ms": 112.63,
+            "parts_ms": {
+              "rust_effects": 46.733,
+              "publication_apply": 37.906,
+              "ss:/datum/controller/subsystem/machines": 15.213,
+              "ss:/datum/controller/subsystem/lighting": 6.141,
+              "other_or_idle": 3.015,
+              "publication_prepare": 1.363,
+              "publication_ffi": 1.264,
+              "rust_effect_packet": 0.572,
+              "rust_worker_wait": 0.231,
+              "rust_publish_worker_sync": 0.132,
+              "rust_publish": 0.06
+            }
+          },
+          {
+            "game_offset_s": 2.45,
+            "wall_offset_s": 2.529125,
+            "duration_ms": 104.152,
+            "parts_ms": {
+              "publication_apply": 44.264,
+              "rust_effects": 37.369,
+              "ss:/datum/controller/subsystem/machines": 15.774,
+              "other_or_idle": 4.404,
+              "publication_prepare": 0.837,
+              "publication_ffi": 0.785,
+              "rust_effect_packet": 0.394,
+              "rust_worker_wait": 0.167,
+              "rust_publish_worker_sync": 0.095,
+              "rust_publish": 0.063
+            }
+          }
+        ],
+        "selected_stage_ms": {
+          "publication_prepare": {
+            "count": 597,
+            "total_ms": 203.801,
+            "p50_ms": 0.4,
+            "p95_ms": 0.5741999999999999,
+            "max_ms": 0.8
+          },
+          "publication_ffi": {
+            "count": 597,
+            "total_ms": 163.17000000000002,
+            "p50_ms": 0.375,
+            "p95_ms": 0.5,
+            "max_ms": 0.7
+          },
+          "publication_apply": {
+            "count": 597,
+            "total_ms": 3109.936,
+            "p50_ms": 5.7,
+            "p95_ms": 14.4054,
+            "max_ms": 60.524
+          },
+          "rust_worker_wait": {
+            "count": 119,
+            "total_ms": 30.055,
+            "p50_ms": 0.266,
+            "p95_ms": 0.3,
+            "max_ms": 0.3
+          },
+          "rust_effects": {
+            "count": 119,
+            "total_ms": 3127.6929999999998,
+            "p50_ms": 22.9,
+            "p95_ms": 44.0621,
+            "max_ms": 64.61
+          }
+        }
+      }
+    ],
+    "exclusions": [
+      {
+        "name": "service-fire-repeat-after-2",
+        "scenario": "atmos-fire",
+        "version": "after",
+        "repetition": 2,
+        "exit_code": 1
+      }
+    ],
+    "raw_normal_results": "tmp/atmos-service-fire-repeat/results.json",
+    "raw_normal_sha256": "5602daa82047a2c26f277e0c99e776e30f62724b8090d970bcd8dbcda5f7f3a2",
+    "raw_trace_results": "tmp/atmos-service-fire-trace/results.json",
+    "raw_trace_sha256": "e929efab9cbe62c52fdbc49e10e32626bd6e2d7e6435837f133ac210728d54d5",
+    "limits": "Three ordinary pairs including the initial pair; only two fresh pairs. Local full map, no players. The exact allocation of the initial 1.29 extra OS CPU seconds cannot be recovered from inclusive proc profiles. Diagnostic tracing changes timing. No Linux/live-round verification."
+  }
+}

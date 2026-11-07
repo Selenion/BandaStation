@@ -196,7 +196,7 @@ impl Cell {
     }
 }
 
-fn remove_ratio(air: &mut Mixture, ratio: f32) -> Mixture {
+pub(crate) fn remove_ratio(air: &mut Mixture, ratio: f32) -> Mixture {
     if ratio <= 0.0 {
         return Mixture::new(TCMB, air.volume, false);
     }

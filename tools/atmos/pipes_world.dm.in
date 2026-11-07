@@ -1,0 +1,297 @@
+SUBSYSTEM_DEF(atmos_pipe_test)
+	name = "Native pipe integration"
+	init_stage = INITSTAGE_LAST
+	ss_flags = SS_NO_FIRE
+	dependencies = list(/datum/controller/subsystem/ticker)
+
+/datum/controller/subsystem/atmos_pipe_test/PreInit()
+	Master.random_seed = 29051994
+	rand_seed(Master.random_seed)
+
+/datum/controller/subsystem/atmos_pipe_test/Initialize()
+	Master.sleep_offline_after_initializations = FALSE
+	SSair.can_fire = FALSE
+	SSticker.start_immediately = TRUE
+	SSticker.delay_end = TRUE
+	SSticker.OnRoundstart(CALLBACK(src, PROC_REF(capture)))
+	return SS_INIT_SUCCESS
+
+/datum/controller/subsystem/atmos_pipe_test/proc/capture()
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	var/list/checks = list("capability" = phase.pipes_ready, "direct_capability" = phase.pipe_direct_ready)
+	var/list/output = list()
+	for(var/list/test in json_decode(file2text("pipe-cases.json")))
+		var/list/mixtures = list()
+		for(var/list/input in test["mixtures"])
+			var/datum/gas_mixture/mix = new
+			mix.volume = input["volume"]
+			mix.temperature = input["temperature"]
+			var/list/gases = banda_atmos_gases()
+			for(var/list/pair in input["gases"])
+				mix.moles[gases[pair[1] + 1]] = pair[2]
+			mix.moles_archive[/datum/gas/plasma] = 123
+			mix.temperature_archived = 123
+			mix.last_share = 42
+			mix.reaction_results[/datum/gas_reaction/standard/plasmafire] = 17
+			mixtures += mix
+		var/datum/pipeline/network = new
+		var/list/order = test["order"]
+		for(var/i in 1 to length(order) - 1)
+			network.other_airs += mixtures[order[i] + 1]
+		network.air = mixtures[order[length(order)] + 1]
+		network.reconcile_air()
+		var/list/states = list()
+		for(var/datum/gas_mixture/mix as anything in mixtures)
+			states += list(banda_atmos_full_packet(mix) + list(mix.last_share))
+		output += list(states)
+		qdel(network)
+		QDEL_LIST(mixtures)
+	var/list/source = valve_state(phase, FALSE)
+	var/list/native = valve_state(phase, TRUE)
+	checks["valve_state_matches_dm"] = json_encode(source["state"]) == json_encode(native["state"])
+	checks["ssair_native_groups_exercised"] = native["groups"] > source["groups"]
+	checks["held_moles_preserved"] = native["alias"]
+	source = valve_state(phase, FALSE, TRUE)
+	native = valve_state(phase, TRUE, TRUE)
+	checks["portable_zero_volume_port_matches_dm"] = json_encode(source["state"]) == json_encode(native["state"])
+	checks["direct_groups_exercised"] = phase.pipe_direct_groups > 0
+	checks += direct_boundary_checks(phase)
+	checks += exposed_device_port_checks(phase)
+	var/list/benchmarks = benchmark_pipes(phase)
+	var/datum/weakref/garbage = make_garbage(phase)
+	sleep(world.tick_lag)
+	checks["binding_does_not_keep_mixture_alive"] = !garbage.resolve()
+	phase.reap_pipe_bindings()
+	var/list/counts = list()
+	phase.native(47, counts)
+	checks["released_mixtures_free_native_records"] = counts[1] == 0
+	checks["slot_table_reused"] = counts[2] < 40
+	var/datum/gas_mixture/survivor = new
+	survivor.set_gas(/datum/gas/nitrogen, 17)
+	phase.reconcile_pipes(list(survivor))
+	qdel(phase)
+	checks["closing_detaches_owner"] = !SSair.native_atmos
+	checks["closing_detaches_live_mixture"] = !survivor.banda_pipe_binding && survivor.moles[/datum/gas/nitrogen] == 17
+	qdel(survivor)
+	WRITE_FILE(file("pipes-output.json"), json_encode(list("cases" = output, "checks" = checks, "benchmarks" = benchmarks)))
+	shutdown()
+
+/datum/controller/subsystem/atmos_pipe_test/proc/make_garbage(datum/banda_atmos_phase/world_adapter/phase)
+	var/datum/gas_mixture/mixture = new
+	phase.reconcile_pipes(list(mixture))
+	return WEAKREF(mixture)
+
+/// A caller can keep a device's analyzable mixture and edit its gas list between network passes.
+/datum/controller/subsystem/atmos_pipe_test/proc/exposed_device_port_checks(datum/banda_atmos_phase/world_adapter/phase)
+	var/turf/location = locate(190, 190, 1)
+	var/obj/machinery/atmospherics/components/unary/vent_pump/vent = new(location)
+	var/obj/machinery/atmospherics/components/unary/vent_scrubber/scrubber = new(location)
+	var/datum/pipeline/network = new
+	var/datum/gas_mixture/network_air = new(200)
+	network.air = network_air
+	vent.parents[1] = network
+	scrubber.parents[1] = network
+	var/datum/gas_mixture/vent_port = vent.airs[1]
+	var/datum/gas_mixture/scrubber_port = scrubber.airs[1]
+	vent_port.volume = 100
+	scrubber_port.volume = 100
+	vent_port.set_gas(/datum/gas/nitrogen, 80)
+	network.add_machinery_member(vent)
+	network.add_machinery_member(scrubber)
+	network.reconcile_air()
+	var/list/analyzable = vent.return_analyzable_air()
+	scrubber.return_analyzable_air()
+	var/datum/gas_mixture/exposed = analyzable[1]
+	var/list/held_moles = exposed.moles
+	var/linked = exposed == vent_port && (exposed in network.other_airs) && scrubber_port.moles[/datum/gas/nitrogen] == 20
+	held_moles[/datum/gas/nitrogen] += 20
+	network.reconcile_air()
+	var/compatible = exposed.moles == held_moles && held_moles[/datum/gas/nitrogen] == 25 && \
+		scrubber_port.moles[/datum/gas/nitrogen] == 25 && network.air.moles[/datum/gas/nitrogen] == 50
+	vent.nullify_pipenet(network)
+	scrubber.nullify_pipenet(network)
+	qdel(vent)
+	qdel(scrubber)
+	qdel(vent_port)
+	qdel(scrubber_port)
+	qdel(network_air)
+	return list("analyzable_port_is_network_mixture" = linked, "held_device_port_write_reaches_network" = compatible)
+
+/datum/controller/subsystem/atmos_pipe_test/proc/valve_state(datum/banda_atmos_phase/world_adapter/phase, native, portable = FALSE)
+	phase.pipes_ready = native
+	var/datum/pipeline/left = new
+	var/datum/pipeline/right = new
+	left.air = new /datum/gas_mixture(1000)
+	right.air = new /datum/gas_mixture(2000)
+	left.air.set_gas(/datum/gas/nitrogen, 100)
+	right.air.set_gas(/datum/gas/oxygen, 200)
+	left.air.temperature = 300
+	right.air.temperature = 600
+	var/obj/machinery/atmospherics/components/binary/valve/valve = new(locate(190, 190, 1))
+	valve.parents[1] = left
+	valve.parents[2] = right
+	valve.on = TRUE
+	left.other_airs += valve.airs[1]
+	right.other_airs += valve.airs[2]
+	left.require_custom_reconcilation += valve
+	right.require_custom_reconcilation += valve
+	var/obj/machinery/atmospherics/components/unary/portables_connector/connector
+	var/obj/machinery/portable_atmospherics/canister/canister
+	if(portable)
+		connector = new(locate(191, 190, 1))
+		canister = new(locate(191, 190, 1))
+		connector.connected_device = canister
+		canister.air_contents.moles.Cut()
+		canister.air_contents.set_gas(/datum/gas/carbon_dioxide, 50)
+		canister.air_contents.temperature = 400
+		left.other_airs += connector.airs[1]
+		left.require_custom_reconcilation += connector
+	var/list/held = left.air.moles
+	var/list/old_networks = SSair.networks
+	SSair.networks = list(left, right)
+	SSair.state = SS_RUNNING
+	SSair.process_pipenets(FALSE)
+	while(length(SSair.currentrun))
+		sleep(world.tick_lag)
+		SSair.state = SS_RUNNING
+		SSair.process_pipenets(TRUE)
+	SSair.networks = old_networks
+	var/list/result = list("state" = list(banda_atmos_full_packet(left.air), banda_atmos_full_packet(right.air),
+		banda_atmos_full_packet(valve.airs[1]), banda_atmos_full_packet(valve.airs[2]), left.update, right.update),
+		"groups" = phase.pipe_groups, "alias" = held == left.air.moles)
+	var/list/mixes = list(left.air, right.air, valve.airs[1], valve.airs[2])
+	if(portable)
+		result["state"] += list(banda_atmos_full_packet(connector.airs[1]), banda_atmos_full_packet(canister.air_contents))
+		mixes += list(connector.airs[1], canister.air_contents)
+		connector.connected_device = null
+		qdel(connector)
+		qdel(canister)
+	valve.parents[1] = null
+	valve.parents[2] = null
+	qdel(valve)
+	qdel(left)
+	qdel(right)
+	QDEL_LIST(mixes)
+	return result
+
+/datum/controller/subsystem/atmos_pipe_test/proc/direct_boundary_checks(datum/banda_atmos_phase/world_adapter/phase)
+	var/list/checks = list()
+	var/datum/gas_mixture/left = new(100)
+	var/datum/gas_mixture/right = new(100)
+	left.set_gas(/datum/gas/nitrogen, 100)
+	right.set_gas(/datum/gas/oxygen, 100)
+	left.moles_archive[/datum/gas/plasma] = 123
+	left.reaction_results[/datum/gas_reaction/standard/plasmafire] = 17
+	var/list/held = left.moles
+	var/list/archive = left.moles_archive
+	var/list/results = left.reaction_results
+	var/list/mixtures = list(left, right, left)
+	phase.reconcile_pipes(mixtures)
+	var/packets = phase.pipe_packet_imports
+	var/direct_groups = phase.pipe_direct_groups
+	// Devices can mutate an already held list or replace it without a dirty notification.
+	held[/datum/gas/nitrogen] += 20
+	right.moles = list(/datum/gas/oxygen = 70)
+	left.volume = 200
+	left.temperature = 600
+	var/datum/gas_mixture/old_left = new
+	var/datum/gas_mixture/old_right = new
+	banda_atmos_copy_full(old_left, left)
+	banda_atmos_copy_full(old_right, right)
+	phase.reconcile_pipes(mixtures)
+	var/list/direct = list(banda_atmos_full_packet(left), banda_atmos_full_packet(right))
+	checks["no_repeat_full_packets"] = phase.pipe_packet_imports == packets && phase.pipe_direct_groups == direct_groups + 1
+	checks["direct_preserves_held_lists"] = left.moles == held && left.moles_archive == archive && left.reaction_results == results
+	// Compare the packed compatibility path from exactly the same edited input.
+	banda_atmos_copy_full(left, old_left)
+	banda_atmos_copy_full(right, old_right)
+	phase.pipe_direct_ready = FALSE
+	phase.reconcile_pipes(mixtures)
+	checks["direct_matches_packet_after_external_writes"] = json_encode(direct) == json_encode(list(banda_atmos_full_packet(left), banda_atmos_full_packet(right)))
+	phase.pipe_direct_ready = TRUE
+	var/list/snapshot = list(banda_atmos_full_packet(left), banda_atmos_full_packet(right))
+	var/list/bad_handles = left.banda_pipe_binding.handle + list(16777215, 1)
+	var/rejected = FALSE
+	try
+		phase.native(48, bad_handles, list(left, right), banda_atmos_gases())
+	catch
+		rejected = TRUE
+	checks["stale_handle_before_dm_write"] = rejected && json_encode(snapshot) == json_encode(list(banda_atmos_full_packet(left), banda_atmos_full_packet(right)))
+	var/list/bad_gas = right.moles
+	right.moles = list("unknown-gas" = 7)
+	rejected = FALSE
+	try
+		phase.native(48, left.banda_pipe_binding.handle + right.banda_pipe_binding.handle, list(left, right), banda_atmos_gases())
+	catch
+		rejected = TRUE
+	checks["invalid_tail_before_dm_write"] = rejected && json_encode(snapshot[1]) == json_encode(banda_atmos_full_packet(left))
+	right.moles = bad_gas
+	phase.reconcile_pipes(mixtures)
+	checks["valid_call_after_rejection"] = TRUE
+	left.volume = 0
+	right.volume = 0
+	left.moles[/datum/gas/plasma] = null
+	phase.reconcile_pipes(mixtures)
+	checks["zero_total_volume_preserves_null_key"] = (/datum/gas/plasma in left.moles) && isnull(left.moles[/datum/gas/plasma])
+	right.volume = 100
+	phase.reconcile_pipes(mixtures)
+	checks["null_key_collected_with_positive_volume"] = !(/datum/gas/plasma in left.moles)
+	qdel(left)
+	qdel(right)
+	qdel(old_left)
+	qdel(old_right)
+	return checks
+
+/// No yields inside the timed loop: other game subsystems cannot contaminate proc time.
+/datum/controller/subsystem/atmos_pipe_test/proc/benchmark_pipes(datum/banda_atmos_phase/world_adapter/phase)
+	var/list/output = list()
+	var/list/gases = banda_atmos_gases()
+	for(var/repeat in 1 to 3)
+		var/list/modes = repeat % 2 ? list("dm", "packet", "direct", "owned") : list("owned", "direct", "packet", "dm")
+		for(var/mode in modes)
+			phase.pipes_ready = mode != "dm"
+			phase.pipe_direct_ready = mode == "direct" || mode == "owned"
+			var/datum/pipeline/network = new
+			var/list/mixtures = list()
+			for(var/i in 1 to 32)
+				var/datum/gas_mixture/mixture = new(100)
+				mixture.banda_native_port = mode == "owned" && i <= 8
+				mixture.temperature = 300
+				for(var/gas in gases)
+					mixture.moles[gas] = 1
+				mixtures += mixture
+			network.air = mixtures[32]
+			network.other_airs = mixtures.Copy(1, 32)
+			network.reconcile_air()
+			var/packets = phase.pipe_packet_imports
+			var/imports = phase.pipe_imports
+			var/direct_groups = phase.pipe_direct_groups
+			var/owned_groups = phase.pipe_owned_groups
+			world.Profile(PROFILE_RESTART)
+			for(var/step in 1 to 500)
+				network.air.moles[/datum/gas/nitrogen] += 0.25
+				network.reconcile_air()
+			world.Profile(PROFILE_STOP)
+			var/list/procs = json_decode(world.Profile(PROFILE_REFRESH, format = "json"))
+			// world.realtime is not refreshed during this non-yielding loop.
+			var/reconcile_seconds
+			for(var/list/proc_data as anything in procs)
+				if(proc_data["name"] == "/datum/pipeline/proc/reconcile_air")
+					reconcile_seconds = proc_data["total"]
+					break
+			var/list/states = list()
+			for(var/datum/gas_mixture/mixture as anything in mixtures)
+				mixture.banda_expose_pipe_port()
+				states += list(banda_atmos_air_packet(mixture))
+			output += list(list("mode" = mode, "repeat" = repeat, "reconcile_seconds" = reconcile_seconds,
+				"mixtures" = 32, "gases" = 20, "steps" = 500, "states" = states,
+				"packets" = phase.pipe_packet_imports - packets, "imports" = phase.pipe_imports - imports,
+				"direct_groups" = phase.pipe_direct_groups - direct_groups,
+				"owned_groups" = phase.pipe_owned_groups - owned_groups,
+				"procs" = procs))
+			qdel(network)
+			QDEL_LIST(mixtures)
+	phase.pipes_ready = TRUE
+	phase.pipe_direct_ready = TRUE
+	return output

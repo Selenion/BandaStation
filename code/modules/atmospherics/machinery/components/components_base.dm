@@ -44,6 +44,11 @@
 		component_mixture.volume = 200
 		airs[i] = component_mixture
 
+	// BANDASTATION ADDITION START - These devices can keep unexposed port gas in Rust.
+	if(istype(src, /obj/machinery/atmospherics/components/unary/vent_pump) || istype(src, /obj/machinery/atmospherics/components/unary/vent_scrubber) || istype(src, /obj/machinery/atmospherics/components/unary/passive_vent))
+		var/datum/gas_mixture/port = airs[1]
+		port.banda_native_port = TRUE
+	// BANDASTATION ADDITION END
 	update_appearance()
 
 // Iconnery
@@ -143,6 +148,8 @@
 /obj/machinery/atmospherics/components/nullify_node(i)
 	if(parents[i])
 		nullify_pipenet(parents[i])
+	var/datum/gas_mixture/port = airs[i] // BANDASTATION ADDITION - Restore a live port before dropping the device's reference.
+	port?.banda_expose_pipe_port() // BANDASTATION ADDITION
 	airs[i] = null
 	return ..()
 
@@ -272,7 +279,19 @@
 // Tool acts
 
 /obj/machinery/atmospherics/components/return_analyzable_air()
+	// BANDASTATION ADDITION START - The caller can retain the returned mixture and its lists.
+	for(var/datum/gas_mixture/port as anything in airs)
+		port?.banda_expose_pipe_port()
+	// BANDASTATION ADDITION END
 	return airs
+
+// BANDASTATION ADDITION START - Inspecting a live DM port also makes it available for editing.
+/obj/machinery/atmospherics/components/vv_get_var(var_name)
+	if(var_name == NAMEOF(src, airs))
+		for(var/datum/gas_mixture/port as anything in airs)
+			port?.banda_expose_pipe_port()
+	return ..()
+// BANDASTATION ADDITION END
 
 /**
  * Handles machinery deconstruction and unsafe pressure release
@@ -288,6 +307,7 @@
 
 	for(var/i in 1 to device_type)
 		var/datum/gas_mixture/inside_air = airs[i]
+		inside_air?.banda_expose_pipe_port() // BANDASTATION ADDITION - Wrenching reads and can release the real port gas.
 		if(inside_air.total_moles() > 0 || internal_pressure)
 			filled_pipe = TRUE
 		if(!nodes[i] || (istype(nodes[i], /obj/machinery/atmospherics/components/unary/portables_connector) && !portable_device_connected(i)))
@@ -396,6 +416,7 @@
 /obj/machinery/atmospherics/components/proc/relocate_airs(datum/gas_mixture/to_release)
 	for(var/i in 1 to device_type)
 		var/datum/gas_mixture/air = airs[i]
+		air?.banda_expose_pipe_port() // BANDASTATION ADDITION - Teardown releases the current native gas.
 		var/obj/machinery/atmospherics/node = nodes[i]
 		// A surviving node may be waiting for its pipeline to rebuild after nearby pipe destruction.
 		var/datum/pipeline/parent = node ? parents[i] : null

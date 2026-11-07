@@ -177,6 +177,7 @@
 	parent_updates++
 
 /datum/controller/subsystem/atmos_phase_test/proc/vent_pump_process(obj/machinery/atmospherics/components/unary/vent_pump/pump, datum/banda_atmos_phase/world_adapter/phase)
+	phase.prefetch_air_readings(list(pump))
 	pump.process_atmos()
 	return length(phase.working_mixtures)
 
@@ -186,8 +187,10 @@
 		var/list/actual = vent_pump_state(TRUE, mode)
 		var/expected_updates = mode == "release" || mode == "siphon" ? 1 : 0
 		checks["vent_[mode]_matches_dm"] = json_encode(expected["state"]) == json_encode(actual["state"]) && actual["state"]["updates"] == expected_updates
+		checks["vent_[mode]_scalar_path_exercised"] = actual["property_hits"] > 0
 		if(mode == "idle" || mode == "empty_pipe")
 			checks["vent_[mode]_does_not_borrow_native_air"] = actual["borrowed"] == 0
+			checks["vent_[mode]_does_not_create_full_cache"] = !actual["full_cache"]
 
 /datum/controller/subsystem/atmos_phase_test/proc/vent_pump_state(native, mode)
 	var/turf/open/target = floor_at(185, 175)
@@ -211,18 +214,21 @@
 	if(native)
 		phase = new("bandastation_atmos.dll")
 		SSair.native_atmos = phase
+		target.banda_air_requested = FALSE
 		phase.register_batch(list(target))
 		phase.native(30)
 		phase.initializing = FALSE
 		borrowed = phase.invoke(CALLBACK(src, PROC_REF(vent_pump_process), pump, phase))
 	else
 		pump.process_atmos()
+	var/full_cache = !!target.banda_atmos_cell?.cached_air
+	var/property_hits = native ? phase.property_hits : 0
 	var/list/state = list("air" = banda_atmos_full_packet(target.get_readonly_air()), "pipe" = banda_atmos_full_packet(pipe_air), "updates" = pump.parent_updates)
 	if(native)
 		qdel(phase)
 	pump.nodes[1] = null
 	qdel(pump)
-	return list("state" = state, "borrowed" = borrowed)
+	return list("state" = state, "borrowed" = borrowed, "property_hits" = property_hits, "full_cache" = full_cache)
 
 /// Keep the pre-optimization encoder as an independent wire-format reference.
 /datum/controller/subsystem/atmos_phase_test/proc/full_packet_check()

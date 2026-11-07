@@ -1,0 +1,64 @@
+{
+  "base_commit": "995fbfb91e9fee7dbe19978daffbe27fcb968dce",
+  "stage": "P0 original reconciliation + P1 isolated numeric kernel",
+  "target": "i686-pc-windows-msvc",
+  "profile": "release",
+  "features": [
+    "byond",
+    "simd",
+    "worker-profile"
+  ],
+  "rustc": "1.86.0",
+  "byond": "516.1688",
+  "tests": {
+    "passed": 92,
+    "failed": 0,
+    "differential_cases": 72,
+    "reconciliation_steps": 10071,
+    "long_chain_steps": 10000
+  },
+  "benchmark": {
+    "scope": "Active Rust reconciliation, 20 gases; no DM/FFI/topology/reactions or whole-server CPU/RAM measurement",
+    "sample_size": 10,
+    "warmup_seconds": 0.5,
+    "measurement_seconds": 1,
+    "results": [
+      {
+        "mixtures": 2,
+        "gases": 20,
+        "time_us": 1.4117944657307562,
+        "confidence_95_low_us": 1.2877871584451894,
+        "confidence_95_high_us": 1.4736871725175735
+      },
+      {
+        "mixtures": 16,
+        "gases": 20,
+        "time_us": 6.3827618967378,
+        "confidence_95_low_us": 5.789344454742045,
+        "confidence_95_high_us": 7.419403511481824
+      },
+      {
+        "mixtures": 128,
+        "gases": 20,
+        "time_us": 33.950565262076054,
+        "confidence_95_low_us": 32.86961710965955,
+        "confidence_95_high_us": 34.698335534534955
+      }
+    ]
+  },
+  "source_sha256": {
+    "rust/atmos/src/lib.rs": "a42f74da62f4e656238457c238766f2f6ebc1faae3ba59ec05aa84fc586cdf5c",
+    "rust/atmos/src/pipenet.rs": "78a4b715fd8806f30b541645942b5e53c8ad8ffcd6dd6a04f4e6b35d553ecd63",
+    "rust/atmos/tests/pipenet.rs": "fe233bc3c79f7c2aca78b5a4324cbcd34955948466b5b51b575da07aa9312bfc",
+    "rust/atmos/benches/pipenet_bench.rs": "07eaf361da2afd9370c43d5e2dc4a7f364bf46084146a3dbf92a5557c0cd87ff",
+    "rust/atmos/Cargo.toml": "f682128918e43174873ad4c7d991e54de1e3d73943322db32b2723bfbcf7f23e",
+    "tools/atmos/pipenet.py": "4cae306c0c103601d3d76aea15e8ff4fca0b865f5ad02fee9ec2175c5d3405b2",
+    "tools/atmos/pipenet.dm.in": "3fa2b102064dc2406e42d86ff64577f2d40fef0f0b5c1ec97d02b68b0ac64395",
+    "tools/atmos/pipenet-reference.json": "67a1921b2161360add847d8796b37afb77aacb4cb844336cf950d8b34792a3db"
+  },
+  "limitations": [
+    "No in-game connection or native pipe pool yet",
+    "No whole-DreamDaemon gain established",
+    "Short microbenchmarks may contain host noise; no DM speedup ratio derived"
+  ]
+}

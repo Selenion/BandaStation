@@ -26,11 +26,19 @@
 	var/list/positions = list()
 	var/list/dirty_gas = list()
 	var/list/dirty_topology = list()
+	/// Flat environment and empty presentation records require the newer DLL.
+	var/compact_exchange = FALSE
+	/// The DLL can send archive and temperature separately from live moles and reaction results.
+	var/thermal_publication_ready = FALSE
 
 /datum/banda_atmos_phase/world_adapter/New(library_path)
 	..()
 	if(!native_ready)
 		return
+	try
+		native_baselines_ready = native(74) == 1
+	catch
+		native_baselines_ready = FALSE
 	try
 		// Probe the additive publication operation before registering any world state.
 		native(40, list(), 1)
@@ -38,7 +46,49 @@
 		native_ready = FALSE
 		startup_error = "Native publication requires an updated DLL: [publication_error.name]"
 		return
+	try
+		compact_exchange = native(63) == 1
+	catch
+		compact_exchange = FALSE
+	try
+		properties_ready = native(50) == 1
+	catch
+		properties_ready = FALSE
+	if(properties_ready)
+		try
+			configure_visual_publication()
+		catch
+			visual_publication_ready = FALSE
+	if(compact_exchange && visual_publication_ready)
+		try
+			thermal_publication_ready = native(40, list(), 2, list()) == 1
+		catch
+			thermal_publication_ready = FALSE
+	if(visual_publication_ready && pipe_direct_ready)
+		try
+			vent_transfer_ready = native(54) == 1
+		catch
+			vent_transfer_ready = FALSE
+	if(pipe_direct_ready)
+		try
+			scrubber_transfer_ready = native(56) == 1
+		catch
+			scrubber_transfer_ready = FALSE
+	if(scrubber_transfer_ready && visual_publication_ready)
+		try
+			scrubber_tile_ready = native(58, 1) == 1
+		catch
+			scrubber_tile_ready = FALSE
 	threaded = CONFIG_GET(flag/rust_atmos_threaded)
+	try
+		operations_ready = native(82) == 1
+	catch
+		operations_ready = FALSE
+	pipelined = CONFIG_GET(flag/rust_atmos_pipeline)
+	if(pipelined && (!threaded || !operations_ready))
+		native_ready = FALSE
+		startup_error = "Pipeline atmosphere requires the worker and gas-operation protocol"
+		return
 	if(threaded)
 		try
 			native(38, 0, 0)
@@ -172,6 +222,8 @@
 	if(in_safe_callback && isopenturf(target) && target.has_turf_air())
 		var/datum/banda_atmos_cell/cell = ensure_binding(target)
 		if(cell && !cell.pending_rebind)
+			if(operation_cells[cell] == TRUE && !cell.cached_air && !cell.readonly_air)
+				return
 			borrow_air(cell)
 
 /datum/banda_atmos_phase/world_adapter/proc/mark_topology(turf/target)
@@ -214,7 +266,7 @@
 /datum/banda_atmos_phase/world_adapter/proc/flush_inputs()
 	var/list/targets = dirty_gas.Copy()
 	var/list/schedule = list()
-	native(17, schedule)
+	native(compact_exchange ? 63 : 17, schedule)
 	var/index = 1
 	for(var/section in 1 to 3)
 		var/count = schedule[index++]
@@ -222,17 +274,24 @@
 			var/turf/target = positions[schedule[index++]]
 			targets[target] = TRUE
 	var/list/input = list(0)
+	var/input_operation = compact_exchange ? 64 : 25
 	for(var/turf/target as anything in targets)
-		var/list/terrain = banda_atmos_terrain_packet(target)
 		input[1]++
-		input += list(target.banda_atmos_id, banda_atmos_context_bits(target), banda_atmos_freeze_permafrost(target), 0)
-		input += length(terrain)
-		input += terrain
+		var/context = banda_atmos_context_bits(target)
+		var/freeze = banda_atmos_freeze_permafrost(target)
+		if(compact_exchange)
+			// Keep reading live DM fields; some gameplay code changes them without a signal.
+			var/flags = context | (freeze ? 1024 : 0) | (target.blocks_air ? 2048 : 0)
+			input += list(target.banda_atmos_id, flags, target.temperature, target.temperature_archived || 0, target.heat_capacity, target.thermal_conductivity, target.atmos_supeconductivity)
+		else
+			var/list/terrain = banda_atmos_terrain_packet(target)
+			input += list(target.banda_atmos_id, context, freeze, 0, length(terrain))
+			input += terrain
 		if(input[1] == 256)
-			native(25, input)
+			native(input_operation, input)
 			input = list(0)
 	if(input[1])
-		native(25, input)
+		native(input_operation, input)
 	dirty_gas.Cut()
 	// External code can strengthen an existing hotspot by writing its fields directly.
 	for(var/obj/effect/hotspot/spot as anything in SSair.hotspots)
@@ -348,6 +407,9 @@
 
 /datum/banda_atmos_phase/world_adapter/apply_frame()
 	SHOULD_NOT_SLEEP(TRUE)
+	if(pipelined)
+		collect_pipeline_commands()
+		return
 	while(TRUE)
 		project_changes()
 		run_waiting_callbacks()
@@ -363,31 +425,92 @@
 	refresh_debug_overlays()
 
 /datum/banda_atmos_phase/world_adapter/proc/project_changes()
+	clear_air_readings()
 	var/list/ids = list()
 	var/changes_received = FALSE
 	synchronizing = TRUE
+	var/thermal_publication = thermal_publication_ready && visual_publication_ready && compact_exchange
+	var/publication_operation = thermal_publication ? 73 : (visual_publication_ready ? (compact_exchange ? 65 : 53) : 35)
+	var/direct_publication = native_baselines_ready && thermal_publication
+	var/direct_batch
+	var/list/direct_context
+	if(direct_publication)
+		direct_context = list(positions, banda_atmos_gases(), banda_atmos_reactions(), GAS_META[META_GAS_OVERLAY], SSmapping, INITIALIZED_1)
 	try
-		native(40, ids, 1) // Protocol 1: sign marks metadata-only changes, absolute value is the cell ID.
+		var/list/thermal_ids
+		if(thermal_publication)
+			thermal_ids = list()
+			native(40, ids, 2, thermal_ids)
+		else
+			native(40, ids, 1) // Sign marks metadata-only changes, absolute value is the cell ID.
 		changes_received = TRUE
+		var/thermal_index = 1
+		var/thermal_count = length(thermal_ids)
+		var/next_thermal = thermal_count ? thermal_ids[1] : 0
+		var/next_thermal_id = abs(next_thermal)
 		for(var/start = 1; start <= length(ids); start += 256)
 			var/list/requests = list()
-			for(var/offset = start; offset < min(length(ids) + 1, start + 256); offset++)
+			var/list/thermal_baselines
+			var/end = min(length(ids) + 1, start + 256)
+			for(var/offset = start; offset < end; offset++)
 				var/id = abs(ids[offset])
 				var/datum/banda_atmos_cell/binding = length(cells) >= id ? cells[id] : null
-				var/full_cache = !!binding?.cached_air || !!binding?.readonly_air
-				if(full_cache && ids[offset] < 0 && binding.can_reuse_air_cache())
-					full_cache = FALSE
-				requests += list(id, full_cache)
+				var/cache_mode = !!binding?.cached_air || !!binding?.readonly_air
+				if(id == next_thermal_id)
+					if(binding?.cached_air && binding.cache_current && binding.committed_from_native && binding.native_air_kind != 3)
+						cache_mode = next_thermal < 0 ? 3 : 2
+						if(!direct_publication)
+							if(!thermal_baselines)
+								thermal_baselines = new/list(end - start)
+							// Keep the baseline from packet creation even if an earlier callback replaces it.
+							thermal_baselines[offset - start + 1] = binding.committed_snapshot()
+					thermal_index++
+					next_thermal = thermal_index <= thermal_count ? thermal_ids[thermal_index] : 0
+					next_thermal_id = abs(next_thermal)
+				else if(cache_mode && ids[offset] < 0 && binding.can_reuse_air_cache())
+					cache_mode = FALSE
+				requests += list(id, cache_mode)
+				if(direct_publication)
+					requests += (ids[offset] < 0)
 			var/list/output = list()
-			native(35, requests, output)
+			if(direct_publication)
+				direct_batch = native(75, requests)
+				while(TRUE)
+					var/status = native(76, direct_batch, src, direct_context, output)
+					if(status == 1)
+						break
+					publication_values += length(output)
+					if(status == 2)
+						ensure_binding(positions[output[1]])
+						continue
+					var/datum/banda_atmos_cell/cell = positions[output[1]]:banda_atmos_cell
+					if(!cell || cell.pending_rebind || cell.binding_version != output[2])
+						continue
+					var/air_count = output[8]
+					var/metadata_offset = 9 + air_count
+					if(status == 3)
+						cell.sync_presentation(output, output, 8, metadata_offset, air_count, output[7])
+					else if(status == 5)
+						cell.sync_hotspot(output, output, 8, metadata_offset, air_count)
+					else if(status == 4)
+						cell.sync_air(output, output, TRUE, 8, metadata_offset, air_count, output[metadata_offset], output[7])
+						if(output[7])
+							visual_publications++
+				direct_batch = null
+				continue
+			native(publication_operation, requests, output)
+			publication_values += length(output)
 			var/index = 1
+			var/record = 0
 			while(index <= length(output))
+				record++
 				var/id = output[index++]
 				var/version = output[index++]
 				var/turf/target = positions[id]
 				if(target.x != output[index++] || target.y != output[index++] || target.z != output[index++])
 					CRASH("Native atmosphere coordinate registry mismatch")
 				var/kind = output[index++]
+				var/visuals_only = visual_publication_ready ? output[index++] : FALSE
 				var/count = output[index++]
 				var/air_offset = index - 1
 				var/air_count = count
@@ -395,11 +518,31 @@
 				count = output[index++]
 				var/metadata_offset = index - 1
 				index += count
-				var/datum/banda_atmos_cell/cell = ensure_binding(target)
+				var/datum/banda_atmos_cell/cell = target.banda_atmos_cell
+				if(!cell)
+					cell = ensure_binding(target)
 				if(cell.binding_version == version && !cell.pending_rebind)
 					cell.native_air_kind = kind
-					cell.sync_air(output, output, TRUE, air_offset, metadata_offset, air_count, count)
+					// Check the live DM fields: earlier callbacks can edit them after Rust took its snapshot.
+					if(ids[start + record - 1] < 0 && visuals_only && !air_count && count == 12 && !cell.cached_air && !cell.readonly_air && isopenturf(target))
+						var/turf/open/open = target
+						var/current_cycle = output[metadata_offset + 4] ? output[metadata_offset + 4] + source_cycle_offset : 0
+						var/archived_cycle = output[metadata_offset + 3] ? output[metadata_offset + 3] + source_cycle_offset : 0
+						if(open.current_cycle == current_cycle && open.archived_cycle == archived_cycle && open.has_turf_air() && \
+							!length(open.atmos_overlay_types) && !open.active_hotspot && !cell.hotspots_pending && \
+							open.temperature == output[metadata_offset + 1] && open.temperature_archived == output[metadata_offset + 2] && \
+							open.significant_share_ticker == output[metadata_offset + 5] && open.excited == output[metadata_offset + 6] && \
+							open.pressure_difference == output[metadata_offset + 8] && open.pressure_direction == output[metadata_offset + 9])
+							service_publications_skipped++
+							visual_publications++
+							continue
+					var/list/baseline = visuals_only == 2 ? thermal_baselines[record] : null
+					cell.sync_air(output, output, TRUE, air_offset, metadata_offset, air_count, count, visuals_only, baseline)
+					if(visuals_only)
+						visual_publications++
 	catch(var/exception/error)
+		if(direct_batch && native_id)
+			native(77, direct_batch)
 		// Rust already consumed these changes; an aborted projection may leave any cache behind.
 		if(!changes_received)
 			for(var/datum/banda_atmos_cell/unknown_cache in cells)
@@ -418,6 +561,9 @@
 /datum/banda_atmos_phase/world_adapter/borrow_air(datum/banda_atmos_cell/cell)
 	if(!in_safe_callback || running || !cell || cell.owner != src || cell.pending_rebind)
 		CRASH("Mutable world atmosphere access outside a safe phase")
+	materialize_operation_cell(cell)
+	if(scrubber_tile_pending && !cell.cached_air)
+		materialize_scrubber_tile(cell)
 	if(!cell.cache_current || cell.cache_cycle < 0 || (cell.native_air_kind == 3 && cell.cache_cycle != air_cycle))
 		cell.refresh_cache()
 	working_mixtures[cell] = cell.cached_air
@@ -425,7 +571,13 @@
 	return cell.cached_air
 
 /datum/banda_atmos_phase/world_adapter/Destroy()
+	// Restore the completed prefix before handing air back to DM, even inside a failing callback.
+	if(in_safe_callback && !closed && !running)
+		finish_callback(FALSE)
 	closed = TRUE
+	deferred_commands.Cut()
+	active_commands.Cut()
+	clear_air_readings()
 	UnregisterSignal(SSdcs, COMSIG_GLOB_ATOM_AFTER_POST_INIT)
 	QDEL_LIST(debug_groups)
 	if(native_id)
@@ -533,13 +685,18 @@
 	air = space_gas
 	air.last_share = last_share
 
-/datum/banda_atmos_safe/world_commands/world/on_run(list/commands)
+/datum/banda_atmos_safe/world_commands/world/on_run(list/commands, start = 1)
 	var/datum/banda_atmos_phase/world_adapter/world_owner = owner
-	for(var/index = 1; index <= length(commands); index += 5)
+	for(var/index = start; index <= length(commands); index += 5)
+		if(QDELETED(world_owner) || world_owner.closed)
+			return
 		var/turf/target = world_owner.positions[commands[index]]
 		var/datum/banda_atmos_cell/cell = world_owner.ensure_binding(target)
 		if(cell && !cell.pending_rebind && cell.binding_version == commands[index + 1])
-			// Held aliases can change their lists directly; unborrowed cells have no such aliases.
+			// Borrow before skipping empty notifications so direct edits through held mixtures still commit.
 			if(cell.cached_air && isopenturf(target) && target.has_turf_air())
 				world_owner.borrow_air(cell)
+			if(commands[index + 2] == 13 && isopenturf(target) && !target._listen_lookup?[COMSIG_TURF_EXPOSE] && \
+				!(target.flags_1 & ATMOS_IS_PROCESSING_1) && !target.should_atmos_process(null, commands[index + 3]))
+				continue
 			cell.execute(commands[index + 2], commands[index + 3], commands[index + 4])

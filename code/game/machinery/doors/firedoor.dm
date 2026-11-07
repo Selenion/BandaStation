@@ -277,16 +277,28 @@
 	post_change_callbacks += CALLBACK(src, PROC_REF(process_results), changed) //check the atmosphere of the changed turf so we don't hold onto alarm if a wall is built
 
 /obj/machinery/door/firedoor/proc/check_atmos(turf/checked_turf)
-	var/datum/gas_mixture/environment = checked_turf.return_air()
-	if(!environment)
-		CRASH("We tried to check a gas_mixture that doesn't exist for its firetype, what are you DOING")
+	// BANDASTATION EDIT START - Checking two fields need not expose a full native mixture.
+	var/list/reading = SSair.native_atmos?.read_air_temperature_and_gas(checked_turf, /datum/gas/antinoblium)
+	var/temperature
+	var/antinoblium
+	if(reading)
+		temperature = reading[1]
+		antinoblium = reading[2]
+	else
+		var/datum/gas_mixture/environment = checked_turf.return_air()
+		if(!environment)
+			CRASH("We tried to check a gas_mixture that doesn't exist for its firetype, what are you DOING")
+		temperature = environment.temperature
+		if(temperature < FIRE_MINIMUM_TEMPERATURE_TO_EXIST)
+			antinoblium = environment.moles[/datum/gas/antinoblium]
 
-	if(environment.temperature >= FIRE_MINIMUM_TEMPERATURE_TO_EXIST)
+	if(temperature >= FIRE_MINIMUM_TEMPERATURE_TO_EXIST)
 		return FIRELOCK_ALARM_TYPE_HOT
-	if(environment.moles[/datum/gas/antinoblium] > MINIMUM_MOLE_COUNT)
+	if(antinoblium > MINIMUM_MOLE_COUNT)
 		return FIRELOCK_ALARM_TYPE_HOT
-	if(environment.temperature <= BODYTEMP_COLD_DAMAGE_LIMIT)
+	if(temperature <= BODYTEMP_COLD_DAMAGE_LIMIT)
 		return FIRELOCK_ALARM_TYPE_COLD
+	// BANDASTATION EDIT END
 	return
 
 /obj/machinery/door/firedoor/proc/process_results(datum/source)

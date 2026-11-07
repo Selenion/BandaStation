@@ -96,6 +96,8 @@
 		return SSair.native_atmos.invoke(CALLBACK(src, TYPE_PROC_REF(/atom, assume_air), giver))
 	if(banda_atmos_cell && !banda_atmos_cell.owner.world_owned)
 		return banda_atmos_cell.write_air(giver, TRUE)
+	if(SSair.native_atmos?.try_assume_air_operation(src, giver))
+		return TRUE
 	// BANDASTATION ADDITION END
 	var/datum/gas_mixture/ours = get_mutable_air() // BANDASTATION EDIT - Borrow only this native cell.
 	ours.merge(giver)
@@ -107,6 +109,10 @@
 	// BANDASTATION ADDITION START - A returned sample must be removed atomically from native air.
 	if(SSair.native_atmos && banda_atmos_id && !SSair.native_atmos.in_safe_callback)
 		return SSair.native_atmos.invoke(CALLBACK(src, TYPE_PROC_REF(/atom, remove_air), amount))
+	if(SSair.native_atmos)
+		var/list/operation_result = SSair.native_atmos.try_remove_air_operation(src, amount)
+		if(!isnull(operation_result))
+			return operation_result[1]
 	// BANDASTATION ADDITION END
 	var/datum/gas_mixture/ours = get_mutable_air() // BANDASTATION EDIT - Safe native access.
 	var/datum/gas_mixture/removed = ours.remove(amount)
@@ -170,8 +176,13 @@
 /turf/temperature_expose(datum/gas_mixture/air, exposed_temperature)
 	atmos_expose(air, exposed_temperature)
 
-/turf/open/temperature_expose(datum/gas_mixture/air, exposed_temperature)
-	SEND_SIGNAL(src, COMSIG_TURF_EXPOSE, air, exposed_temperature)
+/turf/open/temperature_expose(datum/gas_mixture/air, exposed_temperature, native_keys) // BANDASTATION EDIT - Compact exposure for a scrubber-only listener.
+	// BANDASTATION EDIT START - Keep the regular signal arguments for other listeners.
+	if(isnull(native_keys))
+		SEND_SIGNAL(src, COMSIG_TURF_EXPOSE, air, exposed_temperature)
+	else
+		SEND_SIGNAL(src, COMSIG_TURF_EXPOSE, air, exposed_temperature, native_keys)
+	// BANDASTATION EDIT END
 	check_atmos_process(src, air, exposed_temperature) //Manually do this to avoid needing to use elements, don't want 200 second atom init times
 
 /turf/proc/archive()
@@ -204,7 +215,12 @@
 
 	var/list/moles = native_moles // BANDASTATION ADDITION - Published packet or lazy consumer read.
 	if(isnull(moles))
-		var/datum/gas_mixture/visual_air = (SSair.native_atmos && banda_atmos_id) ? get_readonly_air() : air
+		// BANDASTATION ADDITION START - Rendering only needs gas IDs and opacity states.
+		var/datum/banda_atmos_phase/world_adapter/phase = SSair.native_atmos
+		if(phase && banda_atmos_id && phase.try_refresh_visuals(src))
+			return
+		// BANDASTATION ADDITION END
+		var/datum/gas_mixture/visual_air = (phase && banda_atmos_id) ? get_readonly_air() : air // BANDASTATION EDIT - Preserve the working mixture when one has been exposed to DM.
 		moles = visual_air?.moles
 	if(isnull(moles)) // BANDASTATION EDIT
 		if (atmos_overlay_types)
@@ -215,6 +231,12 @@
 
 	var/list/new_overlay_types
 	GAS_OVERLAYS(moles, new_overlay_types, src)
+	return apply_gas_overlays(new_overlay_types) // BANDASTATION EDIT - Share application with native visual descriptors.
+
+// BANDASTATION ADDITION START - Native publications keep moles in Rust and supply the same overlay refs.
+/turf/open/proc/apply_gas_overlays(list/new_overlay_types)
+	var/list/atmos_overlay_types = src.atmos_overlay_types
+// BANDASTATION ADDITION END
 
 	if (atmos_overlay_types)
 		for(var/overlay in atmos_overlay_types-new_overlay_types) //doesn't remove overlays that would only be added

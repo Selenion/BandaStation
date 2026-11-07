@@ -17,6 +17,11 @@
 		return
 	pending_archive_cycle = null
 	pending_archive_temperature = null
+	if(owner.world_owned && !cached_air)
+		var/datum/banda_atmos_phase/world_adapter/phase = owner
+		phase.materialize_operation_cell(src)
+		if(phase.scrubber_tile_pending)
+			phase.materialize_scrubber_tile(src)
 	var/datum/gas_mixture/working = owner.working_mixtures[src]
 	if(working)
 		// Accepted feedback precedes the replacement; only its old world effects are invalidated.
@@ -37,7 +42,7 @@
 	binding_version = owner.native(20, native_id)
 	post_change_callbacks += CALLBACK(src, PROC_REF(turf_constructed), binding_version)
 	cache_current = FALSE
-	committed_air = null
+	forget_committed_air()
 	cached_air = null
 	readonly_air = null
 
@@ -112,6 +117,12 @@
 		// Reattachment restores the old group first; later explicit activation must win.
 		owner.native(19, native_id, pending_control)
 		pending_control = null
+	// Teardown restores this completed state to DM; handing it off again would create bindings on a closed owner.
+	if(owner.closed)
+		// Initialize/Destroy callbacks may already hold this replacement's mixture.
+		if(owner.world_owned && open)
+			cached_air = open.air
+		return
 	if(owner.world_owned)
 		var/datum/banda_atmos_phase/world_adapter/world_owner = owner
 		world_owner.handoff_air(target)

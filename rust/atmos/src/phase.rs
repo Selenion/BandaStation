@@ -18,6 +18,8 @@ pub use binding::Rebinding;
 #[path = "phase_write.rs"]
 mod writes;
 use writes::{apply, drain_effects};
+#[path = "phase_operations.rs"]
+mod operations;
 
 #[cfg(test)]
 #[path = "phase_tests.rs"]
@@ -25,6 +27,15 @@ mod tests;
 
 pub type CellId = u32;
 const MAX_EXACT_DM_INTEGER: u32 = 16_777_215;
+
+#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
+pub enum Publication {
+    #[default]
+    Service,
+    Temperature,
+    Thermal,
+    Full,
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct Frame {
@@ -56,6 +67,29 @@ pub enum Write {
 }
 
 impl Write {
+    fn publication(&self) -> Publication {
+        match self {
+            // Exposure can run reactions immediately, unlike importing the hotspot state.
+            Self::Replace(..)
+            | Self::Release(..)
+            | Self::Commit(..)
+            | Self::ReplaceFull(..)
+            | Self::Expose(..)
+            | Self::Rebind(..) => Publication::Full,
+            Self::Context(..)
+            | Self::Neighbors(..)
+            | Self::ThermalNeighbors(..)
+            | Self::Topology(..)
+            | Self::Terrain(..)
+            | Self::Conducting(..)
+            | Self::ArchiveMetadata(..)
+            | Self::ClearHotspot(..)
+            | Self::Control(..)
+            | Self::Remove(..)
+            | Self::HotspotState(..) => Publication::Service,
+        }
+    }
+
     fn cell_id(&self) -> CellId {
         match self {
             Self::Replace(id, _)
@@ -97,7 +131,7 @@ pub struct Completed {
     epoch: u32,
     frame: Frame,
     commands: Vec<Command>,
-    changed: BTreeMap<CellId, bool>,
+    changed: BTreeMap<CellId, Publication>,
 }
 
 impl Job {
@@ -156,7 +190,7 @@ impl Frame {
         &self,
         previous: &Self,
         candidates: impl Iterator<Item = CellId>,
-    ) -> BTreeMap<CellId, bool> {
+    ) -> BTreeMap<CellId, Publication> {
         candidates
             .filter_map(|id| {
                 let cell = &self.cells[&id];
@@ -177,10 +211,53 @@ impl Frame {
                     || tile.terrain != old_tile.terrain
                     || (!matches!(tile.boundary, crate::transport::Boundary::Space)
                         && tile.last_share != old_tile.last_share);
-                changed.then_some((id, air_changed))
+                if !changed {
+                    return None;
+                }
+                let publication = if !air_changed {
+                    Publication::Service
+                } else if tile.has_air
+                    && old_tile.has_air
+                    && !matches!(tile.boundary, crate::transport::Boundary::Space)
+                    && !matches!(old_tile.boundary, crate::transport::Boundary::Space)
+                    && same_live_air(&cell.air, &old.air)
+                {
+                    if tile.archived.same_bits(&old_tile.archived)
+                        && tile.archived.temperature != 0.0
+                        && tile
+                            .archived
+                            .keys()
+                            .iter()
+                            .all(|&gas| tile.archived.moles[gas] != 0.0)
+                    {
+                        Publication::Temperature
+                    } else {
+                        Publication::Thermal
+                    }
+                } else {
+                    Publication::Full
+                };
+                Some((id, publication))
             })
             .collect()
     }
+}
+
+fn same_live_air(air: &Mixture, old: &Mixture) -> bool {
+    // A legacy write can change the sign of zero without queuing a full publication.
+    air.volume.to_bits() == old.volume.to_bits()
+        && air.turf_heat_capacity == old.turf_heat_capacity
+        && air.keys() == old.keys()
+        && air.keys().iter().all(|&gas| {
+            air.moles[gas] != 0.0 && air.moles[gas].to_bits() == old.moles[gas].to_bits()
+        })
+        && air
+            .results
+            .iter()
+            .zip(old.results.iter())
+            .all(|(value, previous)| {
+                *value != Some(0.0) && value.map(f32::to_bits) == previous.map(f32::to_bits)
+            })
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -194,6 +271,8 @@ pub enum Error {
     InvalidTopology,
     DetachedBinding,
     StaleBinding,
+    Operation(crate::operations::Error),
+    Port(crate::pipenet::PoolError),
 }
 
 struct PendingWrite {
@@ -202,6 +281,12 @@ struct PendingWrite {
 }
 
 pub struct Store {
+    pub visibility: Option<crate::visibility::Visibility>,
+    pub pipes: crate::pipenet::Pool,
+    operation_edits: Option<BTreeMap<crate::operations::Target, (crate::transport::Sample, bool)>>,
+    /// Air edited by DM equipment before the outer safe callback decides whether to publish it.
+    #[cfg(feature = "byond")]
+    pub(crate) scrubber_edits: Vec<(CellId, u32, Mixture, Archive)>,
     published: Arc<Frame>,
     spare: Option<Frame>,
     sync_ids: BTreeSet<CellId>,
@@ -213,7 +298,7 @@ pub struct Store {
     bindings: BTreeMap<CellId, Binding>,
     detached: BTreeSet<CellId>,
     coordinates: BTreeMap<[i32; 3], CellId>,
-    changed: BTreeMap<CellId, bool>,
+    changed: BTreeMap<CellId, Publication>,
     topology_dirty: BTreeSet<CellId>,
     commands: Vec<Command>,
     closed: bool,
@@ -222,6 +307,11 @@ pub struct Store {
 impl Default for Store {
     fn default() -> Self {
         Self {
+            visibility: None,
+            pipes: crate::pipenet::Pool::default(),
+            operation_edits: None,
+            #[cfg(feature = "byond")]
+            scrubber_edits: Vec::new(),
             published: Arc::new(Frame::default()),
             spare: None,
             sync_ids: BTreeSet::new(),
@@ -247,6 +337,38 @@ impl Store {
     }
     pub fn busy(&self) -> bool {
         self.running.is_some()
+    }
+
+    #[cfg(feature = "byond")]
+    pub(crate) fn machine_air(&self, id: CellId, version: u32) -> Option<(&Mixture, &Archive)> {
+        if self.closed || self.busy() || self.published_binding_version(id) != Some(version) {
+            return None;
+        }
+        let tile = self.published.schedule.tiles.get(&id)?;
+        if !tile.has_air || tile.boundary.immutable() {
+            return None;
+        }
+        if let Some((sample, _)) = self
+            .operation_edits
+            .as_ref()
+            .and_then(|edits| edits.get(&crate::operations::Target::Cell { id, version }))
+        {
+            return Some((&sample.air, &sample.archived));
+        }
+        Some((&self.published.cells.get(&id)?.air, &tile.archived))
+    }
+
+    #[cfg(feature = "byond")]
+    pub(crate) fn scrubber_air(&self, id: CellId, version: u32) -> Option<(&Mixture, &Archive)> {
+        let published = self.machine_air(id, version)?;
+        Some(
+            self.scrubber_edits
+                .iter()
+                .find_map(|(cell, bound, air, archive)| {
+                    (*cell == id && *bound == version).then_some((air, archive))
+                })
+                .unwrap_or(published),
+        )
     }
 
     pub fn set_processing(
@@ -348,9 +470,41 @@ impl Store {
         Ok(id)
     }
 
+    #[cfg(any(feature = "byond", test))]
+    pub(crate) fn write_environment(
+        &mut self,
+        id: CellId,
+        context: Context,
+        permafrost: bool,
+        thermal: bool,
+        terrain: Terrain,
+    ) -> Result<(), Error> {
+        if self.closed || self.busy() {
+            self.write(Write::Context(id, context, permafrost, thermal))?;
+            return self.write(Write::Terrain(id, terrain));
+        }
+        let cell = self.published.cells.get(&id).ok_or(Error::MissingCell)?;
+        let tile = &self.published.schedule.tiles[&id];
+        let context_changed = !cell.context.same_bits(&context)
+            || cell.freeze_leaves_permafrost != permafrost
+            || tile.thermal_enabled != thermal;
+        let terrain_changed =
+            !tile.terrain.same_bits(&terrain) || thermal != (terrain.conductivity != 0.0);
+        if context_changed {
+            self.write(Write::Context(id, context, permafrost, thermal))?;
+        }
+        if terrain_changed {
+            self.write(Write::Terrain(id, terrain))?;
+        }
+        Ok(())
+    }
+
     pub fn write(&mut self, write: Write) -> Result<(), Error> {
         if self.closed {
             return Err(Error::Closed);
+        }
+        if self.operation_edits.is_some() && self.intercept_operation_write(&write)? {
+            return Ok(());
         }
         let id = write.cell_id();
         if !self.published.cells.contains_key(&id) {
@@ -422,6 +576,7 @@ impl Store {
         } else {
             let frame = Arc::make_mut(&mut self.published);
             let removed = matches!(write, Write::Remove(_));
+            let publication = write.publication();
             let coordinates = frame.schedule.tiles[&id].coordinates;
             let visible = apply(frame, write, &mut self.sync_ids);
             self.commands
@@ -432,7 +587,8 @@ impl Store {
                 self.coordinates.remove(&coordinates);
             }
             if visible && frame.cells.contains_key(&id) {
-                self.changed.insert(id, true);
+                let pending = self.changed.entry(id).or_default();
+                *pending = (*pending).max(publication);
             }
         }
         Ok(())
@@ -453,6 +609,9 @@ impl Store {
             return Err(Error::Closed);
         }
         if self.busy() {
+            return Err(Error::Busy);
+        }
+        if self.operation_edits.is_some() {
             return Err(Error::Busy);
         }
         if !self.commands.is_empty() {
@@ -528,13 +687,15 @@ impl Store {
         }
         let mut frame = completed.frame;
         let mut commands = completed.commands;
-        for (id, air_changed) in completed.changed {
-            *self.changed.entry(id).or_default() |= air_changed;
+        for (id, publication) in completed.changed {
+            let pending = self.changed.entry(id).or_default();
+            *pending = (*pending).max(publication);
         }
         self.sync_ids.extend(frame.schedule.touched.iter().copied());
         // External changes become visible only after the completed native calculation.
         for pending in self.writes.drain(..) {
             let id = pending.write.cell_id();
+            let publication = pending.write.publication();
             if matches!(pending.write, Write::Remove(_)) {
                 if let Some(tile) = frame.schedule.tiles.get(&id) {
                     self.coordinates.remove(&tile.coordinates);
@@ -545,7 +706,8 @@ impl Store {
             let visible = apply(&mut frame, pending.write, &mut self.sync_ids);
             commands.extend(drain_effects(&mut frame, id, pending.binding_version));
             if visible && frame.cells.contains_key(&id) {
-                self.changed.insert(id, true);
+                let pending = self.changed.entry(id).or_default();
+                *pending = (*pending).max(publication);
             }
         }
         self.commands = commands
@@ -570,11 +732,13 @@ impl Store {
             let frame = Arc::make_mut(&mut self.published);
             for pending in self.writes.drain(..) {
                 let id = pending.write.cell_id();
+                let publication = pending.write.publication();
                 let visible = apply(frame, pending.write, &mut self.sync_ids);
                 self.commands
                     .extend(drain_effects(frame, id, pending.binding_version));
                 if visible && frame.cells.contains_key(&id) {
-                    self.changed.insert(id, true);
+                    let pending = self.changed.entry(id).or_default();
+                    *pending = (*pending).max(publication);
                 }
             }
             self.bindings.retain(|id, _| frame.cells.contains_key(id));
@@ -617,6 +781,11 @@ impl Store {
     }
 
     pub fn close(&mut self) {
+        self.operation_edits = None;
+        self.visibility = None;
+        self.pipes = crate::pipenet::Pool::default();
+        #[cfg(feature = "byond")]
+        self.scrubber_edits.clear();
         self.closed = true;
         self.staged = None;
         self.running = None;
@@ -643,8 +812,7 @@ impl Store {
             .collect())
     }
 
-    /// The flag excludes metadata-only updates; external writes conservatively require full gas.
-    pub fn take_publication_changes(&mut self) -> Result<Vec<(CellId, bool)>, Error> {
+    pub fn take_publication_changes(&mut self) -> Result<Vec<(CellId, Publication)>, Error> {
         if self.closed {
             return Err(Error::Closed);
         }
@@ -655,6 +823,12 @@ impl Store {
             .into_iter()
             .filter(|(id, _)| self.published.cells.contains_key(id))
             .collect())
+    }
+
+    #[cfg(feature = "byond")]
+    pub(crate) fn needs_full_publication(&self, id: CellId, includes_archive: bool) -> bool {
+        let pending = self.changed.get(&id).copied().unwrap_or_default();
+        pending == Publication::Full || (!includes_archive && pending == Publication::Thermal)
     }
 
     /// Startup topology touches every registered cell; it has no output to project yet.

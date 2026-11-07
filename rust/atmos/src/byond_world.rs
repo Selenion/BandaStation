@@ -1,6 +1,7 @@
 //! Bounded numeric batches for the world adapter. No BYOND references escape a call.
 use super::*;
 use crate::cell::Hotspot;
+use crate::phase::Publication;
 use crate::{Archive, Mixture};
 
 #[cfg(test)]
@@ -108,6 +109,36 @@ pub(super) unsafe fn dispatch(api: &Api, store: &mut Store, args: &[Value]) -> R
     };
     let opcode = api.integer(field(0)?)?;
     match (opcode, args.len()) {
+        (50, 2) => {} // Additive compact-property capability; ABI 11 remains compatible.
+        (51, 4) => {
+            let ids = api.numbers(field(2)?)?;
+            if ids.len() > 256 {
+                return Err("Property batch too large".into());
+            }
+            let ids = ids
+                .into_iter()
+                .map(integer)
+                .collect::<Result<Vec<_>, _>>()?;
+            api.output(field(3)?, &packet::properties(store, &ids))?;
+        }
+        (52, 3) => {
+            store.visibility = Some(crate::visibility::Visibility::from_values(
+                &api.numbers(field(2)?)?,
+            )?);
+        }
+        (66, 6) => {
+            let id = api.integer(field(2)?)?;
+            let version = api.integer(field(3)?)?;
+            let gas = api.integer(field(4)?)? as usize;
+            if gas >= crate::catalog::GAS_COUNT {
+                return Err("Invalid gas property index".into());
+            }
+            if let Some((air, _)) = store.machine_air(id, version) {
+                api.output(field(5)?, &[air.temperature, air.moles[gas]])?;
+            } else {
+                api.output(field(5)?, &[])?;
+            }
+        }
         (23, 4) => {
             let data = api.numbers(field(2)?)?;
             let mut cursor = Cursor {
@@ -221,6 +252,37 @@ pub(super) unsafe fn dispatch(api: &Api, store: &mut Store, args: &[Value]) -> R
                 store.write(write).map_err(|e| format!("{e:?}"))?;
             }
         }
+        (64, 3) => {
+            let data = api.numbers(field(2)?)?;
+            let Some((&count, rows)) = data.split_first() else {
+                return Err("Missing environment batch size".into());
+            };
+            let count = integer(count)?;
+            if count > 256 || rows.len() != count as usize * 7 {
+                return Err("Invalid environment batch size".into());
+            }
+            let inputs = rows
+                .chunks_exact(7)
+                .map(|row| {
+                    let id = integer(row[0])?;
+                    let flags = integer(row[1])?;
+                    let closed = if flags & 2048 != 0 { 2.0 } else { 0.0 };
+                    let terrain = terrain(&[closed, row[2], row[3], row[4], row[5], row[6]])?;
+                    Ok((id, flags, terrain))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            for (id, flags, terrain) in inputs {
+                store
+                    .write_environment(
+                        id,
+                        context(flags),
+                        flags & 1024 != 0,
+                        flags & 256 != 0,
+                        terrain,
+                    )
+                    .map_err(|e| format!("{e:?}"))?;
+            }
+        }
         (26, 3) => {
             let ids = store.take_changes().map_err(|e| format!("{e:?}"))?;
             api.output(
@@ -228,73 +290,41 @@ pub(super) unsafe fn dispatch(api: &Api, store: &mut Store, args: &[Value]) -> R
                 &ids.into_iter().map(|n| n as f32).collect::<Vec<_>>(),
             )?;
         }
-        (40, 4) => {
-            if api.integer(field(3)?)? != 1 {
+        (40, 4 | 5) => {
+            let thermal_protocol = args.len() == 5;
+            if api.integer(field(3)?)? != if thermal_protocol { 2 } else { 1 } {
                 return Err("Unknown publication protocol".into());
             }
             let changes = store
                 .take_publication_changes()
                 .map_err(|e| format!("{e:?}"))?;
-            api.output(
-                field(2)?,
-                &changes
-                    .into_iter()
-                    // IDs are positive exact f32 integers; sign carries the flag without extra list values.
-                    .map(|(id, full)| if full { id as f32 } else { -(id as f32) })
-                    .collect::<Vec<_>>(),
-            )?;
-        }
-        (27 | 35, 4) => {
-            let requests = api.numbers(field(2)?)?;
-            let compact = opcode == 35;
-            let width = if compact { 2 } else { 1 };
-            if requests.len() > 256 * width || requests.len() % width != 0 {
-                return Err("Output batch too large".into());
-            }
-            let snapshot = store.snapshot();
-            let mut output = Vec::new();
-            for request in requests.chunks_exact(width) {
-                let id = integer(request[0])?;
-                let cache = if compact {
-                    if ![0.0, 1.0].contains(&request[1]) {
-                        return Err("Invalid cache flag".into());
+            let mut ids = Vec::with_capacity(changes.len());
+            let mut thermal = Vec::new();
+            for (id, change) in changes {
+                let id = id as f32;
+                // Protocol 1 readers still request full packets for thermal changes.
+                ids.push(if change == Publication::Service {
+                    -id
+                } else {
+                    id
+                });
+                if thermal_protocol {
+                    // Sparse side list keeps the original publication order. Negative omits the archive.
+                    match change {
+                        Publication::Temperature => thermal.push(-id),
+                        Publication::Thermal => thermal.push(id),
+                        _ => {}
                     }
-                    request[1] == 1.0
-                } else {
-                    true
-                };
-                let tile = snapshot
-                    .schedule
-                    .tiles
-                    .get(&id)
-                    .ok_or("Unknown output cell")?;
-                let air = if compact {
-                    packet::publication_air(&snapshot, id, cache)?
-                } else {
-                    packet::air_packet(&snapshot, id)?
-                };
-                let metadata = packet::publication_turf(&snapshot, id, cache)?;
-                output.extend([
-                    id as f32,
-                    store.binding_version(id).map_err(|e| format!("{e:?}"))? as f32,
-                    tile.coordinates[0] as f32,
-                    tile.coordinates[1] as f32,
-                    tile.coordinates[2] as f32,
-                    if !tile.has_air {
-                        4.0
-                    } else if matches!(tile.boundary, crate::transport::Boundary::Space) {
-                        3.0
-                    } else if snapshot.cells[&id].air.turf_heat_capacity {
-                        2.0
-                    } else {
-                        1.0
-                    },
-                    air.len() as f32,
-                ]);
-                output.extend(air);
-                output.push(metadata.len() as f32);
-                output.extend(metadata);
+                }
             }
+            api.output(field(2)?, &ids)?;
+            if thermal_protocol {
+                api.output(field(4)?, &thermal)?;
+            }
+        }
+        (27 | 35 | 53 | 65 | 73, 4) => {
+            let requests = api.numbers(field(2)?)?;
+            let output = publication(store, &requests, opcode)?;
             api.output(field(3)?, &output)?;
         }
         (36, 5) => {
@@ -402,6 +432,17 @@ pub(super) unsafe fn dispatch(api: &Api, store: &mut Store, args: &[Value]) -> R
             let frame = store.snapshot();
             let cell = frame.cells.get(&id).ok_or("Unknown gas cell")?;
             let tile = &frame.schedule.tiles[&id];
+            if let Some(sample) = store.pending_operation_sample(id) {
+                return Ok(
+                    if matches!(sample.boundary, crate::transport::Boundary::Space) {
+                        3.0
+                    } else if sample.air.turf_heat_capacity {
+                        2.0
+                    } else {
+                        1.0
+                    },
+                );
+            }
             return Ok(if !tile.has_air {
                 4.0
             } else if matches!(tile.boundary, crate::transport::Boundary::Space) {
@@ -443,4 +484,97 @@ pub(super) unsafe fn dispatch(api: &Api, store: &mut Store, args: &[Value]) -> R
         _ => return Err("Invalid world operation/arity".into()),
     }
     Ok(1.0)
+}
+
+/// Freeze one bounded batch without retaining the world across DM callbacks.
+pub(super) fn publication(
+    store: &Store,
+    requests: &[f32],
+    opcode: u32,
+) -> Result<Vec<f32>, String> {
+    let compact = opcode != 27;
+    let width = if compact { 2 } else { 1 };
+    if requests.len() > 256 * width || requests.len() % width != 0 {
+        return Err("Output batch too large".into());
+    }
+    let snapshot = store.snapshot();
+    let mut output = Vec::new();
+    let visual_protocol = matches!(opcode, 53 | 65 | 73);
+    for request in requests.chunks_exact(width) {
+        let id = integer(request[0])?;
+        let mode = if compact {
+            match request[1] {
+                0.0 => 0,
+                1.0 => 1,
+                // Earlier presentation callbacks can write more gas before this batch.
+                requested @ (2.0 | 3.0) if opcode == 73 => {
+                    if store.needs_full_publication(id, requested == 2.0) {
+                        1
+                    } else {
+                        requested as u8
+                    }
+                }
+                _ => return Err("Invalid cache flag".into()),
+            }
+        } else {
+            1
+        };
+        let cache = matches!(mode, 1 | 2);
+        let tile = snapshot
+            .schedule
+            .tiles
+            .get(&id)
+            .ok_or("Unknown output cell")?;
+        let presentation = visual_protocol && mode != 1;
+        let metadata = packet::publication_turf(&snapshot, id, cache)?;
+        output.extend([
+            id as f32,
+            store.binding_version(id).map_err(|e| format!("{e:?}"))? as f32,
+            tile.coordinates[0] as f32,
+            tile.coordinates[1] as f32,
+            tile.coordinates[2] as f32,
+            if !tile.has_air {
+                4.0
+            } else if matches!(tile.boundary, crate::transport::Boundary::Space) {
+                3.0
+            } else if snapshot.cells[&id].air.turf_heat_capacity {
+                2.0
+            } else {
+                1.0
+            },
+        ]);
+        if visual_protocol {
+            output.push(if mode >= 2 {
+                2.0
+            } else if presentation {
+                1.0
+            } else {
+                0.0
+            });
+        }
+        let length = output.len();
+        output.push(0.0);
+        if presentation {
+            packet::append_publication_visuals(
+                &mut output,
+                &snapshot,
+                id,
+                store
+                    .visibility
+                    .as_ref()
+                    .ok_or("Missing gas visibility rules")?,
+                matches!(opcode, 65 | 73) && mode == 0,
+                mode >= 2,
+                store.pending_operation_air(id),
+            )?;
+        } else if compact {
+            output.extend(packet::publication_air(&snapshot, id, cache)?);
+        } else {
+            output.extend(packet::air_packet(&snapshot, id)?);
+        }
+        output[length] = (output.len() - length - 1) as f32;
+        output.push(metadata.len() as f32);
+        output.extend(metadata);
+    }
+    Ok(output)
 }

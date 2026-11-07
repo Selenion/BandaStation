@@ -179,12 +179,24 @@
 		return
 	name = "\proper [get_area_name(src)] [name] [id_tag]"
 
-/obj/machinery/atmospherics/components/unary/vent_scrubber/should_atmos_process(datum/gas_mixture/air, exposed_temperature)
+/obj/machinery/atmospherics/components/unary/vent_scrubber/should_atmos_process(datum/gas_mixture/air, exposed_temperature, native_keys) // BANDASTATION EDIT - Admit cold tiles by gas keys.
 	if(welded || !is_operational)
 		return FALSE
 	if(!nodes[1] || !on || (!filter_types && scrubbing != ATMOS_DIRECTION_SIPHONING))
 		set_on(FALSE)
 		return FALSE
+
+	// BANDASTATION ADDITION START - A present zero gas key still schedules a scrubber.
+	if(!isnull(native_keys))
+		if(scrubbing == ATMOS_DIRECTION_SIPHONING)
+			return TRUE
+		var/list/gases = banda_atmos_gases()
+		for(var/gas in filter_types)
+			var/index = gases.Find(gas)
+			if(index && (native_keys & (1 << (index - 1))))
+				return TRUE
+		return FALSE
+	// BANDASTATION ADDITION END
 
 	if(!air.moles)
 		return FALSE
@@ -193,6 +205,25 @@
 		return TRUE
 
 	return FALSE
+
+// BANDASTATION ADDITION START - Cold tile admission never needs a full mixture.
+/obj/machinery/atmospherics/components/unary/vent_scrubber/atmos_conditions_changed()
+	var/turf/open/spot = loc
+	var/keys = SSair.native_atmos?.scrubber_air_keys(spot)
+	if(isnull(keys))
+		return ..()
+	check_atmos_process(spot, null, null, keys)
+
+/obj/machinery/atmospherics/components/unary/vent_scrubber/process_exposure()
+	var/turf/open/spot = loc
+	var/keys = SSair.native_atmos?.scrubber_air_keys(spot)
+	if(isnull(keys))
+		return ..()
+	if(!should_atmos_process(null, null, keys))
+		stop_atmos_exposure()
+		return
+	atmos_expose(null, null)
+// BANDASTATION ADDITION END
 
 /obj/machinery/atmospherics/components/unary/vent_scrubber/atmos_expose(datum/gas_mixture/air, exposed_temperature)
 	if(welded || !is_operational)
@@ -203,17 +234,34 @@
 	var/turf/open/us = loc
 	if(!istype(us))
 		return
-	if(scrub(us))
-		us.air_update_turf(FALSE, FALSE)
+	scrub_exposed_tile(us) // BANDASTATION EDIT - Try the direct path before borrowing turf air.
 	if(widenet)
 		if(COOLDOWN_FINISHED(src, check_turfs_cooldown))
 			check_turfs()
 			COOLDOWN_START(src, check_turfs_cooldown, 2 SECONDS)
 
 		for(var/turf/tile in adjacent_turfs)
-			if (scrub(tile))
-				tile.air_update_turf(FALSE, FALSE)
+			scrub_exposed_tile(tile) // BANDASTATION EDIT - Keep widenet order and per-tile pressure checks.
 	return TRUE
+
+// BANDASTATION ADDITION START - Cold tile air stays in Rust through the whole exposure.
+/obj/machinery/atmospherics/components/unary/vent_scrubber/proc/scrub_exposed_tile(turf/tile)
+	var/datum/banda_atmos_phase/world_adapter/phase = SSair.native_atmos
+	if(phase?.scrubber_tile_ready)
+		var/status = phase.try_scrubber_tile(tile, airs[1], filter_types, scrubbing != ATMOS_DIRECTION_SCRUBBING, volume_rate)
+		if(!isnull(status))
+			if(!status || status == 4)
+				return
+			if(status == 3 || status == 5)
+				update_parents()
+			if(!phase.scrubber_binding_version(tile))
+				tile.air_update_turf(FALSE, FALSE)
+			else
+				phase.wake_cold_tile(tile)
+			return
+	if(scrub(tile))
+		tile.air_update_turf(FALSE, FALSE)
+// BANDASTATION ADDITION END
 
 ///filtered gases at or below this amount automatically get removed from the mix
 #define MINIMUM_MOLES_TO_SCRUB (MOLAR_ACCURACY*100)
@@ -223,13 +271,34 @@
 		return FALSE
 	var/datum/gas_mixture/environment = tile.return_air()
 	var/datum/gas_mixture/air_contents = airs[1]
+	air_contents.banda_expose_pipe_port() // BANDASTATION ADDITION - Legacy scrub needs the live port mixture.
 	var/list/env_cached_moles = environment.moles
 
 	if(air_contents.return_pressure() >= 50 * ONE_ATMOSPHERE)
 		return FALSE
 
+	// BANDASTATION ADDITION START - Keep the original filter order and exposure boundary.
+	var/list/selected = scrubbing == ATMOS_DIRECTION_SCRUBBING ? filter_types & env_cached_moles : null
+	if(scrubbing == ATMOS_DIRECTION_SCRUBBING && !length(selected))
+		return TRUE
+	var/datum/banda_atmos_phase/world_adapter/phase = SSair.native_atmos
+	if(phase?.scrubber_transfer_ready)
+		var/status = phase.try_scrubber_transfer(tile, environment, air_contents, selected, volume_rate)
+		if(!isnull(status))
+			if(status == 4) // Cleanup of zero entries returns before the outer wake.
+				return FALSE
+			if(scrubbing != ATMOS_DIRECTION_SCRUBBING)
+				// Base remove_air performs these effects even when it returns no sample.
+				var/turf/open/open = tile
+				open.update_visuals()
+				open.air_update_turf(FALSE, FALSE)
+			if(status == 3 || status == 5)
+				update_parents()
+			return TRUE
+	// BANDASTATION ADDITION END
+
 	if(scrubbing == ATMOS_DIRECTION_SCRUBBING)
-		if(length(env_cached_moles & filter_types))
+		if(length(selected)) // BANDASTATION EDIT - Reuse the checked intersection.
 			///contains all of the gas we're sucking out of the tile, gets put into our parent pipenet
 			var/datum/gas_mixture/filtered_out = new
 			var/list/filtered_out_cached_moles = filtered_out.moles
@@ -239,14 +308,14 @@
 			var/removal_ratio =  min(1, volume_rate / environment.volume)
 
 			var/total_moles_to_remove = 0
-			for(var/gas_id in filter_types & env_cached_moles)
+			for(var/gas_id in selected) // BANDASTATION EDIT - Reuse the checked intersection.
 				total_moles_to_remove += env_cached_moles[gas_id]
 
 			if(total_moles_to_remove == 0)//sometimes this gets non gc'd values
 				environment.garbage_collect()
 				return FALSE
 
-			for(var/gas_id in filter_types & env_cached_moles)
+			for(var/gas_id in selected) // BANDASTATION EDIT - Reuse the checked intersection.
 				filtered_out.add_gas(gas_id)
 				//take this gases portion of removal_ratio of the turfs air, or all of that gas_id if less than or equal to MINIMUM_MOLES_TO_SCRUB
 				var/transferred_moles = max(QUANTIZE(env_cached_moles[gas_id] * removal_ratio * (env_cached_moles[gas_id] / total_moles_to_remove)), min(MINIMUM_MOLES_TO_SCRUB, env_cached_moles[gas_id]))

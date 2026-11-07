@@ -19,6 +19,14 @@ pub struct Terrain {
     pub blocked: u8,
 }
 impl Terrain {
+    pub(crate) fn same_bits(&self, other: &Self) -> bool {
+        self == other
+            && self.temperature.to_bits() == other.temperature.to_bits()
+            && self.archived.to_bits() == other.archived.to_bits()
+            && self.capacity.to_bits() == other.capacity.to_bits()
+            && self.conductivity.to_bits() == other.conductivity.to_bits()
+    }
+
     pub fn new(enabled: bool) -> Self {
         Self {
             closed: false,

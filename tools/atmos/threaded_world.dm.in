@@ -65,7 +65,7 @@ var/global/banda_threaded_callback_calls = 0
 		throw EXCEPTION("BANDA_ATMOS_EXPECTED_UNSUPPORTED_WORKER")
 	return ..()
 
-/datum/controller/subsystem/atmos_phase_test/proc/threaded_pair(x, hazardous = FALSE)
+/datum/controller/subsystem/atmos_phase_test/proc/threaded_pair(x, hazardous = FALSE, phase_type = /datum/banda_atmos_phase/world_adapter/threaded_probe)
 	var/turf/open/left = floor_at(x, 200)
 	var/turf/open/right = floor_at(x + 1, 200)
 	left.air.temperature = T20C
@@ -82,7 +82,7 @@ var/global/banda_threaded_callback_calls = 0
 		third.atmos_adjacent_turfs = list(right)
 		right.atmos_adjacent_turfs += third
 		targets += third
-	var/datum/banda_atmos_phase/world_adapter/phase = new /datum/banda_atmos_phase/world_adapter/threaded_probe("bandastation_atmos.dll")
+	var/datum/banda_atmos_phase/world_adapter/phase = new phase_type("bandastation_atmos.dll")
 	SSair.native_atmos = phase
 	phase.register_batch(targets)
 	var/list/active = list()

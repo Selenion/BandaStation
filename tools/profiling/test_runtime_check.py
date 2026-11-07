@@ -37,8 +37,10 @@ class RuntimeCheckTests(unittest.TestCase):
         (self.folder / name).write_text(text, encoding="utf-8-sig")
 
     def finish(self, metadata=True):
+        if metadata is True:
+            metadata = {"scenario": "atmos-flood"}
         if metadata:
-            (self.folder / "profile-metadata.json").write_text('{"scenario":"atmos-flood"}', encoding="utf-8")
+            (self.folder / "profile-metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
         (self.folder / "tgstation.dmb").write_bytes(b"compiled fixture")
         with redirect_stdout(io.StringIO()):
             finish_capture(self.folder, {}, 60)
@@ -49,6 +51,24 @@ class RuntimeCheckTests(unittest.TestCase):
         self.assertEqual(result["runtime_validation"]["status"], "clean")
         self.assertEqual(result["metadata"]["scenario"], "atmos-flood")
         self.assertTrue(result["binary_sha256"])
+
+    def test_decompression_requires_a_pressurized_chamber_and_pressure_drop(self):
+        incident = {"inputs": {"pressure": 300}, "pressure_before": 300, "pressure_after": 225}
+        metadata = {"scenario": "atmos-decompression", "incident": incident}
+        self.assertEqual(self.finish(metadata)["metadata"], metadata)
+        for before, after in ((100, 0), (300, 226), (300, None)):
+            with self.subTest(before=before, after=after):
+                incident.update(pressure_before=before, pressure_after=after)
+                with self.assertRaisesRegex(SystemExit, "not pressurized and decompressed"):
+                    self.finish(metadata)
+
+    def test_plasma_flood_requires_plasma_at_half_the_outlets(self):
+        incident = {"inputs": {"outlets": [[x, 1, 1] for x in range(1, 17)]}, "contaminated_outlets": 8}
+        metadata = {"scenario": "pipe-plasma-flood", "incident": incident}
+        self.assertEqual(self.finish(metadata)["metadata"], metadata)
+        incident["contaminated_outlets"] = 7
+        with self.assertRaisesRegex(SystemExit, "Fewer than half the outlets"):
+            self.finish(metadata)
 
     def test_known_error_accepts_capture_and_preserves_counts(self):
         self.write_log("runtime.log.json", "\n".join(json.dumps({"msg": PAINTING}) for _ in range(2)))

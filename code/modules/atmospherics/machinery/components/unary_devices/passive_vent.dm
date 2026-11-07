@@ -30,8 +30,18 @@
 	if(isclosedturf(location))
 		return
 
+	// BANDASTATION ADDITION START - Equalize cold tile gas without borrowing a DM mixture.
+	var/datum/banda_atmos_phase/world_adapter/phase = SSair.native_atmos
+	if(phase?.compact_exchange && isopenturf(location))
+		var/transferred = phase.try_passive_vent(location, airs[1])
+		if(!isnull(transferred))
+			if(transferred)
+				update_parents()
+			return
+	// BANDASTATION ADDITION END
 	var/datum/gas_mixture/external = location.return_air()
 	var/datum/gas_mixture/internal = airs[1]
+	internal.banda_expose_pipe_port() // BANDASTATION ADDITION - Restore the live mixture for ordinary equalize.
 
 	if(!internal.volume || !external.volume)
 		return

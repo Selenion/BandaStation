@@ -55,6 +55,11 @@
 
 GLOBAL_LIST_INIT(nonoverlaying_gases, typecache_of_gases_with_no_overlays())
 // BANDASTATION ADDITION START - Share visibility rules with native packet rendering.
+#define BANDA_ATMOS_PRESSURE 1
+#define BANDA_ATMOS_TEMPERATURE 2
+#define BANDA_ATMOS_VOLUME 3
+#define BANDA_ATMOS_HEAT_CAPACITY 4
+#define BANDA_ATMOS_READING_BATCH_SIZE 128
 #define GAS_IS_VISIBLE(gas_id, amount, minimum) (!GLOB.nonoverlaying_gases[gas_id] && amount > minimum)
 #define GAS_VISIBLE_STATE(amount) min(TOTAL_VISIBLE_STATES, CEILING(amount / MOLES_GAS_VISIBLE_STEP, 1))
 // BANDASTATION ADDITION END

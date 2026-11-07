@@ -64,13 +64,13 @@
 		if(!owner.world_owned)
 			owner.native(6, native_id)
 		owner.cells[native_id] = null
+	forget_committed_air()
 	owner = null
 	target = null
 	if(istype(cached_air, /datum/gas_mixture/turf))
 		var/datum/gas_mixture/turf/mixture = cached_air
 		mixture.banda_cell = null
 	cached_air = null
-	committed_air = null
 	readonly_air = null
 	return ..()
 
@@ -174,13 +174,16 @@
 			if(input[index])
 				air.reaction_results[reaction] = input[index + 1]
 			index += 2
+	banda_atmos_decode_archive(air, metadata, metadata_offset, gases)
+	return air
+
+/proc/banda_atmos_decode_archive(datum/gas_mixture/air, list/metadata, metadata_offset, list/gases)
 	air.temperature_archived = metadata[metadata_offset + 13]
 	air.last_share = metadata[metadata_offset + 7]
-	index = metadata_offset + 15
+	var/index = metadata_offset + 15
 	for(var/gas in 1 to metadata[metadata_offset + 14])
 		air.moles_archive[gases[metadata[index] + 1]] = metadata[index + 1]
 		index += 2
-	return air
 
 /datum/banda_atmos_cell/proc/read_metadata()
 	var/list/output = list()
@@ -192,7 +195,7 @@
 	owner.native(4, native_id, input)
 	return input
 
-/datum/banda_atmos_cell/proc/sync_air(list/input, list/metadata, compact = FALSE, input_offset = 0, metadata_offset = 0, input_count = 0, metadata_count = 0)
+/datum/banda_atmos_cell/proc/sync_air(list/input, list/metadata, compact = FALSE, input_offset = 0, metadata_offset = 0, input_count = 0, metadata_count = 0, visuals_only = FALSE, list/thermal_baseline)
 	if(!target || QDELETED(src) || pending_rebind)
 		return
 	if(!metadata)
@@ -208,7 +211,9 @@
 	var/turf/open/open = target
 	if(owner.world_owned)
 		if(cached_air || readonly_air)
-			if(compact && metadata_count == 12)
+			if(thermal_baseline)
+				refresh_thermal_cache(input[input_offset + 2], metadata, metadata_offset, metadata_count > 12, thermal_baseline)
+			else if(compact && metadata_count == 12)
 				refresh_service_cache(metadata, metadata_offset)
 			else
 				refresh_cache(input, metadata, compact, input_offset, metadata_offset)
@@ -223,20 +228,37 @@
 	open.excited = metadata[metadata_offset + 6]
 	open.pressure_difference = metadata[metadata_offset + 8]
 	open.pressure_direction = metadata[metadata_offset + 9]
+	sync_presentation(input, metadata, input_offset, metadata_offset, input_count, visuals_only)
+
+/// Numeric publication has already completed; callbacks retain the original per-turf order.
+/datum/banda_atmos_cell/proc/sync_presentation(list/input, list/metadata, input_offset, metadata_offset, input_count, visuals_only)
+	var/turf/open/open = target
+	if(visuals_only && !input_count)
+		// Empty presentation still clears old overlays and retires or adopts an existing hotspot.
+		if(length(open.atmos_overlay_types))
+			open.apply_gas_overlays(list())
+		if(open.active_hotspot || hotspots_pending)
+			sync_hotspot(input, metadata, absent = TRUE)
+		return
 	if(owner.world_owned)
-		banda_atmos_update_packet_visuals(open, input, input_offset)
+		if(visuals_only)
+			banda_atmos_update_visual_states(open, input, input_offset)
+		else
+			banda_atmos_update_packet_visuals(open, input, input_offset)
 	else
 		open.update_visuals()
-	sync_hotspot(input, metadata, input_offset, metadata_offset, input_count)
+	var/hotspot_end = input_count ? input_offset + input_count : length(input)
+	if(input[hotspot_end - 3] || open.active_hotspot || hotspots_pending)
+		sync_hotspot(input, metadata, input_offset, metadata_offset, input_count)
 
-/datum/banda_atmos_cell/proc/sync_hotspot(list/input, list/metadata, input_offset = 0, metadata_offset = 0, input_count = 0)
+/datum/banda_atmos_cell/proc/sync_hotspot(list/input, list/metadata, input_offset = 0, metadata_offset = 0, input_count = 0, absent = FALSE)
 	var/turf/open/open = target
 	var/obj/effect/hotspot/spot = open.active_hotspot
 	if(!input_count)
 		input_count = length(input) - input_offset
 	var/end = input_offset + input_count
 	updating_hotspot = TRUE
-	if(input[end - 3])
+	if(!absent && input[end - 3])
 		if(!spot)
 			spot = new /obj/effect/hotspot/banda_native(open, input[end - 1], input[end - 2], src)
 		spot.binding = src
@@ -338,8 +360,27 @@
 				new /obj/item/stack/sheet/hot_ice(target)
 		if(13)
 			var/turf/open/open = isopenturf(target) ? target : null
+			var/datum/listeners = open?._listen_lookup?[COMSIG_TURF_EXPOSE]
+			// A different listener may read or modify the original working mixture.
+			if(second && owner.world_owned && istype(listeners, /obj/machinery/atmospherics/components/unary/vent_scrubber) && \
+				listeners._signal_procs?[open]?[COMSIG_TURF_EXPOSE] == TYPE_PROC_REF(/atom, check_atmos_process) && !open.should_atmos_process(null, first))
+				var/datum/banda_atmos_phase/world_adapter/phase = owner
+				var/keys = phase.scrubber_air_keys(open)
+				if(!isnull(keys))
+					open.temperature_expose(null, first, keys)
+					return
+			if(second && owner.world_owned && istype(listeners, /obj/machinery/door/firedoor) && \
+				listeners._signal_procs?[open]?[COMSIG_TURF_EXPOSE] == TYPE_PROC_REF(/obj/machinery/door/firedoor, process_results) && !open.should_atmos_process(null, first))
+				var/datum/banda_atmos_phase/world_adapter/phase = owner
+				if(phase.cold_air_version(open))
+					// process_results reads gas independently and ignores the signal's mixture argument.
+					open.temperature_expose(null, first)
+					return
+			if(second && owner.world_owned && listeners && !cached_air && !readonly_air && !pending_rebind && banda_atmos_temperature_only_exposure(open, listeners))
+				open.temperature_expose(null, first)
+				return
 			// shortcut: turf.should_atmos_process ignores air; revisit if a gas-dependent turf override is added.
-			var/needs_air = second && open && (!owner.world_owned || open._listen_lookup?[COMSIG_TURF_EXPOSE] || open.should_atmos_process(null, first))
+			var/needs_air = second && open && (!owner.world_owned || listeners || open.should_atmos_process(null, first))
 			target.temperature_expose(needs_air ? open.return_air() : null, first)
 		if(14)
 			var/turf/open/open = target
@@ -348,3 +389,22 @@
 			open.high_pressure_movements()
 		else
 			CRASH("Unexpected native atmosphere world command [kind]")
+
+/// Keep the mixture for the entire signal if even one listener may read or retain it.
+/proc/banda_atmos_temperature_only_exposure(turf/open/target, listeners)
+	if(!islist(listeners))
+		return banda_atmos_temperature_only_listener(target, listeners)
+	for(var/datum/listener as anything in listeners)
+		if(!banda_atmos_temperature_only_listener(target, listener))
+			return FALSE
+	return TRUE
+
+/proc/banda_atmos_temperature_only_listener(turf/open/target, datum/listener)
+	var/callback = listener._signal_procs?[target]?[COMSIG_TURF_EXPOSE]
+	if(callback == TYPE_PROC_REF(/obj/structure/plasticflaps, check_melt))
+		return istype(listener, /obj/structure/plasticflaps)
+	if(callback != TYPE_PROC_REF(/atom, check_atmos_process))
+		return FALSE
+	// These types use only the temperature to enter SSair's exposure queue. Actual exposure can still borrow air.
+	var/static/list/temperature_checks = typecacheof(list(/obj/machinery/firealarm, /obj/machinery/light, /obj/machinery/power/apc, /obj/machinery/door/window, /obj/structure/grille, /obj/structure/window))
+	return temperature_checks[listener.type]
