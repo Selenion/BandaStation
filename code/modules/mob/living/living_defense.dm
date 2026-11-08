@@ -75,8 +75,10 @@
 	SEND_SIGNAL(src, COMSIG_LIVING_GET_EAR_PROTECTION, sig_protection)
 	var/protection = sig_protection[EAR_PROTECTION_ARG]
 	var/turf/current_turf = get_turf(src)
-	var/datum/gas_mixture/environment = current_turf?.return_air()
-	var/pressure = environment?.return_pressure()
+	// BANDASTATION EDIT START - Vacuum protection reads native pressure without borrowing gas.
+	var/list/environment = current_turf?.return_air_values()
+	var/pressure = environment?[BANDA_AIR_PRESSURE]
+	// BANDASTATION EDIT END
 	if(pressure < SOUND_MINIMUM_PRESSURE) //space is empty
 		protection += EAR_PROTECTION_VACUUM
 	return protection

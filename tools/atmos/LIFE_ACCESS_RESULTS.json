@@ -1,0 +1,374 @@
+{
+  "accepted": true,
+  "scope": "Human Life/environment access within current Rust atmosphere; not a comparison against pure DM",
+  "game_validation": {
+    "accepted": true,
+    "run": "tmp/atmos-phase/life-api-11",
+    "report": "tmp/atmos-phase/life-api-11/report.json",
+    "report_sha256": "04e1fbe8283566a1f54e04c863209559a06a44753399f266500e47a2846c578d",
+    "api_checks": 245,
+    "failures": 0,
+    "runtimes": 0,
+    "world_scenarios": 12,
+    "graphs": 49,
+    "graph_steps": 980,
+    "exit_code": 0
+  },
+  "benchmark": {
+    "report": "tmp/atmos-life-bench-05/report.json",
+    "report_sha256": "d8564832142a1df7cef171fe8704eea2d0c1926360e93626309ceb629d97a3b0",
+    "provenance": "tmp/atmos-life-bench-05/provenance.json",
+    "binary_sha256": "aefdb8ae44bcd41f556be7143fd87800a5d8367c3b482d079ffbacba743e6882",
+    "server_processes": 16,
+    "primary_processes": 12,
+    "profile_processes": 4,
+    "calculations": 640,
+    "primary_calculations": 480,
+    "humans": 50,
+    "life_calls": 32000,
+    "same_work_and_state": true,
+    "background_fires": 0
+  },
+  "summary": [
+    {
+      "scenario": "fire",
+      "mode": "legacy",
+      "frames": 40,
+      "cpu_ms": 569.1120056132362,
+      "cpu_range": [
+        562.9737692686433,
+        583.2843259923291
+      ],
+      "main_ms": 548.7995056132362,
+      "worker_ms": 19.921875,
+      "wall_ms": 601.3927757740021,
+      "td_mean_percent": 300.92851718266803,
+      "td_mean_range": [
+        298.1398661931356,
+        317.92992984547334
+      ],
+      "td_peak_percent": 476.875,
+      "private_mean_mib": 1740.912122389867,
+      "private_mean_range": [
+        1404.6089216672424,
+        1751.743612290685
+      ],
+      "private_peak_mib": 1756.1796875,
+      "caches": 50,
+      "scans": 96360,
+      "copies": 1050,
+      "working_set_mean_mib": 1729.638317975297,
+      "working_set_peak_mib": 1744.29296875,
+      "primary_processes": 3
+    },
+    {
+      "scenario": "fire",
+      "mode": "api",
+      "frames": 40,
+      "cpu_ms": 547.1339172321453,
+      "cpu_range": [
+        542.1809715790083,
+        548.3155063717135
+      ],
+      "main_ms": 527.6026672321456,
+      "worker_ms": 18.75,
+      "wall_ms": 608.8387489318848,
+      "td_mean_percent": 310.0727233566156,
+      "td_mean_range": [
+        283.4374030431112,
+        316.29999926966485
+      ],
+      "td_peak_percent": 523.125,
+      "private_mean_mib": 1747.2163860142596,
+      "private_mean_range": [
+        1423.9170601991755,
+        1748.757166967425
+      ],
+      "private_peak_mib": 1753.140625,
+      "caches": 0,
+      "scans": 0,
+      "copies": 0,
+      "working_set_mean_mib": 1736.0972930688888,
+      "working_set_peak_mib": 1741.5546875,
+      "primary_processes": 3
+    },
+    {
+      "scenario": "pipe",
+      "mode": "legacy",
+      "frames": 40,
+      "cpu_ms": 96.61825855528399,
+      "cpu_range": [
+        95.93637498746794,
+        96.71690955884671
+      ],
+      "main_ms": 90.46690955884671,
+      "worker_ms": 5.46875,
+      "wall_ms": 143.69112253189087,
+      "td_mean_percent": 26.37198224980779,
+      "td_mean_range": [
+        11.583938404005401,
+        27.725442250569653
+      ],
+      "td_peak_percent": 58.125,
+      "private_mean_mib": 1710.7341737148092,
+      "private_mean_range": [
+        1373.710416510914,
+        1720.1837080004539
+      ],
+      "private_peak_mib": 1721.02829636932,
+      "caches": 50,
+      "scans": 20713,
+      "copies": 1955,
+      "working_set_mean_mib": 1700.3121396434242,
+      "working_set_peak_mib": 1709.8912669674432,
+      "primary_processes": 3
+    },
+    {
+      "scenario": "pipe",
+      "mode": "api",
+      "frames": 40,
+      "cpu_ms": 89.33234045250025,
+      "cpu_range": [
+        88.82638283888937,
+        93.91048058229394
+      ],
+      "main_ms": 83.47296545250006,
+      "worker_ms": 5.859375,
+      "wall_ms": 142.41162538528442,
+      "td_mean_percent": 21.201383306625043,
+      "td_mean_range": [
+        8.993734632219574,
+        21.968018381219157
+      ],
+      "td_peak_percent": 46.25,
+      "private_mean_mib": 1719.1383540609231,
+      "private_mean_range": [
+        1709.2434233264148,
+        1719.6542274219546
+      ],
+      "private_peak_mib": 1720.58984375,
+      "caches": 0,
+      "scans": 0,
+      "copies": 0,
+      "working_set_mean_mib": 1707.9941035203378,
+      "working_set_peak_mib": 1709.375,
+      "primary_processes": 3
+    }
+  ],
+  "comparisons": [
+    {
+      "scenario": "fire",
+      "cpu_percent": -3.8618212521116635,
+      "main_percent": -3.8624011436389716,
+      "wall_percent": 1.2381214836343135,
+      "td_mean_points": 9.144206173947566,
+      "private_mean_mib": 6.304263624392661
+    },
+    {
+      "scenario": "pipe",
+      "cpu_percent": -7.540932957940671,
+      "main_percent": -7.730941777995904,
+      "wall_percent": -0.890449684059269,
+      "td_mean_points": -5.170598943182746,
+      "private_mean_mib": 8.40418034611389
+    }
+  ],
+  "profiles": [
+    {
+      "scenario": "fire",
+      "mode": "legacy",
+      "frames": 40,
+      "source": "tmp/atmos-life-bench-05/fire-legacy-1-1-run/cost-fire-legacy-1-1.json",
+      "sha256": "bcd1fbda3cea3c46b3d97732223cd1f1893af1012eab01d7e12579fa74cbfa3a",
+      "procs": {
+        "/proc/banda_atmos_same_gases": {
+          "name": "/proc/banda_atmos_same_gases",
+          "self": 0.773,
+          "total": 0.786,
+          "real": 0.817,
+          "over": 0.773,
+          "calls": 284466
+        },
+        "/datum/banda_atmos_phase/world_adapter/proc/refresh_effect_readonly": {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/refresh_effect_readonly",
+          "self": 0.379,
+          "total": 1.153,
+          "real": 1.118,
+          "over": 0.379,
+          "calls": 2572
+        },
+        "/datum/banda_atmos_air_reference/proc/values": {
+          "name": "/datum/banda_atmos_air_reference/proc/values",
+          "calls": 0,
+          "self": 0,
+          "total": 0
+        },
+        "/datum/banda_atmos_phase/world_adapter/proc/project_changes": {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.965,
+          "total": 16.36,
+          "real": 16.365,
+          "over": 0.854,
+          "calls": 280
+        },
+        "/datum/banda_atmos_phase/proc/native": {
+          "name": "/datum/banda_atmos_phase/proc/native",
+          "self": 3.403,
+          "total": 3.423,
+          "real": 3.54,
+          "over": 3.004,
+          "calls": 430472
+        }
+      }
+    },
+    {
+      "scenario": "fire",
+      "mode": "api",
+      "frames": 40,
+      "source": "tmp/atmos-life-bench-05/fire-api-1-1-run/cost-fire-api-1-1.json",
+      "sha256": "6de59721ef2e1365dd1847c38e149acf5241581222be5def42c9563d46055aad",
+      "procs": {
+        "/proc/banda_atmos_same_gases": {
+          "name": "/proc/banda_atmos_same_gases",
+          "calls": 0,
+          "self": 0,
+          "total": 0
+        },
+        "/datum/banda_atmos_phase/world_adapter/proc/refresh_effect_readonly": {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/refresh_effect_readonly",
+          "self": 0.004,
+          "total": 0.004,
+          "real": 0.005,
+          "over": 0.004,
+          "calls": 2572
+        },
+        "/datum/banda_atmos_air_reference/proc/values": {
+          "name": "/datum/banda_atmos_air_reference/proc/values",
+          "self": 0.022,
+          "total": 0.068,
+          "real": 0.055,
+          "over": 0,
+          "calls": 4500
+        },
+        "/datum/banda_atmos_phase/world_adapter/proc/project_changes": {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 1.056,
+          "total": 16.34,
+          "real": 16.341,
+          "over": 0.9,
+          "calls": 280
+        },
+        "/datum/banda_atmos_phase/proc/native": {
+          "name": "/datum/banda_atmos_phase/proc/native",
+          "self": 3.284,
+          "total": 3.31,
+          "real": 3.46,
+          "over": 2.866,
+          "calls": 439368
+        }
+      }
+    },
+    {
+      "scenario": "pipe",
+      "mode": "legacy",
+      "frames": 40,
+      "source": "tmp/atmos-life-bench-05/pipe-legacy-1-1-run/cost-pipe-legacy-1-1.json",
+      "sha256": "9149febdb5e525946f32c3533d2d6d32544b24aba6e6ae7f4bbf138342d94f67",
+      "procs": {
+        "/proc/banda_atmos_same_gases": {
+          "name": "/proc/banda_atmos_same_gases",
+          "self": 0.079,
+          "total": 0.081,
+          "real": 0.092,
+          "over": 0.047,
+          "calls": 56777
+        },
+        "/datum/banda_atmos_phase/world_adapter/proc/refresh_effect_readonly": {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/refresh_effect_readonly",
+          "self": 0.061,
+          "total": 0.149,
+          "real": 0.153,
+          "over": 0.033,
+          "calls": 755
+        },
+        "/datum/banda_atmos_air_reference/proc/values": {
+          "name": "/datum/banda_atmos_air_reference/proc/values",
+          "calls": 0,
+          "self": 0,
+          "total": 0
+        },
+        "/datum/banda_atmos_phase/world_adapter/proc/project_changes": {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.217,
+          "total": 1.05,
+          "real": 1.037,
+          "over": 0.034,
+          "calls": 280
+        },
+        "/datum/banda_atmos_phase/proc/native": {
+          "name": "/datum/banda_atmos_phase/proc/native",
+          "self": 0.996,
+          "total": 1.002,
+          "real": 0.983,
+          "over": 0.28,
+          "calls": 118897
+        }
+      }
+    },
+    {
+      "scenario": "pipe",
+      "mode": "api",
+      "frames": 40,
+      "source": "tmp/atmos-life-bench-05/pipe-api-1-1-run/cost-pipe-api-1-1.json",
+      "sha256": "be9cc2bbb37aa6170bf022b4f19bdab1aabf81c2eceae918cd67f79e5dff3004",
+      "procs": {
+        "/proc/banda_atmos_same_gases": {
+          "name": "/proc/banda_atmos_same_gases",
+          "calls": 0,
+          "self": 0,
+          "total": 0
+        },
+        "/datum/banda_atmos_phase/world_adapter/proc/refresh_effect_readonly": {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/refresh_effect_readonly",
+          "self": 0.001,
+          "total": 0.001,
+          "real": 0,
+          "over": 0,
+          "calls": 755
+        },
+        "/datum/banda_atmos_air_reference/proc/values": {
+          "name": "/datum/banda_atmos_air_reference/proc/values",
+          "self": 0.015,
+          "total": 0.043,
+          "real": 0.052,
+          "over": 0.001,
+          "calls": 4500
+        },
+        "/datum/banda_atmos_phase/world_adapter/proc/project_changes": {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.189,
+          "total": 0.983,
+          "real": 0.985,
+          "over": 0.029,
+          "calls": 280
+        },
+        "/datum/banda_atmos_phase/proc/native": {
+          "name": "/datum/banda_atmos_phase/proc/native",
+          "self": 0.998,
+          "total": 1.004,
+          "real": 1.025,
+          "over": 0.238,
+          "calls": 127933
+        }
+      }
+    }
+  ],
+  "approved_exception": "Native immutable empty space stays at TCMB (2.7 K), without the transient temperature of the shared DM space_gas singleton",
+  "limits": [
+    "Fresh 32-bit server processes, running MC/GC, fixed fixture workload; no clients or live round",
+    "The fixture invokes SSair and Life, with other gameplay subsystems disabled; TD is a stress-test result, not a live-server prediction",
+    "Median of three primary runs; maxima for TD/memory peaks; profiling runs excluded from primary figures",
+    "Private/RSS ranges overlap; no demonstrated memory saving",
+    "Other mixture owners, containers and gas consumers retain the legacy compatibility path"
+  ]
+}

@@ -37,6 +37,12 @@ pub struct Sample {
     pub boundary: Boundary,
 }
 
+impl Default for Sample {
+    fn default() -> Self {
+        Self::new(Mixture::new(0.0, 0.0, false))
+    }
+}
+
 impl Sample {
     pub fn new(air: Mixture) -> Self {
         Self {

@@ -16,15 +16,15 @@ pub enum PoolError {
 }
 
 #[derive(Default)]
-pub struct Pool {
-    samples: Vec<Sample>,
+pub struct Pool<T = Sample> {
+    samples: Vec<T>,
     generations: Vec<u32>,
     live: Vec<bool>,
     free: Vec<usize>,
     count: usize,
 }
 
-impl Pool {
+impl<T: Default> Pool<T> {
     pub fn len(&self) -> usize {
         self.count
     }
@@ -43,7 +43,7 @@ impl Pool {
         Ok(index)
     }
 
-    pub fn register(&mut self, sample: Sample) -> Result<Handle, PoolError> {
+    pub fn register(&mut self, sample: T) -> Result<Handle, PoolError> {
         let index = if let Some(index) = self.free.pop() {
             self.samples[index] = sample;
             self.live[index] = true;
@@ -65,34 +65,50 @@ impl Pool {
         })
     }
 
-    pub fn get(&self, handle: Handle) -> Result<&Sample, PoolError> {
+    pub fn get(&self, handle: Handle) -> Result<&T, PoolError> {
         Ok(&self.samples[self.index(handle)?])
     }
 
-    pub fn replace(&mut self, handle: Handle, sample: Sample) -> Result<(), PoolError> {
+    pub fn replace(&mut self, handle: Handle, sample: T) -> Result<(), PoolError> {
         let index = self.index(handle)?;
         self.samples[index] = sample;
         Ok(())
     }
 
-    /// Reconciliation reads current gas only; DM still owns archives and reaction state.
-    pub fn import_air(&mut self, handle: Handle, mut air: crate::Mixture) -> Result<(), PoolError> {
-        let index = self.index(handle)?;
-        std::mem::swap(&mut air.results, &mut self.samples[index].air.results);
-        self.samples[index].air = air;
-        Ok(())
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.samples
+            .iter()
+            .zip(&self.live)
+            .filter_map(|(value, live)| live.then_some(value))
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.samples
+            .iter_mut()
+            .zip(&self.live)
+            .filter_map(|(value, live)| live.then_some(value))
     }
 
     pub fn release(&mut self, handle: Handle) -> Result<(), PoolError> {
         let index = self.index(handle)?;
         // Release gas/results allocations while retaining a bounded reusable slot table.
-        self.samples[index] = Sample::new(crate::Mixture::new(0.0, 0.0, false));
+        self.samples[index] = T::default();
         self.live[index] = false;
         self.count -= 1;
         if self.generations[index] < MAX_EXACT {
             self.generations[index] += 1;
             self.free.push(index);
         }
+        Ok(())
+    }
+}
+
+impl Pool<Sample> {
+    /// Reconciliation reads current gas only; DM still owns archives and reaction state.
+    pub fn import_air(&mut self, handle: Handle, mut air: crate::Mixture) -> Result<(), PoolError> {
+        let index = self.index(handle)?;
+        std::mem::swap(&mut air.results, &mut self.samples[index].air.results);
+        self.samples[index].air = air;
         Ok(())
     }
 

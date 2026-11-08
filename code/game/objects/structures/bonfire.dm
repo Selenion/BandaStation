@@ -106,7 +106,8 @@
 /obj/structure/bonfire/proc/check_oxygen()
 	if(isopenturf(loc))
 		var/turf/open/bonfire_turf = loc
-		if(bonfire_turf.get_readonly_air()?.moles[/datum/gas/oxygen] >= 5) // BANDASTATION EDIT - Read native atmosphere through the API.
+		var/list/air_values = bonfire_turf.return_air_values(list(/datum/gas/oxygen)) // BANDASTATION ADDITION - Check oxygen without issuing a mixture.
+		if(air_values?[BANDA_AIR_GASES] >= 5) // BANDASTATION EDIT - Keep the inclusive oxygen threshold.
 			return TRUE
 	return FALSE
 

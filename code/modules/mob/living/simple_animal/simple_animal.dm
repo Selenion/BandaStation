@@ -307,10 +307,10 @@
 					else
 						manual_emote(pick(emote_hear))
 
-/mob/living/simple_animal/handle_environment(datum/gas_mixture/environment, seconds_per_tick)
+/mob/living/simple_animal/handle_environment(datum/gas_mixture/environment, seconds_per_tick, times_fired, datum/banda_atmos_air_reference/air_reference) // BANDASTATION EDIT - Read captured native air without a gas cache.
 	var/atom/A = loc
 	if(isturf(A))
-		var/areatemp = get_temperature(environment)
+		var/areatemp = get_temperature(environment, air_reference = air_reference) // BANDASTATION EDIT - Preserve temperature overrides.
 		var/temp_delta = areatemp - bodytemperature
 		if(abs(temp_delta) > 5)
 			if(temp_delta < 0)

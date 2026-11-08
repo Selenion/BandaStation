@@ -60,6 +60,14 @@ GLOBAL_LIST_INIT(nonoverlaying_gases, typecache_of_gases_with_no_overlays())
 #define BANDA_ATMOS_VOLUME 3
 #define BANDA_ATMOS_HEAT_CAPACITY 4
 #define BANDA_ATMOS_READING_BATCH_SIZE 128
+// The two-value query header precedes status, binding, scalars and selected gas amounts.
+#define BANDA_AIR_TEMPERATURE 5
+#define BANDA_AIR_PRESSURE 6
+#define BANDA_AIR_VOLUME 7
+#define BANDA_AIR_HEAT_CAPACITY 8
+#define BANDA_AIR_TOTAL_MOLES 9
+#define BANDA_AIR_GAS_COUNT 10
+#define BANDA_AIR_GASES 11
 #define GAS_IS_VISIBLE(gas_id, amount, minimum) (!GLOB.nonoverlaying_gases[gas_id] && amount > minimum)
 #define GAS_VISIBLE_STATE(amount) min(TOTAL_VISIBLE_STATES, CEILING(amount / MOLES_GAS_VISIBLE_STEP, 1))
 // BANDASTATION ADDITION END
@@ -93,10 +101,12 @@ GLOBAL_LIST_INIT(atmos_adjacent_savings, list(0,0))
 //Use this to see if a turf is fully blocked or not, think windows or firelocks. Fails with 1x1 non full tile windows, but it's not worth the cost.
 #define TURF_SHARES(T) (LAZYLEN(T.atmos_adjacent_turfs))
 
+// BANDASTATION EDIT START - Deferred native effects retain their calculation's archive cycle.
 #define LINDA_CYCLE_ARCHIVE(turf)\
 	turf.air.archive();\
-	turf.archived_cycle = SSair.times_fired;\
+	turf.archived_cycle = SSair.get_air_cycle();\
 	turf.temperature_archived = turf.temperature;
+// BANDASTATION EDIT END
 
 /* Fetch the energy transferred when two gas mixtures' temperature equalize.
  *

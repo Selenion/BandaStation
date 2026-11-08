@@ -104,12 +104,12 @@
 	return FALSE
 
 /// Environment handlers for species
-/mob/living/carbon/human/handle_environment(datum/gas_mixture/environment, seconds_per_tick)
+/mob/living/carbon/human/handle_environment(datum/gas_mixture/environment, seconds_per_tick, times_fired, datum/banda_atmos_air_reference/air_reference) // BANDASTATION EDIT - Forward the captured mixture reference.
 	// If we are in a cryo bed do not process life functions
 	if(istype(loc, /obj/machinery/cryo_cell))
 		return
 
-	dna.species.handle_environment(src, environment, seconds_per_tick)
+	dna.species.handle_environment(src, environment, seconds_per_tick, air_reference) // BANDASTATION EDIT - Preserve live reads in species handlers.
 
 /**
  * Adjust the core temperature of a mob

@@ -84,5 +84,6 @@ GLOBAL_LIST_INIT(freon_color_matrix, list("#2E5E69", "#60A2A8", "#A1AFB1", rgb(0
 		return
 
 	var/turf/open/turf_loc = movable_target.loc
-	if(turf_loc.get_readonly_air()?.temperature >= T0C)//unfreezes target // BANDASTATION EDIT - Read native atmosphere through the API.
+	var/list/air_values = turf_loc.return_air_values() // BANDASTATION ADDITION - Movement reads only gas temperature.
+	if(air_values?[BANDA_AIR_TEMPERATURE] >= T0C)//unfreezes target // BANDASTATION EDIT - Preserve gas temperature rather than the floor's material temperature.
 		Detach(target)

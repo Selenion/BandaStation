@@ -72,7 +72,7 @@ pub(super) unsafe fn dispatch(api: &Api, args: &[Value], store: &mut Store) -> R
             let value = sample(&api.numbers(&args[2])?)?;
             let id = store.pipes.register(value).map_err(|e| format!("{e:?}"))?;
             if let Err(error) = api.output(&args[3], &[id.slot as f32, id.generation as f32]) {
-                store.pipes.release(id).map_err(|e| format!("{e:?}"))?;
+                store.release_pipe(id).map_err(|e| format!("{e:?}"))?;
                 return Err(error);
             }
         }
@@ -109,7 +109,7 @@ pub(super) unsafe fn dispatch(api: &Api, args: &[Value], store: &mut Store) -> R
         }
         (46, 3) => {
             let id = handle(&api.numbers(&args[2])?)?;
-            store.pipes.release(id).map_err(|e| format!("{e:?}"))?;
+            store.release_pipe(id).map_err(|e| format!("{e:?}"))?;
         }
         (47, 3) => api.output(
             &args[2],

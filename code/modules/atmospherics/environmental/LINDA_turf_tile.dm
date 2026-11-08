@@ -200,7 +200,7 @@
 			return
 		var/datum/gas_mixture/working_air = get_mutable_air()
 		working_air.archive()
-		archived_cycle = SSair.times_fired
+		archived_cycle = SSair.get_air_cycle()
 		temperature_archived = temperature
 		SSair.native_atmos.native(37, banda_atmos_id, archived_cycle, temperature_archived)
 		return
@@ -449,9 +449,10 @@
 
 /turf/open/proc/high_pressure_movements()
 	var/atom/movable/moving_atom
+	var/cycle = SSair.get_air_cycle() // BANDASTATION ADDITION - Retain the source frame across MC continuations.
 	for(var/thing in src)
 		moving_atom = thing
-		if (moving_atom.last_high_pressure_movement_air_cycle < SSair.times_fired)
+		if (moving_atom.last_high_pressure_movement_air_cycle < cycle) // BANDASTATION EDIT - Native effect cycle.
 			if (!moving_atom.anchored && !moving_atom.pulledby)
 				moving_atom.experience_pressure_difference(pressure_difference, pressure_direction)
 			else
@@ -464,6 +465,7 @@
 
 /atom/movable/proc/experience_pressure_difference(pressure_difference, direction, pressure_resistance_prob_delta = 0)
 	set waitfor = FALSE
+	var/cycle = SSair.get_air_cycle() // BANDASTATION ADDITION - Movement callbacks may outlive their native effect scope.
 	if(SEND_SIGNAL(src, COMSIG_ATOM_PRE_PRESSURE_PUSH) & COMSIG_ATOM_BLOCKS_PRESSURE)
 		return
 	var/const/PROBABILITY_OFFSET = 25
@@ -475,7 +477,7 @@
 	move_prob += pressure_resistance_prob_delta
 	if (move_prob > PROBABILITY_OFFSET && prob(move_prob) && (move_resist != INFINITY) && (!anchored && (max_force >= (move_resist * MOVE_FORCE_PUSH_RATIO))) || (anchored && (max_force >= (move_resist * MOVE_FORCE_FORCEPUSH_RATIO))))
 		step(src, direction)
-		last_high_pressure_movement_air_cycle = SSair.times_fired
+		last_high_pressure_movement_air_cycle = cycle // BANDASTATION EDIT - Native effect cycle.
 
 ///////////////////////////EXCITED GROUPS/////////////////////////////
 
@@ -650,7 +652,7 @@ Then we space some of our heat, and think about if we should stop conducting.
 **/
 
 /turf/proc/conductivity_directions()
-	if(archived_cycle < SSair.times_fired)
+	if(archived_cycle < SSair.get_air_cycle()) // BANDASTATION EDIT - Native effect cycle.
 		archive()
 	return ALL_CARDINALS
 
@@ -695,7 +697,7 @@ Then we space some of our heat, and think about if we should stop conducting.
 			if(!neighbor.thermal_conductivity)
 				continue
 
-			if(neighbor.archived_cycle < SSair.times_fired)
+			if(neighbor.archived_cycle < SSair.get_air_cycle()) // BANDASTATION EDIT - Native effect cycle.
 				neighbor.archive()
 
 			neighbor.neighbor_conduct_with_src(src)
@@ -732,10 +734,10 @@ Then we space some of our heat, and think about if we should stop conducting.
 	return TRUE
 
 /turf/open/consider_superconductivity(starting)
-	var/datum/gas_mixture/current_air = get_readonly_air() // BANDASTATION ADDITION
-	if(current_air.temperature < (starting?MINIMUM_TEMPERATURE_START_SUPERCONDUCTION:MINIMUM_TEMPERATURE_FOR_SUPERCONDUCTION)) // BANDASTATION EDIT
+	var/list/air_values = return_air_values() // BANDASTATION ADDITION - Scheduling reads temperature and capacity without a mixture.
+	if(air_values[BANDA_AIR_TEMPERATURE] < (starting?MINIMUM_TEMPERATURE_START_SUPERCONDUCTION:MINIMUM_TEMPERATURE_FOR_SUPERCONDUCTION)) // BANDASTATION EDIT
 		return FALSE
-	if(current_air.heat_capacity() < M_CELL_WITH_RATIO) // BANDASTATION EDIT - Keep the original admission threshold.
+	if(air_values[BANDA_AIR_HEAT_CAPACITY] < M_CELL_WITH_RATIO) // BANDASTATION EDIT - Keep the original admission threshold.
 		return FALSE
 	return ..()
 

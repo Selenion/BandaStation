@@ -1,0 +1,208 @@
+/// Real native calls against independent DM mixtures, including pending operations and held aliases.
+/datum/controller/subsystem/atmos_phase_test/proc/value_world_checks()
+	var/list/checks = list()
+	var/turf/open/target = floor_at(180, 190)
+	var/turf/open/vacuum = floor_at(185, 190)
+	var/turf/open/space/space = floor_at(190, 190)
+	space = space.ChangeTurf(/turf/open/space)
+	var/list/gases = banda_atmos_gases()
+	for(var/index = length(gases); index >= 1; index--)
+		target.air.moles[gases[index]] = index * 0.25
+	target.air.moles[/datum/gas/oxygen] = 0
+	target.air.temperature = 333
+	vacuum.air.temperature = 800
+	var/datum/gas_mixture/oracle = target.air.copy()
+	var/space_capacity = space.air.heat_capacity()
+	for(var/turf/open/tile as anything in list(target, vacuum, space))
+		tile.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target, vacuum, space))
+	phase.native(30)
+	phase.initializing = FALSE
+	checks["value_query_capability"] = phase.value_queries_ready
+	var/list/values = phase.read_air_values(target, null, TRUE)
+	var/ordered = values?[BANDA_AIR_GAS_COUNT] == length(oracle.moles)
+	for(var/index in 1 to length(oracle.moles))
+		var/gas = oracle.moles[index]
+		var/offset = BANDA_AIR_GASES + (index - 1) * 2
+		ordered = ordered && gases[values[offset] + 1] == gas && values[offset + 1] == oracle.moles[gas]
+	checks["value_query_preserves_all_gas_order_and_present_zero"] = ordered
+	checks["value_query_scalars_match_dm"] = values[BANDA_AIR_TEMPERATURE] == oracle.temperature && abs(values[BANDA_AIR_PRESSURE] - oracle.return_pressure()) < 0.0001 && abs(values[BANDA_AIR_HEAT_CAPACITY] - oracle.heat_capacity()) < 0.0001 && values[BANDA_AIR_TOTAL_MOLES] == oracle.total_moles()
+	values = phase.read_air_values(target, list(/datum/gas/plasma, /datum/gas/oxygen, /datum/gas/plasma))
+	checks["value_query_selected_gases_keep_request_order"] = values[BANDA_AIR_GASES] == oracle.moles[/datum/gas/plasma] && values[BANDA_AIR_GASES + 1] == 0 && values[BANDA_AIR_GASES + 2] == values[BANDA_AIR_GASES]
+	checks["value_getters_create_no_dm_mixture_or_binding"] = target.GetTemperature() == 333 && abs(target.GetHeatCapacity() - oracle.heat_capacity()) < 0.0001 && !target.banda_atmos_cell
+	values = target.return_air_values(list(/datum/gas/oxygen, /datum/gas/plasma))
+	checks["common_value_api_reads_native_gas_without_mixture"] = values[BANDA_AIR_TEMPERATURE] == 333 && values[BANDA_AIR_GASES] == 0 && values[BANDA_AIR_GASES + 1] == oracle.moles[/datum/gas/plasma] && !target.banda_atmos_cell
+	values = phase.read_air_values(space)
+	checks["value_query_preserves_space_capacity"] = values?[BANDA_AIR_HEAT_CAPACITY] == space_capacity && !space.banda_atmos_cell
+	target.hotspot_expose(1000, 100)
+	checks["ignition_precheck_with_no_oxygen_creates_no_dm_mixture"] = !target.active_hotspot && !target.banda_atmos_cell
+	phase.invoke(CALLBACK(src, PROC_REF(value_temperature_callback), phase, vacuum, checks))
+	checks["temperature_operations_keep_no_dm_cache"] = !vacuum.banda_atmos_cell.cached_air && !vacuum.banda_atmos_cell.readonly_air && vacuum.GetTemperature() == -183
+	phase.invoke(CALLBACK(src, PROC_REF(value_alias_callback), phase, target, checks))
+	phase.value_queries_ready = FALSE
+	checks["old_dll_getters_keep_compatible_path"] = vacuum.GetTemperature() == -183 && !!vacuum.banda_atmos_cell.readonly_air
+	qdel(phase)
+	checks += value_worker_checks()
+	checks += value_actor_checks()
+	checks += live_reference_world_checks()
+	checks += life_world_checks()
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/value_actor_checks()
+	var/list/checks = list()
+	for(var/action in list("breath", "skin"))
+		var/list/expected = value_actor_case(FALSE, action)
+		var/list/actual = value_actor_case(TRUE, action)
+		checks["value_[action]_matches_original_dm"] = value_numbers_match(expected["air"], actual["air"]) && value_numbers_match(expected["body"], actual["body"])
+		checks["value_[action]_leaves_no_ambient_dm_mixture"] = !actual["full_cache"] && actual["queries"] > 0
+	var/list/original = value_actor_case(FALSE, "breath", TRUE)
+	var/list/reentrant = value_actor_case(TRUE, "breath", TRUE)
+	WRITE_FILE(file("value-breath-reentrancy.json"), json_encode(list("original_dm" = original, "rust_api" = reentrant)))
+	checks["value_breath_observes_gas_added_by_equipment_cleanup"] = original["refill_calls"] == 1 && reentrant["refill_calls"] == 1 && abs(original["inhaled"] - reentrant["inhaled"]) < 0.00001
+	for(var/replacement in list("replace", "inherit"))
+		original = value_actor_case(FALSE, "breath", replacement)
+		reentrant = value_actor_case(TRUE, "breath", replacement)
+		WRITE_FILE(file("value-breath-[replacement].json"), json_encode(list("original_dm" = original, "rust_api" = reentrant)))
+		checks["value_breath_keeps_captured_mixture_after_[replacement]"] = original["refill_calls"] == 1 && reentrant["refill_calls"] == 1 && abs(original["inhaled"] - reentrant["inhaled"]) < 0.00001 && value_numbers_match(original["air"], reentrant["air"]) && value_numbers_match(original["air"], reentrant["before_rebind"] || reentrant["air"])
+	var/turf/open/space/space = floor_at(175, 195)
+	space = space.ChangeTurf(/turf/open/space)
+	space.temperature = 180
+	var/mob/living/carbon/human/person = new(space)
+	var/datum/gas_mixture/air = new(CELL_VOLUME)
+	air.temperature = 333
+	checks["value_body_temperature_keeps_space_material_override"] = person.get_temperature(air) == person.get_temperature(null, 333) && person.get_temperature(null, 333) == 180
+	var/obj/structure/closet/banda_value_insulation/box = new(space)
+	person.forceMove(box)
+	checks["value_body_temperature_keeps_container_temperature_and_insulation"] = person.get_temperature(air) == person.get_temperature(null, 333) && person.get_temperature(null, 333) == ((1 - box.contents_thermal_insulation) * 280 + box.contents_thermal_insulation * person.bodytemperature)
+	qdel(person)
+	qdel(box)
+	return checks
+
+/obj/structure/closet/banda_value_insulation
+	contents_thermal_insulation = 0.5
+
+/obj/structure/closet/banda_value_insulation/return_temperature()
+	return 280
+
+/mob/living/carbon/human/banda_value_breather
+	var/inhaled = 0
+
+/mob/living/carbon/human/banda_value_breather/check_breath(datum/gas_mixture/breath)
+	inhaled = breath?.total_moles() || 0
+	return ..()
+
+/datum/banda_value_refill
+	var/turf/open/target
+	var/calls = 0
+	var/replacement
+
+/datum/banda_value_refill/Destroy()
+	target = null
+	return ..()
+
+/datum/banda_value_refill/proc/refill(datum/source)
+	SIGNAL_HANDLER
+	calls++
+	if(replacement == "replace" || replacement == "inherit")
+		target = target.ChangeTurf(/turf/open/floor/wood, flags = replacement == "inherit" ? CHANGETURF_INHERIT_AIR : 0)
+	target.atmos_spawn_air("[GAS_N2]=250")
+
+/datum/controller/subsystem/atmos_phase_test/proc/value_actor_case(native, action, reentrant = FALSE)
+	var/turf/open/target = floor_at(175, 195)
+	target.air.temperature = 333
+	target.air.set_gas(/datum/gas/oxygen, 50)
+	target.air.set_gas(/datum/gas/nitrogen, 200)
+	target.temperature = 500
+	var/mob/living/carbon/human/banda_value_breather/person = new(target)
+	person.bodytemperature = 310
+	person.coretemperature = 315
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(list(target))
+		phase.native(30)
+		phase.initializing = FALSE
+	var/obj/item/tank/internals/oxygen/tank
+	var/datum/banda_value_refill/refill
+	if(reentrant)
+		tank = new(person)
+		// The mask is absent: breathe closes the tank and deletes its real HUD gauge.
+		person.open_internals(tank)
+		refill = new
+		refill.target = target
+		refill.replacement = reentrant
+		refill.RegisterSignal(tank.volume_bar, COMSIG_QDELETING, TYPE_PROC_REF(/datum/banda_value_refill, refill))
+	if(native)
+		if(action == "breath")
+			phase.invoke(CALLBACK(person, TYPE_PROC_REF(/mob/living/carbon, breathe), 2))
+		else
+			person.dna.species.body_temperature_skin(person, 2)
+	else if(action == "breath")
+		person.banda_value_original_breathe(2)
+	else
+		person.dna.species.banda_value_original_skin(person, 2)
+	target = get_turf(person)
+	var/list/before_rebind
+	if(native && target.banda_atmos_cell?.pending_rebind)
+		// Public reads use the replacement's DM air until the ordinary callback queue reattaches it.
+		before_rebind = banda_atmos_full_packet(target.get_readonly_air())
+		phase.apply_frame()
+	var/full_cache = !!target.banda_atmos_cell?.cached_air
+	var/queries = phase?.value_queries || 0
+	var/datum/gas_mixture/actual_air = target.air
+	if(native)
+		var/datum/banda_atmos_cell/cell = phase.ensure_binding(target)
+		actual_air = banda_atmos_decode_air(cell.read_packet(), cell.read_metadata(), cell.native_air_kind)
+	var/list/result = list("air" = banda_atmos_full_packet(actual_air), "body" = list(person.bodytemperature, person.coretemperature, person.get_oxy_loss(), person.failed_last_breath), "full_cache" = full_cache, "queries" = queries, "inhaled" = person.inhaled, "refill_calls" = refill?.calls || 0)
+	result["before_rebind"] = before_rebind
+	if(reentrant)
+		result["target"] = list("type" = "[target.type]", "id" = target.banda_atmos_id, "pending" = target.banda_atmos_cell?.pending_rebind, "depth" = target.banda_atmos_cell?.change_depth, "initialized" = !!(target.flags_1 & INITIALIZED_1), "air" = target.air ? banda_atmos_full_packet(target.air) : null)
+		result["api_air"] = banda_atmos_full_packet(target.get_readonly_air())
+	qdel(refill)
+	qdel(tank)
+	qdel(person)
+	qdel(phase)
+	return result
+
+/proc/value_numbers_match(list/expected, list/actual)
+	if(length(expected) != length(actual))
+		return FALSE
+	for(var/index in 1 to length(expected))
+		if(abs(expected[index] - actual[index]) > max(0.00001, abs(expected[index]) * 0.00001))
+			return FALSE
+	return TRUE
+
+/datum/controller/subsystem/atmos_phase_test/proc/value_worker_checks()
+	var/list/checks = list()
+	var/datum/banda_atmos_phase/world_adapter/phase = threaded_pair(230)
+	phase.threaded = TRUE
+	phase.native(38, 0, 0)
+	var/turf/open/left = phase.positions[1]
+	var/turf/open/right = phase.positions[2]
+	SSair.times_fired++
+	INVOKE_ASYNC(phase, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick), FALSE)
+	var/list/values = left.return_air_values(list(/datum/gas/nitrogen))
+	checks["value_query_during_worker_reads_previous_frame_without_cache"] = phase.running && values[BANDA_AIR_GASES] == 100 && !left.banda_atmos_cell
+	checks["temperature_getter_does_not_wait_for_worker_or_create_cache"] = right.GetTemperature() == T20C && phase.running && !right.banda_atmos_cell
+	while(phase.worker_cycle)
+		stoplag(1)
+	qdel(phase)
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/value_temperature_callback(datum/banda_atmos_phase/world_adapter/phase, turf/open/target, list/checks)
+	target.TakeTemperature(-1000)
+	target.TakeTemperature(17)
+	checks["temperature_operations_read_pending_changes_without_clamping"] = target.GetTemperature() == -183 && !target.banda_atmos_cell.cached_air
+
+/datum/controller/subsystem/atmos_phase_test/proc/value_alias_callback(datum/banda_atmos_phase/world_adapter/phase, turf/open/target, list/checks)
+	var/datum/gas_mixture/held = target.get_mutable_air()
+	held.temperature = 777
+	checks["value_query_defers_to_unreported_live_alias"] = isnull(phase.read_air_values(target)) && target.GetTemperature() == 777
+	var/list/values = target.return_air_values(list(/datum/gas/plasma))
+	checks["common_value_api_keeps_held_alias_authoritative"] = values[BANDA_AIR_TEMPERATURE] == 777 && values[BANDA_AIR_GASES] == held.moles[/datum/gas/plasma]
+	target.TakeTemperature(-17)
+	checks["temperature_change_preserves_held_reference"] = target.get_mutable_air() == held && held.temperature == 760 && target.GetTemperature() == 760

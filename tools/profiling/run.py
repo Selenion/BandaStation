@@ -105,13 +105,13 @@ def windows_process_sample(pid, main_thread_id=None):
         kernel.CloseHandle(handle)
 
 
-def capture(daemon, output, scenario, rust_enabled=False, rust_threaded=False, pipe_packets=False, legacy_air_bridge=False, legacy_vent_transfer=False, legacy_scrubber_transfer=False, legacy_scrubber_tile=False, legacy_visual_refresh=False):
+def capture(daemon, output, scenario, rust_enabled=False, rust_threaded=False, pipe_packets=False, legacy_air_bridge=False, legacy_vent_transfer=False, legacy_scrubber_transfer=False, legacy_scrubber_tile=False, legacy_visual_refresh=False, proc_profile=True):
     samples = []
     main_thread_id = None
     timeout_seconds = 900 if scenario == "pipe-plasma-flood" else 600
     with (output / "launcher.log").open("w", encoding="utf-8") as log:
         process = subprocess.Popen([str(daemon), "tgstation.dmb", "-trusted", "-close", "-invisible", "-ip", "127.0.0.1",
-                                    "-logself", "-params", f"log-directory=local-profile&profile-scenario={scenario}&profile-rust={int(rust_enabled)}&profile-threaded={int(rust_threaded)}&profile-pipe-packets={int(pipe_packets)}&profile-legacy-air-bridge={int(legacy_air_bridge)}&profile-legacy-vent-transfer={int(legacy_vent_transfer)}&profile-legacy-scrubber-transfer={int(legacy_scrubber_transfer)}&profile-legacy-scrubber-tile={int(legacy_scrubber_tile)}&profile-legacy-visual-refresh={int(legacy_visual_refresh)}"],
+                                    "-logself", "-params", f"log-directory=local-profile&profile-procs={int(proc_profile)}&profile-scenario={scenario}&profile-rust={int(rust_enabled)}&profile-threaded={int(rust_threaded)}&profile-pipe-packets={int(pipe_packets)}&profile-legacy-air-bridge={int(legacy_air_bridge)}&profile-legacy-vent-transfer={int(legacy_vent_transfer)}&profile-legacy-scrubber-transfer={int(legacy_scrubber_transfer)}&profile-legacy-scrubber-tile={int(legacy_scrubber_tile)}&profile-legacy-visual-refresh={int(legacy_visual_refresh)}"],
                                    cwd=output, stdout=log, stderr=subprocess.STDOUT)
         started = time.monotonic()
         try:
@@ -126,7 +126,7 @@ def capture(daemon, output, scenario, rust_enabled=False, rust_threaded=False, p
                         main_thread_id = sample.get("main_thread_id")
                         samples.append(sample)
                 try:
-                    process.wait(timeout=1)
+                    process.wait(timeout=0.25)
                 except subprocess.TimeoutExpired:
                     pass
         finally:
@@ -141,7 +141,7 @@ def capture(daemon, output, scenario, rust_enabled=False, rust_threaded=False, p
     return time.monotonic() - started
 
 
-def stage(target):
+def stage(target, proc_profile=True):
     """Hard-link immutable runtime resources; copy all mutable config/data files."""
     resources = ["_maps", "build/behavior_trees", "code/datums/greyscale/json_configs",
                  "icons", "sound/runtime", "strings", "tgui/public", "modular_bandastation"]
@@ -157,8 +157,12 @@ def stage(target):
                 if not dest.exists():
                     os.link(Path(directory) / name, dest)
     shutil.copytree(ROOT / "config", target / "config", dirs_exist_ok=True)
-    with (target / "config/config.txt").open("a", encoding="utf-8") as config:
-        config.write("\nAUTO_PROFILE\nPROFILER_INTERVAL 6000\n")
+    config_path = target / "config/config.txt"
+    if not proc_profile:
+        lines = config_path.read_text(encoding="utf-8-sig").splitlines()
+        config_path.write_text("\n".join(line for line in lines if line.upper().split(maxsplit=1)[:1] != ["AUTO_PROFILE"]) + "\n", encoding="utf-8")
+    with config_path.open("a", encoding="utf-8") as config:
+        config.write(("\nAUTO_PROFILE\n" if proc_profile else "\n") + "PROFILER_INTERVAL 6000\n")
     # This deployment is intentionally disconnected from the live database.
     (target / "config/dbconfig.txt").write_text("# Local profile: SQL disabled\n", encoding="utf-8")
     (target / "data").mkdir(exist_ok=True)
@@ -191,6 +195,22 @@ def finish_capture(output, manifest, elapsed):
             raise SystemExit(f"Fewer than half the outlets discharged measurable plasma: {metadata_path}")
     manifest["metadata"] = metadata
     manifest["binary_sha256"] = hashlib.sha256((output / "tgstation.dmb").read_bytes()).hexdigest()
+    if manifest.get("proc_profiling") and metadata.get("proc_profile_control", {}).get("forbid_all_profiling"):
+        raise SystemExit("Proc profiling is forbidden by config; use --no-proc-profile for resource measurements")
+    if manifest.get("proc_profiling") is False:
+        profile_path = output / "profile-procs.json"
+        if not profile_path.exists():
+            raise SystemExit("No proc-profile control output; cannot verify disabled profiling")
+        profile = json.loads(profile_path.read_text(encoding="utf-8-sig"))
+        if not isinstance(profile, list):
+            raise SystemExit("Invalid proc-profile control output")
+        # Stopping after CLEAR leaves one record of the controlling /world/Profile call.
+        unexpected = [row for row in profile if any(row.get(key, 0) for key in ("calls", "self", "total", "real", "over"))
+                      and not (row["name"] == "/world/Profile" and row.get("calls", 0) <= 1)]
+        manifest["proc_profile_validation"] = dict(unexpected=unexpected)
+        if unexpected:
+            (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
+            raise SystemExit("Gameplay proc profiling remained enabled; exclude this capture")
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
     if validation["known_count"]:
         print(f"Accepted with {validation['known_count']} known baseline runtimes; see runtime-validation.json")
@@ -208,6 +228,7 @@ def main():
     parser.add_argument("--compiled-binary", type=Path)
     parser.add_argument("--rust-dll", type=Path)
     parser.add_argument("--threaded", action="store_true")
+    parser.add_argument("--no-proc-profile", action="store_true", help="Measure CPU/TD/RAM without proc profiler overhead; reject captures with gameplay proc counters")
     parser.add_argument("--pipe-packets", action="store_true", help="Diagnostic control: retain the previous pipe packet path during sampling")
     parser.add_argument("--legacy-air-bridge", action="store_true", help="Diagnostic control: disable compact readings and visual publication during sampling")
     parser.add_argument("--legacy-vent-transfer", action="store_true", help="Diagnostic control: keep the DM vent exchange from startup")
@@ -244,7 +265,7 @@ def main():
     source = (source_root / "tgstation.dme").read_text(encoding="utf-8-sig")
     source += f'\n#include "{(ROOT / "tools/profiling/local_profile.dm.in").as_posix()}"\n'
     dme.write_text(source, encoding="utf-8", newline="\n")
-    stage(output)
+    stage(output, proc_profile=not args.no_proc_profile)
     with (output / "config/config.txt").open("a", encoding="utf-8") as config:
         config.write("\nFORBID_STATION_TRAITS\n")
         if args.rust_dll:
@@ -259,7 +280,9 @@ def main():
                     pipe_packets=args.pipe_packets, legacy_air_bridge=args.legacy_air_bridge, legacy_vent_transfer=args.legacy_vent_transfer,
                     legacy_scrubber_transfer=args.legacy_scrubber_transfer, legacy_scrubber_tile=args.legacy_scrubber_tile,
                     legacy_visual_refresh=args.legacy_visual_refresh,
-                    sample_seconds=60, profiler="BYOND world.Profile", rust_enabled=bool(args.rust_dll), rust_threaded=args.threaded, source_root=str(source_root),
+                    sample_seconds=60, profiler="BYOND world.Profile" if not args.no_proc_profile else "Proc profiling disabled; process/thread counters",
+                    proc_profiling=not args.no_proc_profile, process_sample_interval_seconds=0.25,
+                    rust_enabled=bool(args.rust_dll), rust_threaded=args.threaded, source_root=str(source_root),
                     baseline_source=json.loads((source_root / "baseline-source.json").read_text(encoding="utf-8")) if (source_root / "baseline-source.json").exists() else None,
                     harness_sha256=hashlib.sha256((ROOT / "tools/profiling/local_profile.dm.in").read_bytes()).hexdigest(),
                     limitations=["No connected players; SendMaps is not representative of 50+ players.",
@@ -281,7 +304,7 @@ def main():
     daemon = args.byond / ("dd.exe" if os.name == "nt" else "DreamDaemon")
     elapsed = capture(daemon, output, args.scenario, bool(args.rust_dll), args.threaded, args.pipe_packets,
                       args.legacy_air_bridge, args.legacy_vent_transfer, args.legacy_scrubber_transfer,
-                      args.legacy_scrubber_tile, args.legacy_visual_refresh)
+                      args.legacy_scrubber_tile, args.legacy_visual_refresh, proc_profile=not args.no_proc_profile)
     finish_capture(output, manifest, elapsed)
 
 

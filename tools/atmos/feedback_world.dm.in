@@ -52,6 +52,8 @@
 	var/deadline = world.time + 20 SECONDS
 	while(phase.worker_cycle && world.time < deadline)
 		sleep(world.tick_lag)
+	if(use_worker)
+		threaded_drain_effects(phase, deadline)
 	var/list/first = list("cycle" = phase.air_cycle, "archive_cycle" = left.archived_cycle, "left" = banda_atmos_full_packet(left.get_readonly_air()), "right" = banda_atmos_full_packet(right.get_readonly_air()), "coal_deleted" = !!QDELETED(coal))
 	writer.armed = TRUE
 	var/resumed = FALSE
@@ -60,6 +62,8 @@
 		sleep(world.tick_lag)
 	while(phase.worker_cycle && world.time < deadline)
 		sleep(world.tick_lag)
+	if(use_worker)
+		threaded_drain_effects(phase, deadline)
 	var/list/output = list("first" = first, "cycle" = phase.air_cycle, "archive_cycle" = left.archived_cycle, "completed_ticks" = phase.completed_ticks, "left" = banda_atmos_full_packet(left.get_readonly_air()), "right" = banda_atmos_full_packet(right.get_readonly_air()))
 	qdel(writer)
 	qdel(phase)

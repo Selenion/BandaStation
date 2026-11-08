@@ -6,8 +6,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from run import finish_capture
+from run import finish_capture, stage
 from runtime_check import classify, validate_runtime_logs
 
 
@@ -36,14 +37,14 @@ class RuntimeCheckTests(unittest.TestCase):
     def write_log(self, name, text):
         (self.folder / name).write_text(text, encoding="utf-8-sig")
 
-    def finish(self, metadata=True):
+    def finish(self, metadata=True, manifest=None):
         if metadata is True:
             metadata = {"scenario": "atmos-flood"}
         if metadata:
             (self.folder / "profile-metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
         (self.folder / "tgstation.dmb").write_bytes(b"compiled fixture")
         with redirect_stdout(io.StringIO()):
-            finish_capture(self.folder, {}, 60)
+            finish_capture(self.folder, {} if manifest is None else manifest, 60)
         return json.loads((self.folder / "manifest.json").read_text())
 
     def test_clean_capture_keeps_acceptance_metadata(self):
@@ -51,6 +52,47 @@ class RuntimeCheckTests(unittest.TestCase):
         self.assertEqual(result["runtime_validation"]["status"], "clean")
         self.assertEqual(result["metadata"]["scenario"], "atmos-flood")
         self.assertTrue(result["binary_sha256"])
+
+    def test_disabled_profile_accepts_only_the_pre_window_control_call(self):
+        for profile in ([], [{"name": "/world/Profile", "calls": 1, "self": 0.001, "total": 0.001}]):
+            with self.subTest(profile=profile):
+                (self.folder / "profile-procs.json").write_text(json.dumps(profile), encoding="utf-8")
+                result = self.finish(manifest={"proc_profiling": False})
+                self.assertEqual(result["proc_profile_validation"]["unexpected"], [])
+
+    def test_disabled_profile_rejects_gameplay_counts_or_recorded_time(self):
+        for row in ({"name": "/datum/controller/subsystem/air/fire", "calls": 1},
+                    {"name": "/datum/controller/subsystem/air/fire", "calls": 0, "real": 0.1},
+                    {"name": "/world/Profile", "calls": 2}):
+            with self.subTest(row=row):
+                (self.folder / "profile-procs.json").write_text(json.dumps([row]), encoding="utf-8")
+                with self.assertRaisesRegex(SystemExit, "remained enabled"):
+                    self.finish(manifest={"proc_profiling": False})
+                result = json.loads((self.folder / "manifest.json").read_text())
+                self.assertEqual(result["proc_profile_validation"]["unexpected"], [row])
+
+    def test_disabled_profile_requires_control_output(self):
+        with self.assertRaisesRegex(SystemExit, "No proc-profile control"):
+            self.finish(manifest={"proc_profiling": False})
+
+    def test_requested_diagnostic_profile_cannot_ignore_forbid_config(self):
+        metadata = {"scenario": "atmos-flood", "proc_profile_control": {"forbid_all_profiling": True}}
+        with self.assertRaisesRegex(SystemExit, "forbidden by config"):
+            self.finish(metadata, manifest={"proc_profiling": True})
+
+    def test_staging_disabled_profile_does_not_change_source_config(self):
+        source = self.folder / "source"
+        (source / "config").mkdir(parents=True)
+        settings = "#AUTO_PROFILE\nAUTO_PROFILE\n  auto_profile 1\nSERVERNAME test\n"
+        (source / "config/config.txt").write_text(settings, encoding="utf-8")
+        target = self.folder / "staged"
+        with patch("run.ROOT", source):
+            stage(target, proc_profile=False)
+        self.assertEqual((source / "config/config.txt").read_text(), settings)
+        actual = (target / "config/config.txt").read_text()
+        self.assertIn("#AUTO_PROFILE", actual)
+        self.assertIn("SERVERNAME test", actual)
+        self.assertFalse(any(line.upper().split(maxsplit=1)[:1] == ["AUTO_PROFILE"] for line in actual.splitlines()))
 
     def test_decompression_requires_a_pressurized_chamber_and_pressure_drop(self):
         incident = {"inputs": {"pressure": 300}, "pressure_before": 300, "pressure_after": 225}

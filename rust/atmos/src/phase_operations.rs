@@ -1,10 +1,39 @@
 use super::*;
 use crate::{
     operations::{self, Operation, PairOperation, PairResult, ResultValue, Target},
-    transport::Sample,
+    transport::{Boundary, Sample},
 };
 
 impl Store {
+    /// Queries borrow published or pending values; they never issue a mutable VM mixture.
+    pub(crate) fn query_air(&self, target: Target) -> Option<(&crate::Mixture, &Boundary)> {
+        if self.closed {
+            return None;
+        }
+        let published = match target {
+            Target::Cell { id, version } => {
+                if self.published_binding_version(id) != Some(version) {
+                    return None;
+                }
+                let tile = self.published.schedule.tiles.get(&id)?;
+                if !tile.has_air {
+                    return None;
+                }
+                (&self.published.cells.get(&id)?.air, &tile.boundary)
+            }
+            Target::Port(handle) => {
+                let sample = self.pipes.get(handle).ok()?;
+                (&sample.air, &sample.boundary)
+            }
+        };
+        Some(
+            self.operation_edits
+                .as_ref()
+                .and_then(|edits| edits.get(&target))
+                .map_or(published, |(sample, _)| (&sample.air, &sample.boundary)),
+        )
+    }
+
     pub(crate) fn pending_operation_air(&self, id: CellId) -> Option<&Mixture> {
         self.pending_operation_sample(id).map(|sample| &sample.air)
     }
@@ -113,25 +142,7 @@ impl Store {
 
     fn operation_sample(&self, target: Target) -> Result<Sample, Error> {
         self.validate_operation_target(target)?;
-        if let Some((sample, _)) = self
-            .operation_edits
-            .as_ref()
-            .and_then(|edits| edits.get(&target))
-        {
-            return Ok(sample.clone());
-        }
-        match target {
-            Target::Port(handle) => self.pipes.get(handle).cloned().map_err(Error::Port),
-            Target::Cell { id, .. } => {
-                let tile = &self.published.schedule.tiles[&id];
-                Ok(Sample {
-                    air: self.published.cells[&id].air.clone(),
-                    archived: tile.archived.clone(),
-                    last_share: self.published.schedule.last_share(id),
-                    boundary: tile.boundary.clone(),
-                })
-            }
-        }
+        self.clone_air_sample(target).ok_or(Error::StaleBinding)
     }
 
     // All addresses are checked before mutation; no DM callback can run while this store is locked.

@@ -1,0 +1,55 @@
+{
+  "status": "life_stage_validated_and_benchmarked",
+  "accepted": true,
+  "branch": "rust-atmos-api",
+  "performance_measured": true,
+  "game_validation": {
+    "accepted": true,
+    "run": "tmp/atmos-phase/life-api-11",
+    "report": "tmp/atmos-phase/life-api-11/report.json",
+    "report_sha256": "04e1fbe8283566a1f54e04c863209559a06a44753399f266500e47a2846c578d",
+    "api_checks": 245,
+    "failures": 0,
+    "runtimes": 0,
+    "world_scenarios": 12,
+    "graphs": 49,
+    "graph_steps": 980,
+    "exit_code": 0
+  },
+  "approved_exception": "Native immutable empty space stays at TCMB (2.7 K), without the transient temperature of the shared DM space_gas singleton",
+  "benchmark": {
+    "report": "tmp/atmos-life-bench-05/report.json",
+    "report_sha256": "d8564832142a1df7cef171fe8704eea2d0c1926360e93626309ceb629d97a3b0",
+    "provenance": "tmp/atmos-life-bench-05/provenance.json",
+    "binary_sha256": "aefdb8ae44bcd41f556be7143fd87800a5d8367c3b482d079ffbacba743e6882",
+    "server_processes": 16,
+    "primary_processes": 12,
+    "profile_processes": 4,
+    "calculations": 640,
+    "primary_calculations": 480,
+    "humans": 50,
+    "life_calls": 32000,
+    "same_work_and_state": true,
+    "background_fires": 0
+  },
+  "results": "tools/atmos/LIFE_ACCESS_RESULTS.json",
+  "report": "tools/atmos/LIFE_ACCESS_REPORT.md",
+  "remaining": [
+    "Fresh 32-bit server processes, running MC/GC, fixed fixture workload; no clients or live round",
+    "The fixture invokes SSair and Life, with other gameplay subsystems disabled; TD is a stress-test result, not a live-server prediction",
+    "Median of three primary runs; maxima for TD/memory peaks; profiling runs excluded from primary figures",
+    "Private/RSS ranges overlap; no demonstrated memory saving",
+    "Other mixture owners, containers and gas consumers retain the legacy compatibility path"
+  ],
+  "history": {
+    "rejected_game_runs": [
+      "life-api-05: rust_g.dll_unloaded on shutdown",
+      "life-api-08: shared-space oracle contamination and observer callback without native reference",
+      "life-api-09: test oracle declaration parsed before correction; compilation failed",
+      "life-api-10: aura fixture exceeded the 256-cell registration batch limit; corrected fixture, production unchanged"
+    ],
+    "earlier_accepted_validation": "tmp/atmos-phase/life-api-07 (204 API checks)",
+    "rejected_smoke": "tmp/atmos-life-bench-03: setup smoothing leaked into measurement"
+  },
+  "compatibility_shim_rolled_back": true
+}

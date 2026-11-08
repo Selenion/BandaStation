@@ -34,7 +34,7 @@
 
 /datum/banda_atmos_safe/proc/invoke()
 	SHOULD_NOT_SLEEP(TRUE)
-	on_run(arglist(run_args))
+	return on_run(arglist(run_args))
 
 /// Existing world code accesses turf.air directly as well as through return_air.
 /// Expose the same safe mixture through both paths while applying a published frame.

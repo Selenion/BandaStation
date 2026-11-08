@@ -1,0 +1,52 @@
+// Actual worker -> ordinary MC -> three turf portions, including a synchronous gas API between them.
+/datum/controller/subsystem/atmos_phase_test/proc/chunk_world_checks()
+	var/list/checks = list()
+	var/datum/banda_atmos_phase/world_adapter/threaded_probe/completion_probe/phase = threaded_pair(238, phase_type = /datum/banda_atmos_phase/world_adapter/threaded_probe/completion_probe)
+	phase.threaded = TRUE
+	var/turf/open/left = phase.positions[1]
+	var/turf/open/right = phase.positions[2]
+	var/turf/open/last = floor_at(240, 200)
+	last.air.set_gas(/datum/gas/nitrogen, 1)
+	phase.register_batch(list(last))
+	var/datum/gas_mixture/held = phase.invoke(CALLBACK(src, PROC_REF(exchange_modify), left, "read"))
+	var/datum/gas_mixture/readonly = left.get_readonly_air()
+	var/obj/item/wrench/banda_exchange_alias/probe = new(right)
+	probe.stored_air = held
+	phase.injected_commands = list(left.banda_atmos_id, 1, 13, 300, 0, right.banda_atmos_id, 1, 9, 700, CELL_VOLUME, last.banda_atmos_id, 1, 13, 300, 0)
+	var/list/saved_networks = SSair.networks
+	var/list/saved_machines = SSair.atmos_machinery
+	SSair.networks = list()
+	SSair.atmos_machinery = list()
+	SSair.rebuild_queue.Cut()
+	SSair.expansion_queue.Cut()
+	SSair.adjacent_rebuild.Cut()
+	SSair.atom_process.Cut()
+	SSair.native_atoms_pending = FALSE
+	SSair.currentpart = SSAIR_ACTIVETURFS
+	SSair.times_fired++
+	var/cycle = SSair.times_fired
+	var/result = threaded_mc_fire(TRUE)
+	var/deadline = world.time + 20 SECONDS
+	while(phase.worker_cycle && world.time < deadline)
+		sleep(world.tick_lag)
+	checks["ready_frame_has_no_executed_effects"] = result == SS_RUNNING && phase.effects_ready && !probe.fire_calls && !phase.completed_ticks
+	checks["numeric_publication_precedes_portions"] = readonly == left.get_readonly_air() && readonly.moles[/datum/gas/nitrogen] == 55
+	result = threaded_mc_fire(TRUE, TRUE)
+	checks["first_turf_pauses_without_next_calculation"] = result == SS_PAUSED && phase.effect_cursor == 6 && !phase.completed_ticks && !phase.worker_cycle && phase.air_cycle == cycle && SSair.times_fired == cycle + 1
+	checks["pause_releases_safe_callback"] = !phase.in_safe_callback && !phase.processing && !phase.effect_cycle && !length(phase.working_mixtures) && phase.effect_mixtures[left.banda_atmos_cell] == held
+	result = threaded_mc_fire(TRUE, TRUE)
+	checks["second_turf_runs_once_and_preserves_tail"] = result == SS_PAUSED && probe.fire_calls == 1 && phase.effect_cursor == 11 && phase.effects_ready
+	var/list/visibility = list("held" = held.moles[/datum/gas/nitrogen], "retained_readonly" = readonly.moles[/datum/gas/nitrogen], "api_readonly" = left.get_readonly_air().moles[/datum/gas/nitrogen])
+	checks["issued_readonly_is_fresh_before_api_reread"] = visibility["retained_readonly"] == visibility["held"] && readonly == left.banda_atmos_cell.readonly_air
+	var/datum/gas_mixture/taken = left.remove_air(1)
+	checks["gas_api_uses_actual_available_air_between_portions"] = taken.moles[/datum/gas/nitrogen] == 1 && held.moles[/datum/gas/nitrogen] == 57
+	threaded_drain_effects(phase, deadline)
+	checks["tail_commits_cross_turf_alias_once"] = !phase.effects_ready && phase.completed_ticks == 1 && probe.fire_calls == 1 && left.banda_atmos_cell.read_air().moles[/datum/gas/nitrogen] == 57 && readonly.moles[/datum/gas/nitrogen] == 57
+	checks["finished_packet_releases_retained_mixtures"] = isnull(phase.effect_mixtures) && !length(phase.effect_commands) && SSair.times_fired == cycle + 1
+	qdel(probe)
+	qdel(phase)
+	SSair.networks = saved_networks
+	SSair.atmos_machinery = saved_machines
+	SSair.native_atoms_pending = FALSE
+	SSair.currentpart = SSAIR_PIPENETS
+	return list("checks" = checks, "visibility" = visibility)

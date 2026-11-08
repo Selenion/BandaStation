@@ -61,6 +61,8 @@
 			var/result = threaded_mc_fire(TRUE)
 			while(phase.worker_cycle && world.time < deadline)
 				sleep(world.tick_lag)
+			if(phase.threaded)
+				threaded_drain_effects(phase, deadline)
 			observed["next_mc_tick_completes"] = result == SS_RUNNING && phase.completed_ticks == 1 && !phase.worker_cycle && !phase.publication_pending
 		else
 			var/list/second = list("done" = FALSE)

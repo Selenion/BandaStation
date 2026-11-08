@@ -78,50 +78,61 @@
 
 	SEND_SIGNAL(src, COMSIG_CARBON_PRE_BREATHE, seconds_per_tick)
 
+	// BANDASTATION EDIT START - Read the captured mixture when used, including changes made by equipment callbacks.
 	var/datum/gas_mixture/environment
+	var/datum/banda_atmos_air_reference/environment_reference
 	if(loc)
-		environment = loc.return_air()
-
+		if(SSair.native_atmos?.air_references_ready)
+			environment_reference = loc.return_air_reference()
+		else
+			environment = loc.return_air()
 	var/datum/gas_mixture/breath
+	try
+		if(lungs?.organ_flags & ORGAN_FAILING)
+			losebreath++
+		else if(!get_organ_slot(ORGAN_SLOT_BREATHING_TUBE))
+			if(stat == HARD_CRIT || pulledby?.grab_state >= GRAB_KILL)
+				losebreath++  //You can't breath at all when in critical or when being choked, so you're going to miss a breath
 
-	if(lungs?.organ_flags & ORGAN_FAILING)
-		losebreath++
-	else if(!get_organ_slot(ORGAN_SLOT_BREATHING_TUBE))
-		if(stat == HARD_CRIT || pulledby?.grab_state >= GRAB_KILL)
-			losebreath++  //You can't breath at all when in critical or when being choked, so you're going to miss a breath
+			else if(stat == SOFT_CRIT)
+				losebreath += 0.25 //You're having trouble breathing in soft crit, so you'll miss a breath one in four times
 
-		else if(stat == SOFT_CRIT)
-			losebreath += 0.25 //You're having trouble breathing in soft crit, so you'll miss a breath one in four times
-
-	//Suffocate
-	if(losebreath >= 1) //You've missed a breath, take oxy damage
-		losebreath--
-		if(isobj(loc))
-			var/obj/loc_as_obj = loc
-			loc_as_obj.handle_internal_lifeform(src,0)
-
-	else
-		//Breathe from internal
-		breath = get_breath_from_internal(BREATH_VOLUME)
-
-		if(isnull(breath)) //in case of 0 pressure internals
-
-			if(isobj(loc)) //Breathe from loc as object
-				var/obj/loc_as_obj = loc
-				breath = loc_as_obj.handle_internal_lifeform(src, BREATH_VOLUME)
-
-			else if(isturf(loc)) //Breathe from loc as turf
-				var/breath_moles = 0
-				if(environment)
-					breath_moles = environment.total_moles()*BREATH_PERCENTAGE
-
-				breath = loc.remove_air(breath_moles)
-		else //Breathe from loc as obj again
-			is_on_internals = TRUE
-
+		//Suffocate
+		if(losebreath >= 1) //You've missed a breath, take oxy damage
+			losebreath--
 			if(isobj(loc))
 				var/obj/loc_as_obj = loc
 				loc_as_obj.handle_internal_lifeform(src,0)
+
+		else
+			//Breathe from internal
+			breath = get_breath_from_internal(BREATH_VOLUME)
+
+			if(isnull(breath)) //in case of 0 pressure internals
+
+				if(isobj(loc)) //Breathe from loc as object
+					var/obj/loc_as_obj = loc
+					breath = loc_as_obj.handle_internal_lifeform(src, BREATH_VOLUME)
+
+				else if(isturf(loc)) //Breathe from loc as turf
+					var/breath_moles = 0
+					if(environment_reference)
+						breath_moles = environment_reference.total_moles()*BREATH_PERCENTAGE
+					else if(environment)
+						breath_moles = environment.total_moles()*BREATH_PERCENTAGE
+
+					breath = loc.remove_air(breath_moles)
+			else //Breathe from loc as obj again
+				is_on_internals = TRUE
+
+				if(isobj(loc))
+					var/obj/loc_as_obj = loc
+					loc_as_obj.handle_internal_lifeform(src,0)
+	catch(var/exception/error)
+		qdel(environment_reference)
+		throw error
+	qdel(environment_reference)
+	// BANDASTATION EDIT END
 
 	if(check_breath(breath) && is_on_internals)
 		// successful breath from internals, try to play the breathing sound
@@ -554,11 +565,13 @@
 	reagents?.metabolize(src, seconds_per_tick, can_overdose = TRUE, liverless = TRUE, dead = TRUE) // Your liver doesn't work while you're dead.
 
 /// Base carbon environment handler, adds natural stabilization
-/mob/living/carbon/handle_environment(datum/gas_mixture/environment, seconds_per_tick)
-	var/areatemp = get_temperature(environment)
+// BANDASTATION EDIT START - Pass the live reference through natural temperature regulation.
+/mob/living/carbon/handle_environment(datum/gas_mixture/environment, seconds_per_tick, times_fired, datum/banda_atmos_air_reference/air_reference)
+	var/areatemp = get_temperature(environment, air_reference = air_reference)
 
 	if(stat != DEAD) // If you are dead your body does not stabilize naturally
-		natural_bodytemperature_stabilization(environment, seconds_per_tick)
+		natural_bodytemperature_stabilization(environment, seconds_per_tick, air_reference)
+// BANDASTATION EDIT END
 
 	else if(!on_fire && areatemp < bodytemperature) // lowers your dead body temperature to room temperature over time
 		adjust_bodytemperature((areatemp - bodytemperature), use_insulation=FALSE, use_steps=TRUE)
@@ -574,8 +587,10 @@
  * - seconds_per_tick: The amount of time that has elapsed since the last tick
  * - times_fired: The number of times SSmobs has ticked
  */
-/mob/living/carbon/proc/natural_bodytemperature_stabilization(datum/gas_mixture/environment, seconds_per_tick)
-	var/areatemp = get_temperature(environment)
+// BANDASTATION EDIT START - A callback can change the captured air before this second temperature read.
+/mob/living/carbon/proc/natural_bodytemperature_stabilization(datum/gas_mixture/environment, seconds_per_tick, datum/banda_atmos_air_reference/air_reference)
+	var/areatemp = get_temperature(environment, air_reference = air_reference)
+// BANDASTATION EDIT END
 	var/body_temperature_difference = get_body_temp_normal() - bodytemperature
 	var/natural_change = 0
 

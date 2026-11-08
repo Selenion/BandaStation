@@ -540,8 +540,11 @@ Turf and target are separate in case you want to teleport some distance from a t
 	var/pressure_greatest = 0
 	var/pressure_smallest = INFINITY //Freaking terrified to use INFINITY, man
 	for(var/turf/open/turf_adjacent in RANGE_TURFS(1, src)) //Begin processing the delta pressure across the wall.
-		pressure_greatest = max(pressure_greatest, turf_adjacent.get_readonly_air().return_pressure()) // BANDASTATION EDIT - Read native atmosphere through the API.
-		pressure_smallest = min(pressure_smallest, turf_adjacent.get_readonly_air().return_pressure()) // BANDASTATION EDIT - Read native atmosphere through the API.
+		// BANDASTATION EDIT START - Read each pressure once without borrowing a full gas mixture.
+		var/list/air_values = turf_adjacent.return_air_values()
+		pressure_greatest = max(pressure_greatest, air_values[BANDA_AIR_PRESSURE])
+		pressure_smallest = min(pressure_smallest, air_values[BANDA_AIR_PRESSURE])
+		// BANDASTATION EDIT END
 
 	return pressure_greatest - pressure_smallest
 

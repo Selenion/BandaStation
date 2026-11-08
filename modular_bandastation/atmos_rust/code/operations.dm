@@ -2,6 +2,9 @@
 #define BANDA_GAS_MERGE 11
 #define BANDA_GAS_TAKE 13
 #define BANDA_GAS_ARCHIVE 9
+#define BANDA_GAS_SET_TEMPERATURE 6
+#define BANDA_GAS_ADJUST 4
+#define BANDA_GAS_COLLECT 10
 
 /datum/banda_atmos_phase
 	var/operations_ready = FALSE
@@ -43,7 +46,7 @@
 
 /// The compatible path retains all issued lists and gas-mixture signals.
 /datum/banda_atmos_phase/world_adapter/proc/operation_cell(turf/open/target)
-	if(!operations_ready || !in_safe_callback || running || closed || initializing || !target.banda_air_present || isspaceturf(target) || target.planetary_atmos)
+	if(!operations_ready || !in_safe_callback || running || closed || initializing || !target.banda_air_present || isspaceturf(target))
 		return null
 	var/datum/banda_atmos_cell/cell = ensure_binding(target)
 	if(!cell || cell.pending_rebind || cell.cached_air || cell.readonly_air || target.air)
@@ -76,10 +79,62 @@
 	commands += packet
 	commands += list(BANDA_GAS_ARCHIVE, 0)
 	gas_operations(cell, commands)
-	target.archived_cycle = SSair.times_fired
+	target.archived_cycle = SSair.get_air_cycle()
 	target.temperature_archived = target.temperature
 	native(37, cell.native_id, target.archived_cycle, target.temperature_archived)
 	SSair.add_to_active(target)
+	return TRUE
+
+/// Keep adjust_gas quantization/GC while the tile's mixture remains exclusively in Rust.
+/datum/banda_atmos_phase/world_adapter/proc/try_adjust_air_operation(turf/open/target, gas, amount)
+	var/datum/banda_atmos_cell/cell = operation_cell(target)
+	if(!cell)
+		return FALSE
+	var/gas_index = banda_atmos_gases().Find(gas)
+	if(!gas_index)
+		CRASH("Unknown gas in a native tile adjustment")
+	gas_operations(cell, list(1, 1, BANDA_GAS_ADJUST, 2, gas_index - 1, amount))
+	return TRUE
+
+/// Requirements read before GC; their temporary asserted zero keys are all removed by that GC.
+/datum/banda_atmos_phase/world_adapter/proc/try_atmos_requirement_values(turf/open/target, list/gases)
+	if(!value_queries_ready || closed || initializing || !in_safe_callback || running)
+		return null
+	// Immutable space ignores assert/GC, including archived keys; it needs no mutable binding.
+	if(isspaceturf(target) && target.banda_atmos_id && positions[target.banda_atmos_id] == target && native(32, target.banda_atmos_id) == 3)
+		return read_air_values(target, gases)
+	var/datum/banda_atmos_cell/cell = operation_cell(target)
+	if(!cell)
+		return null
+	var/list/values = read_air_values(target, gases)
+	gas_operations(cell, list(1, 1, BANDA_GAS_COLLECT, 0))
+	return values
+
+/// Direct multiplication must not become a delta or use set_temperature's different limits.
+/datum/banda_atmos_phase/world_adapter/proc/try_scale_air_temperature(turf/open/target, factor)
+	if(!operations_ready || !in_safe_callback || running || closed || initializing || !isnum(factor))
+		return FALSE
+	var/list/values = read_air_values(target)
+	if(!values)
+		return FALSE
+	var/datum/banda_atmos_cell/cell = ensure_binding(target)
+	// Empty space stays canonical; the original shared DM singleton leaked this cooling to unrelated tiles.
+	if(cell.native_air_kind == 3)
+		return TRUE
+	gas_operations(cell, list(1, 1, BANDA_GAS_SET_TEMPERATURE, 1, values[BANDA_AIR_TEMPERATURE] * factor))
+	return TRUE
+
+/// TakeTemperature adds kelvin directly; Heat and set_temperature have different semantics.
+/datum/banda_atmos_phase/world_adapter/proc/try_change_temperature(turf/open/target, change)
+	if(!isnum(change))
+		return FALSE
+	var/list/values = read_air_values(target)
+	if(!values)
+		return FALSE
+	var/datum/banda_atmos_cell/cell = operation_cell(target)
+	if(!cell)
+		return FALSE
+	gas_operations(cell, list(1, 1, BANDA_GAS_SET_TEMPERATURE, 1, values[BANDA_AIR_TEMPERATURE] + change))
 	return TRUE
 
 /datum/banda_atmos_phase/world_adapter/proc/try_assume_air_operation(turf/open/target, datum/gas_mixture/addition)

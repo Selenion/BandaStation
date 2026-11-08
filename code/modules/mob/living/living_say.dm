@@ -262,8 +262,10 @@ GLOBAL_LIST_INIT(message_modes_stat_limits, list(
 
 	//No screams in space, unless you're next to someone.
 	var/turf/T = get_turf(src)
-	var/datum/gas_mixture/environment = T.return_air()
-	var/pressure = (environment)? environment.return_pressure() : 0
+	// BANDASTATION EDIT START - Speech needs pressure, not a persistent gas mixture.
+	var/list/environment = T.return_air_values()
+	var/pressure = environment ? environment[BANDA_AIR_PRESSURE] : 0
+	// BANDASTATION EDIT END
 	if(pressure < SOUND_MINIMUM_PRESSURE && !HAS_TRAIT(src, TRAIT_SIGN_LANG))
 		message_range = 1
 

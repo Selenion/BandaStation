@@ -56,12 +56,12 @@
 		broken_message = span_boldnotice("AIR VENTING TO SPACE")
 		set_broken(TRUE)
 		return FALSE
-	var/datum/gas_mixture/G = OT.return_air()
-	if(G.return_pressure() > (max_ext_kpa - ((spawn_mol*spawn_temp*R_IDEAL_GAS_EQUATION)/(CELL_VOLUME))))
+	var/list/air_values = OT.return_air_values() // BANDASTATION ADDITION - Both admission readings come from one native query.
+	if(air_values[BANDA_AIR_PRESSURE] > (max_ext_kpa - ((spawn_mol*spawn_temp*R_IDEAL_GAS_EQUATION)/(CELL_VOLUME)))) // BANDASTATION EDIT
 		broken_message = span_boldwarning("EXTERNAL PRESSURE OVER THRESHOLD")
 		set_broken(TRUE)
 		return FALSE
-	if(G.total_moles() > max_ext_mol)
+	if(air_values[BANDA_AIR_TOTAL_MOLES] > max_ext_mol) // BANDASTATION EDIT
 		broken_message = span_boldwarning("EXTERNAL AIR CONCENTRATION OVER THRESHOLD")
 		set_broken(TRUE)
 		return FALSE
@@ -84,8 +84,10 @@
 	if(!active)
 		active_power_usage = idle_power_usage
 	var/turf/T = get_turf(src)
-	var/datum/gas_mixture/G = T.return_air()
-	var/P = G.return_pressure()
+	// BANDASTATION EDIT START - Power calculation does not need a live gas mixture.
+	var/list/air_values = T.return_air_values()
+	var/P = air_values[BANDA_AIR_PRESSURE]
+	// BANDASTATION EDIT END
 	switch(power_draw)
 		if(GASMINER_POWER_NONE)
 			update_use_power(ACTIVE_POWER_USE, 0)

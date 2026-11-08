@@ -1,0 +1,105 @@
+// Keep the failure/lifetime coverage after removing the delayed-feedback scheduler.
+/obj/item/wrench/banda_completion_receiver
+	var/calls = 0
+	var/datum/gas_mixture/received
+	var/fail = TRUE
+	var/effect_mc_state
+
+/obj/item/wrench/banda_completion_receiver/Initialize(mapload)
+	. = ..()
+	received = new()
+
+/obj/item/wrench/banda_completion_receiver/Destroy()
+	received = null
+	return ..()
+
+/obj/item/wrench/banda_completion_receiver/fire_act(exposed_temperature, exposed_volume)
+	calls++
+	effect_mc_state = SSair.state
+	var/turf/open/target = loc
+	received.merge(target.remove_air(50))
+	if(fail)
+		throw EXCEPTION("BANDA_EXPECTED_COMPLETION_EFFECT_ERROR")
+
+/datum/banda_atmos_phase/world_adapter/threaded_probe/completion_probe
+	var/list/injected_commands
+	var/fail_publication = FALSE
+
+/datum/banda_atmos_phase/world_adapter/threaded_probe/completion_probe/native(operation, ...)
+	. = ..()
+	if(operation == 5 && injected_commands && publication_pending)
+		var/list/output = args[2]
+		output.Cut()
+		output += injected_commands
+		injected_commands = null
+
+/datum/banda_atmos_phase/world_adapter/threaded_probe/completion_probe/finish_publication(budgeted = FALSE)
+	// Ordinary readers can project a ready frame first; inject only in this job's completion.
+	if(fail_publication && publication_pending)
+		fail_publication = FALSE
+		throw EXCEPTION("BANDA_EXPECTED_COMPLETION_PUBLICATION_ERROR")
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/completion_world_checks()
+	var/list/checks = list()
+	var/datum/config_entry/old_setting = config.entries_by_type[/datum/config_entry/flag/rust_atmos_pipeline]
+	checks["retired_pipeline_maps_to_ordinary_worker"] = old_setting.deprecated_by == /datum/config_entry/flag/rust_atmos_threaded && old_setting.DeprecationUpdate("0") == "0" && old_setting.DeprecationUpdate("") == ""
+	var/datum/banda_atmos_phase/world_adapter/threaded_probe/completion_probe/phase = threaded_pair(230, phase_type = /datum/banda_atmos_phase/world_adapter/threaded_probe/completion_probe)
+	phase.threaded = TRUE
+	var/turf/open/left = phase.positions[1]
+	var/turf/open/right = phase.positions[2]
+	var/datum/gas_mixture/held = left.get_readonly_air()
+	var/list/result = list()
+	SSair.times_fired++
+	threaded_failure_launch(phase, left, result)
+	var/deadline = world.time + 10 SECONDS
+	while(!result["done"] && world.time < deadline)
+		sleep(world.tick_lag)
+	checks["worker_updates_issued_alias_in_same_completion"] = result["success"] && held == left.get_readonly_air() && held.moles[/datum/gas/nitrogen] < 100 && phase.completed_ticks == 1 && !phase.publication_pending
+	var/datum/banda_atmos_cell/cell = left.banda_atmos_cell
+	var/obj/item/wrench/banda_completion_receiver/probe = new(left)
+	phase.injected_commands = list(cell.native_id, cell.binding_version, 9, 700, CELL_VOLUME, cell.native_id, cell.binding_version, 9, 700, CELL_VOLUME)
+	result = list()
+	SSair.times_fired++
+	threaded_failure_launch(phase, left, result)
+	while(!result["done"] && world.time < deadline)
+		sleep(world.tick_lag)
+	checks["worker_effect_error_skips_tail"] = result["error"] == "BANDA_EXPECTED_COMPLETION_EFFECT_ERROR" && probe.calls == 1
+	var/total = cell.read_air().total_moles() + phase.ensure_binding(right).read_air().total_moles() + probe.received.total_moles()
+	checks["worker_effect_error_preserves_actual_debit"] = abs(total - 110) < 0.001 && probe.received.total_moles() <= 50
+	checks["worker_effect_error_releases_scope"] = !phase.running && !phase.worker_cycle && !phase.processing && !phase.in_safe_callback && !phase.operation_transaction && !phase.effect_cycle && !length(phase.working_mixtures)
+	phase.finish_publication()
+	checks["worker_effect_error_does_not_replay"] = probe.calls == 1
+	phase.fail_publication = TRUE
+	result = list()
+	SSair.times_fired++
+	threaded_failure_launch(phase, left, result)
+	while(!result["done"] && world.time < deadline)
+		sleep(world.tick_lag)
+	checks["worker_publication_error_releases_scope"] = result["error"] == "BANDA_EXPECTED_COMPLETION_PUBLICATION_ERROR" && !phase.running && !phase.worker_cycle && !phase.processing && !phase.effect_cycle
+	result = list()
+	SSair.times_fired++
+	threaded_failure_launch(phase, left, result)
+	while(!result["done"] && world.time < deadline)
+		sleep(world.tick_lag)
+	checks["worker_recovers_without_replaying_failed_effect"] = result["success"] && phase.completed_ticks == 2 && probe.calls == 1
+	probe.fail = FALSE
+	phase.injected_commands = list(cell.native_id, cell.binding_version, 9, 700, CELL_VOLUME)
+	SSair.adjacent_rebuild.Cut()
+	SSair.native_atoms_pending = FALSE
+	SSair.currentpart = SSAIR_ACTIVETURFS
+	// The preceding direct run_tick bypassed MC's completed-fire counter.
+	SSair.times_fired++
+	var/before = SSair.times_fired
+	var/mc_result = threaded_mc_fire(TRUE)
+	checks["worker_mc_launch_finishes_once"] = mc_result == SS_RUNNING && SSair.times_fired == before + 1
+	while(phase.worker_cycle && world.time < deadline)
+		sleep(world.tick_lag)
+	threaded_drain_effects(phase, deadline)
+	checks["worker_completes_effects_without_an_extra_calculation"] = probe.calls == 2 && probe.effect_mc_state == SS_RUNNING && phase.completed_ticks == 3 && SSair.times_fired == before + 1
+	qdel(probe)
+	qdel(phase)
+	checks["worker_close_restores_air"] = !SSair.native_atmos && !!left.air && !!right.air && !left.banda_atmos_id
+	SSair.native_atoms_pending = FALSE
+	SSair.currentpart = SSAIR_PIPENETS
+	return checks

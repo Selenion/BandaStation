@@ -1312,8 +1312,13 @@ GAME_VERB_PROC(/mob/living, mob_sleep, "Sleep", null)
 	else if(!src.mob_negates_gravity())
 		step_towards(src, singularity)
 
-/mob/living/proc/get_temperature(datum/gas_mixture/environment)
-	var/loc_temp = environment ? environment.temperature : T0C
+// BANDASTATION EDIT START - Allow native gas readings while retaining container, space and insulation rules.
+/mob/living/proc/get_temperature(datum/gas_mixture/environment, environment_temperature, datum/banda_atmos_air_reference/air_reference)
+	if(air_reference)
+		var/list/values = air_reference.values()
+		environment_temperature = values[BANDA_AIR_TEMPERATURE]
+	var/loc_temp = isnull(environment_temperature) ? (environment ? environment.temperature : T0C) : environment_temperature
+// BANDASTATION EDIT END
 	if(isobj(loc))
 		var/obj/oloc = loc
 		var/obj_temp = oloc.return_temperature()

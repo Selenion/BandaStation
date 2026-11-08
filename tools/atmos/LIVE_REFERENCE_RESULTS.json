@@ -1,0 +1,200 @@
+{
+  "accepted": true,
+  "errors": [],
+  "scope": "Incremental live-reference breathing API versus compatible live DM mixture; existing scalar API enabled in both modes. Not pure DM or whole-player Life/round load.",
+  "setup": {
+    "tiles": 4096,
+    "controlled_breathers": 50,
+    "frames_per_case": 40,
+    "plain_repeats": 3,
+    "profiled_repeats": 1,
+    "cases": 16,
+    "total_frames": 640,
+    "breath_calls": 32000,
+    "mc_stopped": true,
+    "garbage_collection_stopped": true,
+    "quota": 128
+  },
+  "validation": {
+    "workload_and_final_state_equal": true,
+    "observations_equal": true,
+    "runtimes": 0,
+    "retained_native_references": 0,
+    "game_api_checks": 126,
+    "game_failures": 0,
+    "rust_target": "i686-pc-windows-msvc",
+    "rust_features": ["byond", "simd", "worker-profile"],
+    "rust_tests": 136,
+    "rust_failures": 0,
+    "inhaled_moles_equipment_callback": {
+      "original_dm": 0.398,
+      "rust": 0.398
+    }
+  },
+  "memory_inference": "Not established. Cases share one process with GC stopped; private bytes rise with execution order. Raw means and peaks are observations, not causal savings or regression. Separate-process memory captures are still needed.",
+  "cpu_units": "Milliseconds of server process/thread CPU per completed gas calculation. Medians of 3 unprofiled repetitions. Worker CPU from native worker thread counter; main from oldest server thread. CPU/wall time is not server tick delay.",
+  "summary": [
+    {
+      "scenario": "fire",
+      "mode": "legacy",
+      "frames": 40,
+      "cpu_ms": 576.4333423204192,
+      "cpu_ms_range": [
+        575.1923580103476,
+        581.3740934113554
+      ],
+      "main_ms": 557.6833423204192,
+      "worker_ms": 18.75,
+      "other_threads_ms": 18.75,
+      "wall_ms": 613.5280013084412,
+      "private_mean_mib": 1869.2621143147521,
+      "private_peak_mib": 1896.09375,
+      "working_set_mean_mib": 1855.2611885113718,
+      "full_caches": 50,
+      "scans": 96360,
+      "copies": 4050,
+      "value_queries": 79968,
+      "breathers": 50,
+      "diagnostic_exclusive_ms": {
+        "copies": 37.77035,
+        "commit": 4.337775,
+        "publication": 466.7175,
+        "input": 60.026425,
+        "effects": 93.2324
+      }
+    },
+    {
+      "scenario": "fire",
+      "mode": "api",
+      "frames": 40,
+      "cpu_ms": 547.1636460972213,
+      "cpu_ms_range": [
+        542.76053232751,
+        565.7212394548623
+      ],
+      "main_ms": 526.460521097222,
+      "worker_ms": 20.703125,
+      "other_threads_ms": 20.70312499999929,
+      "wall_ms": 582.4454009532928,
+      "private_mean_mib": 1842.5376910255861,
+      "private_peak_mib": 1924.58203125,
+      "working_set_mean_mib": 1828.8897278527704,
+      "full_caches": 0,
+      "scans": 0,
+      "copies": 0,
+      "value_queries": 85968,
+      "breathers": 50,
+      "diagnostic_exclusive_ms": {
+        "commit": 0.86775,
+        "publication": 433.91,
+        "input": 56.268699999999995,
+        "effects": 86.10735000000001,
+        "copies": 0.283175
+      }
+    },
+    {
+      "scenario": "pipe",
+      "mode": "legacy",
+      "frames": 40,
+      "cpu_ms": 92.9169698883598,
+      "cpu_ms_range": [
+        91.8829716266039,
+        93.96954424970474
+      ],
+      "main_ms": 85.88571988835909,
+      "worker_ms": 6.25,
+      "other_threads_ms": 6.250000000000355,
+      "wall_ms": 133.8707983493805,
+      "private_mean_mib": 1802.951918822894,
+      "private_peak_mib": 1924.41015625,
+      "working_set_mean_mib": 1790.1983046625453,
+      "full_caches": 50,
+      "scans": 19914,
+      "copies": 4855,
+      "value_queries": 79968,
+      "breathers": 50,
+      "diagnostic_exclusive_ms": {
+        "devices": 3.3873,
+        "commit": 2.304675,
+        "copies": 5.33455,
+        "publication": 28.9716,
+        "input": 15.142225,
+        "effects": 4.2109499999999995
+      }
+    },
+    {
+      "scenario": "pipe",
+      "mode": "api",
+      "frames": 40,
+      "cpu_ms": 87.42881756337155,
+      "cpu_ms_range": [
+        86.25289205842819,
+        87.48186696520719
+      ],
+      "main_ms": 81.95601705842819,
+      "worker_ms": 5.46875,
+      "other_threads_ms": 5.468750000001421,
+      "wall_ms": 122.90577292442322,
+      "private_mean_mib": 1788.975022646799,
+      "private_peak_mib": 1934.5546875,
+      "working_set_mean_mib": 1776.4375010966835,
+      "full_caches": 0,
+      "scans": 0,
+      "copies": 0,
+      "value_queries": 85968,
+      "breathers": 50,
+      "diagnostic_exclusive_ms": {
+        "devices": 3.374825,
+        "commit": 0.33244999999999997,
+        "publication": 26.442474999999998,
+        "input": 15.489925,
+        "copies": 0.07775,
+        "effects": 4.3085
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "scenario": "fire",
+      "change_percent": {
+        "cpu_ms": -5.07772435670939,
+        "main_ms": -5.598664843257595,
+        "worker_ms": 10.416666666666675,
+        "wall_ms": -5.066207294346792
+      },
+      "full_caches": [
+        50,
+        0
+      ],
+      "scans": [
+        96360,
+        0
+      ]
+    },
+    {
+      "scenario": "pipe",
+      "change_percent": {
+        "cpu_ms": -5.906512375061624,
+        "main_ms": -4.575501998515041,
+        "worker_ms": -12.5,
+        "wall_ms": -8.190752247805666
+      },
+      "full_caches": [
+        50,
+        0
+      ],
+      "scans": [
+        19914,
+        0
+      ]
+    }
+  ],
+  "artifacts": {
+    "report": "tmp/atmos-live-bench-01/report.json",
+    "provenance": "tmp/atmos-live-bench-01/provenance.json",
+    "game_report": "tmp/atmos-phase/live-reference-05/report.json",
+    "game_report_sha256": "a65046fd57abe6a100c5fdde71be4404b074f94261ef360e81814c2f0bc5156e",
+    "dll_sha256": "66330d212cbffeacbd0d3448f7386843f836ced3b44c9f3e2b124d360e2ce8a0",
+    "binary_sha256": "9373c0194cd15e125f139bd99f999261ab78035f40c9e47a2b162991eb60cc7b"
+  }
+}

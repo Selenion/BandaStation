@@ -1,0 +1,38 @@
+// Included only by the frozen gas-access benchmark; this is not player load.
+/mob/living/carbon/human/air_access_breather
+	anchored = TRUE
+	resistance_flags = FIRE_PROOF
+	var/breath_calls = 0
+	var/inhaled_moles = 0
+
+/mob/living/carbon/human/air_access_breather/check_breath(datum/gas_mixture/breath)
+	// Isolate sampling/return and the boundary API; lungs/gameplay are checked by phase_world.
+	breath_calls++
+	inhaled_moles += breath?.total_moles() || 0
+	return TRUE
+
+/datum/controller/subsystem/atmos_cost/proc/create_breathers(list/targets, requested)
+	var/list/people = list()
+	var/available = round(length(targets) / 4)
+	var/count = min(requested, available)
+	var/stride = max(1, round(available / count))
+	for(var/index in 1 to count)
+		// Match scalar-reader tiles and avoid the vents, keeping identical direct device work.
+		var/turf/open/target = targets[3 + 4 * (index - 1) * stride]
+		var/mob/living/carbon/human/air_access_breather/person = new(target)
+		ADD_TRAIT(person, TRAIT_GODMODE, "air_access_bench")
+		people += person
+		target.banda_air_requested = FALSE
+	return people
+
+/datum/controller/subsystem/atmos_cost/proc/breathe_people(list/people)
+	for(var/mob/living/carbon/human/air_access_breather/person as anything in people)
+		person.breathe(2)
+
+/datum/controller/subsystem/atmos_cost/proc/breathing_counts(list/people)
+	var/calls = 0
+	var/moles = 0
+	for(var/mob/living/carbon/human/air_access_breather/person as anything in people)
+		calls += person.breath_calls
+		moles += person.inhaled_moles
+	return list(calls, moles)

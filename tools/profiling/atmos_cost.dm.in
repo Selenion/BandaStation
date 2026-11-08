@@ -1,0 +1,321 @@
+// Only included by atmos_cost.py's frozen diagnostic builds.
+var/global/atmos_cost_scope_enabled = FALSE
+var/global/list/atmos_cost_stack = list()
+var/global/list/atmos_cost_times = list()
+var/global/atmos_cost_last = 0
+var/global/atmos_cost_commands = 0
+var/global/list/atmos_cost_kinds = new/list(14)
+var/global/atmos_cost_scanned = 0
+var/global/atmos_cost_copies = 0
+var/global/atmos_cost_refreshes = 0
+var/global/atmos_cost_publications = 0
+var/global/atmos_cost_finishes = 0
+var/global/atmos_cost_quota = 128
+
+// Exclusive scopes: a copy made during publication belongs only to copies.
+/proc/atmos_cost_enter(category)
+	if(!atmos_cost_scope_enabled)
+		return
+	var/now = rustg_time_microseconds("atmos_cost_scopes")
+	if(length(atmos_cost_stack))
+		atmos_cost_times[atmos_cost_stack[length(atmos_cost_stack)]] += now - atmos_cost_last
+	atmos_cost_stack += category
+	atmos_cost_last = rustg_time_microseconds("atmos_cost_scopes")
+
+/proc/atmos_cost_leave()
+	if(!atmos_cost_scope_enabled)
+		return
+	var/now = rustg_time_microseconds("atmos_cost_scopes")
+	atmos_cost_times[atmos_cost_stack[length(atmos_cost_stack)]] += now - atmos_cost_last
+	atmos_cost_stack.len--
+	atmos_cost_last = rustg_time_microseconds("atmos_cost_scopes")
+
+SUBSYSTEM_DEF(atmos_cost)
+	name = "Controlled atmosphere cost diagnostic"
+	init_stage = INITSTAGE_LAST
+	ss_flags = SS_NO_FIRE
+	dependencies = list(/datum/controller/subsystem/ticker)
+
+/datum/controller/subsystem/atmos_cost/PreInit()
+	Master.random_seed = 29051994
+	rand_seed(Master.random_seed)
+
+/datum/controller/subsystem/atmos_cost/Initialize()
+	SSair.can_fire = FALSE
+	Master.sleep_offline_after_initializations = FALSE
+	SSticker.start_immediately = TRUE
+	SSticker.delay_end = TRUE
+	SSticker.OnRoundstart(CALLBACK(src, PROC_REF(capture)))
+	return SS_INIT_SUCCESS
+
+/datum/banda_atmos_phase/world_adapter/cost_probe/atom_initialized(datum/source, atom/initialized)
+	SIGNAL_HANDLER
+	return
+
+/datum/banda_atmos_phase/world_adapter/cost_probe/ensure_binding(turf/target)
+	if(!target?.banda_atmos_id)
+		return null
+	return ..()
+
+/datum/banda_atmos_phase/world_adapter/cost_probe/project_changes()
+	atmos_cost_publications++
+	atmos_cost_enter("publication")
+	. = ..()
+	atmos_cost_leave()
+
+/datum/banda_atmos_phase/world_adapter/cost_probe/flush_inputs()
+	atmos_cost_enter("input")
+	. = ..()
+	atmos_cost_leave()
+
+/datum/banda_atmos_phase/world_adapter/cost_probe/finish_callback(previous_safe, failed = FALSE)
+	atmos_cost_finishes++
+	atmos_cost_enter("commit")
+	. = ..()
+	atmos_cost_leave()
+
+#ifdef ATMOS_COST_CHUNKS
+/datum/banda_atmos_phase/world_adapter/cost_probe/refresh_effect_readonly()
+	atmos_cost_refreshes++
+	atmos_cost_scanned += length(effect_mixtures)
+	atmos_cost_enter("copies")
+	. = ..()
+	atmos_cost_leave()
+
+/datum/banda_atmos_phase/world_adapter/cost_probe/finish_effect_packet()
+	atmos_cost_enter("commit")
+	. = ..()
+	atmos_cost_leave()
+#endif
+
+/datum/banda_atmos_cell/proc/copy_readonly(datum/gas_mixture/air)
+	atmos_cost_copies++
+	atmos_cost_enter("copies")
+	. = cost_original_copy_readonly(air)
+	atmos_cost_leave()
+
+/datum/banda_atmos_cell/proc/execute(kind, first, second)
+	atmos_cost_commands++
+	atmos_cost_kinds[kind]++
+	atmos_cost_enter("effects")
+	. = cost_original_execute(kind, first, second)
+	atmos_cost_leave()
+
+/turf/open/floor/iron/atmos_cost
+	var/list/cost_links = list()
+
+/turf/open/floor/iron/atmos_cost/can_atmos_pass(turf/other, vertical)
+	return other in cost_links
+
+/turf/open/floor/iron/atmos_cost/immediate_calculate_adjacent_turfs()
+	atmos_adjacent_turfs = cost_links.Copy()
+
+// An anchored ordinary wrench survives pressure movement; its fire_act is unchanged.
+/obj/item/wrench/atmos_cost
+	anchored = TRUE
+	resistance_flags = FIRE_PROOF
+
+/datum/controller/subsystem/atmos_cost/proc/capture()
+	set waitfor = FALSE
+	sleep(5 SECONDS)
+	Master.processing = FALSE
+	CONFIG_SET(number/drift_dump_threshold, 1000000)
+	for(var/datum/controller/subsystem/subsystem as anything in Master.subsystems)
+		subsystem.can_fire = FALSE
+		subsystem.dequeue()
+		subsystem.profiler_focused = FALSE
+	// Let already-suspended initialization callbacks finish before building the finite domain.
+	sleep(2 SECONDS)
+	var/list/results = list()
+	for(var/profiled in list(FALSE, TRUE))
+		for(var/repeat in 1 to (profiled ? 1 : (text2num(world.params["cost-repeats"]) || 3)))
+			for(var/scenario in (repeat % 2 ? list("fire", "pipe") : list("pipe", "fire")))
+				var/list/modes = list("atomic")
+				#ifdef ATMOS_COST_CHUNKS
+				modes = repeat % 2 ? list("atomic", "chunks") : list("chunks", "atomic")
+				#endif
+				for(var/mode in modes)
+					results += list(run_case(scenario, mode, repeat, profiled))
+	WRITE_FILE(file("atmos-cost-results.json"), json_encode(results))
+	log_world("ATMOS_COST_COMPLETE")
+	shutdown()
+
+/datum/controller/subsystem/atmos_cost/proc/run_case(scenario, mode, repeat, profiled)
+	var/list/targets = list()
+	var/side = text2num(world.params["cost-size"]) || 64
+	var/frames = text2num(world.params["cost-frames"]) || 80
+	SSair.active_turfs = list()
+	SSair.hotspots = list()
+	SSair.excited_groups = list()
+	SSair.high_pressure_delta = list()
+	SSair.active_super_conductivity = list()
+	SSair.atom_process = list()
+	SSair.native_atoms_pending = FALSE
+	SSair.times_fired = 1
+	for(var/x in 100 to (99 + side))
+		for(var/y in 100 to (99 + side))
+			var/turf/open/floor/iron/atmos_cost/target = locate(x, y, 1)
+			target = target.ChangeTurf(/turf/open/floor/iron/atmos_cost, flags = CHANGETURF_FORCEOP)
+			for(var/atom/movable/thing in target)
+				qdel(thing)
+			target.thermal_conductivity = 0
+			target.heat_capacity = 1000000000
+			target.temperature = T20C
+			target.temperature_archived = T20C
+			target.air.moles.Cut()
+			target.air.moles_archive.Cut()
+			target.air.reaction_results.Cut()
+			target.air.temperature = scenario == "fire" ? 700 : T20C
+			target.air.set_gas(/datum/gas/oxygen, scenario == "fire" ? 1000 : 20)
+			target.air.set_gas(/datum/gas/nitrogen, (scenario == "fire" ? 300 : 80) + ((x + y) % 2) * 20)
+			if(scenario == "fire")
+				target.air.set_gas(/datum/gas/plasma, 100)
+			target.banda_air_requested = FALSE
+			target.atmos_adjacent_turfs = list()
+			target.cost_links = list()
+			target.current_cycle = 0
+			target.archived_cycle = 0
+			target.excited = FALSE
+			new /obj/item/wrench/atmos_cost(target)
+			targets += target
+	for(var/turf/open/floor/iron/atmos_cost/target as anything in targets)
+		for(var/direction in GLOB.cardinals)
+			var/turf/neighbor = get_step(target, direction)
+			if(istype(neighbor, /turf/open/floor/iron/atmos_cost))
+				target.cost_links += neighbor
+		target.atmos_adjacent_turfs = target.cost_links.Copy()
+	var/list/pumps = list()
+	var/datum/pipeline/network
+	if(scenario == "pipe")
+		network = new
+		network.air = new /datum/gas_mixture(64000)
+		network.air.temperature = T20C
+		network.air.set_gas(/datum/gas/plasma, 64000)
+		for(var/index = 1; index <= length(targets); index += 64)
+			var/obj/machinery/atmospherics/components/unary/vent_pump/pump = new(targets[index])
+			pump.nodes[1] = pump
+			pump.parents[1] = network
+			network.add_machinery_member(pump)
+			pump.set_on(TRUE)
+			pump.set_is_operational(TRUE)
+			pump.pressure_checks = ATMOS_EXTERNAL_BOUND
+			pump.external_pressure_bound = 225
+			pumps += pump
+	var/datum/banda_atmos_phase/world_adapter/cost_probe/phase = new("bandastation_atmos.dll")
+	if(!phase.native_ready)
+		CRASH("Controlled cost fixture requires the accepted native DLL")
+	SSair.native_atmos = phase
+	phase.threaded = TRUE
+	for(var/start = 1; start <= length(targets); start += 256)
+		phase.register_batch(targets.Copy(start, min(start + 256, length(targets) + 1)))
+	var/list/active = list()
+	for(var/turf/target as anything in targets)
+		phase.mark_topology(target)
+		active += target.banda_atmos_id
+	phase.flush_topology()
+	phase.native(18, active, list())
+	phase.native(30)
+	phase.initializing = FALSE
+	var/list/held = list()
+	var/list/readonly = list()
+	phase.invoke(CALLBACK(src, PROC_REF(issue_copies), phase, targets, held, readonly))
+	network?.reconcile_air()
+	var/initial_state_hash = md5(json_encode(export_state(phase, targets)))
+	// Setup is excluded; the same RNG stream begins immediately before the fixed frame sequence.
+	rand_seed(29051994)
+	var/list/before = worker_state(phase)
+	atmos_cost_stack = list()
+	atmos_cost_times = list()
+	atmos_cost_commands = 0
+	atmos_cost_kinds = new/list(14)
+	atmos_cost_scanned = 0
+	atmos_cost_copies = 0
+	atmos_cost_refreshes = 0
+	atmos_cost_publications = 0
+	atmos_cost_finishes = 0
+	atmos_cost_scope_enabled = profiled
+	SSprofiler.can_fire = FALSE
+	SSprofiler.dequeue()
+	world.Profile(profiled ? PROFILE_RESTART : (PROFILE_STOP | PROFILE_CLEAR))
+	rustg_time_reset("atmos_cost_scopes")
+	var/start_unix = rustg_unix_timestamp()
+	var/list/trace = list()
+	for(var/frame in 1 to frames)
+		SSair.times_fired = frame + 1
+		if(network)
+			phase.invoke(CALLBACK(src, PROC_REF(devices), phase, network, pumps), commit_on_error = TRUE)
+		#ifdef ATMOS_COST_CHUNKS
+		phase.run_tick(FALSE, mode == "chunks")
+		while(phase.effects_ready)
+			SSair.state = SS_RUNNING
+			phase.process_effect_chunk()
+		#else
+		phase.run_tick(FALSE)
+		#endif
+		trace += list(list(phase.debug_state(), atmos_cost_commands))
+	var/end_unix = rustg_unix_timestamp()
+	atmos_cost_scope_enabled = FALSE
+	var/profile_name = "cost-[scenario]-[mode]-[repeat]-[profiled].json"
+	WRITE_FILE(file(profile_name), world.Profile(PROFILE_STOP, format = "json"))
+	if(length(atmos_cost_stack))
+		CRASH("Unbalanced diagnostic scopes")
+	var/list/after = worker_state(phase)
+	// A full native numeric export does not create any extra DM mixture caches.
+	var/list/state = export_state(phase, targets)
+	var/list/port_state = list()
+	for(var/obj/machinery/atmospherics/components/unary/vent_pump/pump as anything in pumps)
+		pump.return_analyzable_air()
+		port_state += list(banda_atmos_full_packet(pump.airs[1]))
+	if(network)
+		network.air.banda_expose_pipe_port()
+		port_state += list(banda_atmos_full_packet(network.air))
+	var/list/result = list("scenario" = scenario, "mode" = mode, "repeat" = repeat, "profiled" = profiled, "map" = SSmapping.current_map.map_name,
+		"start_unix" = start_unix, "end_unix" = end_unix, "frames" = phase.completed_ticks, "initial_state_hash" = initial_state_hash,
+		"worker_before" = before, "worker_after" = after, "commands" = atmos_cost_commands, "command_kinds" = atmos_cost_kinds.Copy(),
+		"scanned" = atmos_cost_scanned, "copies" = atmos_cost_copies, "refreshes" = atmos_cost_refreshes,
+		"publications" = atmos_cost_publications, "commits" = atmos_cost_finishes, "exclusive_us" = atmos_cost_times.Copy(),
+		"profile" = profile_name, "state_hash" = md5(json_encode(state)), "state" = state,
+		"port_hash" = md5(json_encode(port_state)), "tile_count" = length(targets), "issued" = length(held),
+		"vents" = length(pumps), "ports" = port_state, "groups" = phase.debug_state(), "trace" = trace,
+		"vent_transfers" = phase.vent_transfers, "vent_fallbacks" = phase.vent_transfer_fallbacks)
+	log_world("ATMOS_COST_CASE [scenario] [mode] [repeat] profile=[profiled]: [result["frames"]] frames")
+	for(var/obj/machinery/atmospherics/components/unary/vent_pump/pump as anything in pumps)
+		pump.nullify_pipenet(network)
+		pump.nodes[1] = null
+		qdel(pump)
+	qdel(network)
+	qdel(phase)
+	SSair.native_atmos = null
+	return result
+
+/datum/controller/subsystem/atmos_cost/proc/issue_copies(datum/banda_atmos_phase/world_adapter/phase, list/targets, list/held, list/readonly)
+	for(var/index = 3; index <= length(targets); index += 4)
+		var/turf/open/target = targets[index]
+		held += target.return_air()
+		readonly += target.get_readonly_air()
+
+/datum/controller/subsystem/atmos_cost/proc/devices(datum/banda_atmos_phase/world_adapter/phase, datum/pipeline/network, list/pumps)
+	atmos_cost_enter("devices")
+	network.reconcile_air()
+	phase.prefetch_air_readings(pumps)
+	for(var/obj/machinery/atmospherics/components/unary/vent_pump/pump as anything in pumps)
+		pump.process_atmos()
+	network.reconcile_air()
+	atmos_cost_leave()
+
+/datum/controller/subsystem/atmos_cost/proc/worker_state(datum/banda_atmos_phase/world_adapter/phase)
+	var/list/output = list()
+	phase.native(39, output)
+	return output
+
+/datum/controller/subsystem/atmos_cost/proc/export_state(datum/banda_atmos_phase/world_adapter/phase, list/targets)
+	var/list/state = list()
+	for(var/start = 1; start <= length(targets); start += 256)
+		var/list/requests = list()
+		for(var/index in start to min(start + 255, length(targets)))
+			var/turf/target = targets[index]
+			requests += list(target.banda_atmos_id, TRUE)
+		var/list/batch = list()
+		phase.native(35, requests, batch)
+		state += batch
+	return state

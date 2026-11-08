@@ -39,6 +39,90 @@ pub(super) fn air_properties(air: &Mixture, boundary: &Boundary) -> [f32; 4] {
     ]
 }
 
+/// One numeric batch for cells/ports. All-gas rows preserve key order and present zeroes.
+pub(super) fn air_values(
+    store: &Store,
+    targets: &[crate::operations::Target],
+    gases: &[usize],
+    all_gases: bool,
+) -> Vec<f32> {
+    use crate::operations::Target;
+    let mut output = vec![1.0, targets.len() as f32];
+    for &target in targets {
+        let version = match target {
+            Target::Cell { version, .. } => version,
+            Target::Port(handle) => handle.generation,
+        };
+        append_value_row(
+            &mut output,
+            store
+                .query_air(target)
+                .map(|(air, boundary)| (air, boundary, 1.0)),
+            version,
+            gases,
+            all_gases,
+        );
+    }
+    output
+}
+
+pub(super) fn reference_values(
+    store: &Store,
+    handles: &[crate::pipenet::Handle],
+    gases: &[usize],
+    all_gases: bool,
+) -> Vec<f32> {
+    let mut output = vec![1.0, handles.len() as f32];
+    for &handle in handles {
+        append_value_row(
+            &mut output,
+            store
+                .query_air_reference(handle)
+                .map(|(air, boundary, retired)| (air, boundary, if retired { 2.0 } else { 1.0 })),
+            handle.generation,
+            gases,
+            all_gases,
+        );
+    }
+    output
+}
+
+fn append_value_row(
+    output: &mut Vec<f32>,
+    sample: Option<(&Mixture, &Boundary, f32)>,
+    version: u32,
+    gases: &[usize],
+    all_gases: bool,
+) {
+    let Some((air, boundary, status)) = sample else {
+        output.extend([0.0, version as f32, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        return;
+    };
+    let [pressure, temperature, volume, capacity] = air_properties(air, boundary);
+    let count = if all_gases {
+        air.keys().len()
+    } else {
+        gases.len()
+    };
+    output.extend([
+        status,
+        version as f32,
+        temperature,
+        pressure,
+        volume,
+        capacity,
+        air.total_moles(),
+        count as f32,
+    ]);
+    if all_gases {
+        for &gas in air.keys() {
+            output.extend([gas as f32, air.moles[gas]]);
+        }
+    } else {
+        output.extend(gases.iter().map(|&gas| air.moles[gas]));
+    }
+}
+
 pub(super) fn air_packet(snapshot: &Frame, id: u32) -> Result<Vec<f32>, String> {
     air_packet_for(snapshot, id, false, true)
 }
@@ -384,6 +468,101 @@ mod tests {
         data.clear();
         super::append_publication_visuals(&mut data, &frame, 1, &rules, true, true, None).unwrap();
         assert_eq!(data, [0.0, 777.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn value_queries_preserve_order_zeroes_pending_edits_and_versions() {
+        use crate::{
+            cell::Cell,
+            network::Tile,
+            operations::{Operation, Target},
+            phase::Store,
+            transport::Sample,
+            Context, Mixture,
+        };
+        let mut store = Store::default();
+        let mut air = Mixture::new(333.0, CELL_VOLUME, false);
+        for gas in (0..GAS_COUNT).rev() {
+            air.set(gas, gas as f32);
+        }
+        air.set(OXYGEN, -0.0);
+        let id = store
+            .register(
+                Cell::new(air.clone(), Context::default()),
+                Tile::new([1, 1, 1], &air, false),
+            )
+            .unwrap();
+        let target = Target::Cell { id, version: 1 };
+        let port = store.pipes.register(Sample::new(air.clone())).unwrap();
+        let before = store.snapshot();
+        let data = super::air_values(&store, &[target, Target::Port(port)], &[], true);
+        assert_eq!(&data[..2], &[1.0, 2.0]);
+        for row in data[2..].chunks_exact(8 + 2 * GAS_COUNT) {
+            assert_eq!(
+                &row[..8],
+                &[
+                    1.0,
+                    1.0,
+                    333.0,
+                    air.pressure(),
+                    CELL_VOLUME,
+                    air.heat_capacity(),
+                    air.total_moles(),
+                    GAS_COUNT as f32
+                ]
+            );
+            for (pair, &gas) in row[8..].chunks_exact(2).zip(air.keys()) {
+                assert_eq!(pair[0], gas as f32);
+                assert_eq!(pair[1].to_bits(), air.moles[gas].to_bits());
+            }
+        }
+        assert!(std::sync::Arc::ptr_eq(&before, &store.snapshot()));
+        assert!(store.take_changes().unwrap().is_empty());
+        store.begin_operations().unwrap();
+        store
+            .operate(target, &[Operation::SetTemperature(450.0)], false)
+            .unwrap();
+        let data = super::air_values(&store, &[target], &[PLASMA, OXYGEN, PLASMA], false);
+        assert_eq!(data[4], 450.0);
+        assert_eq!(&data[10..], &[air.moles[PLASMA], -0.0, air.moles[PLASMA]]);
+        assert_eq!(store.snapshot().cells[&id].air.temperature, 333.0);
+        store.finish_operations(false, false).unwrap();
+        assert_eq!(store.snapshot().cells[&id].air.temperature, 450.0);
+        store.pipes.release(port).unwrap();
+        store.invalidate_binding(id).unwrap();
+        let data = super::air_values(&store, &[target, Target::Port(port)], &[], true);
+        assert_eq!(&data[2..10], &[0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(&data[10..], &data[2..10]);
+    }
+
+    #[test]
+    fn value_queries_read_published_immutable_air_during_calculation() {
+        use crate::{
+            cell::Cell, network::Tile, operations::Target, phase::Store, Context, Mixture,
+        };
+        let mut store = Store::default();
+        let air = Mixture::new(TCMB, CELL_VOLUME, false);
+        let mut tile = Tile::new([1, 1, 1], &air, true);
+        tile.boundary = Boundary::Space;
+        let id = store
+            .register(Cell::new(air.clone(), Context::default()), tile)
+            .unwrap();
+        let target = Target::Cell { id, version: 1 };
+        let before = super::air_values(&store, &[target], &[OXYGEN], false);
+        assert_eq!(before[7], HEAT_CAPACITY_VACUUM);
+        let job = store.begin().unwrap();
+        assert_eq!(
+            before,
+            super::air_values(&store, &[target], &[OXYGEN], false)
+        );
+        store.stage(job.calculate()).unwrap();
+        assert_eq!(
+            before,
+            super::air_values(&store, &[target], &[OXYGEN], false)
+        );
+        store.publish_ready(1).unwrap();
+        store.close();
+        assert_eq!(super::air_values(&store, &[target], &[], false)[2], 0.0);
     }
 
     #[test]

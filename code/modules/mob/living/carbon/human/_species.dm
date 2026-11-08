@@ -1031,9 +1031,11 @@ GLOBAL_LIST_EMPTY(features_by_species)
  * * environment (required) The environment gas mix
  * * humi (required)(type: /mob/living/carbon/human) The mob we will target
  */
-/datum/species/proc/handle_environment(mob/living/carbon/human/humi, datum/gas_mixture/environment, seconds_per_tick)
-	handle_environment_pressure(humi, environment, seconds_per_tick)
-	handle_gas_interaction(humi, environment, seconds_per_tick)
+// BANDASTATION EDIT START - Read each value where the original handler used it, after preceding callbacks.
+/datum/species/proc/handle_environment(mob/living/carbon/human/humi, datum/gas_mixture/environment, seconds_per_tick, datum/banda_atmos_air_reference/air_reference)
+	handle_environment_pressure(humi, environment, seconds_per_tick, air_reference)
+	handle_gas_interaction(humi, environment, seconds_per_tick, air_reference)
+// BANDASTATION EDIT END
 
 /**
  * Body temperature handler for species
@@ -1091,12 +1093,12 @@ GLOBAL_LIST_EMPTY(features_by_species)
 	humi.adjust_coretemperature(skin_core_change)
 
 	// get the enviroment details of where the mob is standing
-	var/datum/gas_mixture/environment = humi.loc?.return_air()
+	var/list/environment = humi.loc?.return_air_values() // BANDASTATION EDIT - Skin temperature does not need a persistent ambient mixture.
 	if(!environment) // if there is no environment (nullspace) drop out here.
 		return
 
 	// Get the temperature of the environment for area
-	var/area_temp = humi.get_temperature(environment)
+	var/area_temp = humi.get_temperature(null, environment[BANDA_AIR_TEMPERATURE]) // BANDASTATION EDIT - Preserve space and container overrides in get_temperature.
 
 	// Get the insulation value based on the area's temp
 	var/thermal_protection = humi.get_insulation_protection(area_temp)
@@ -1296,8 +1298,11 @@ GLOBAL_LIST_EMPTY(features_by_species)
 	humi.apply_damage(burn_damage * seconds_per_tick, BURN, bodypart, wound_clothing = FALSE)
 
 /// Handle the air pressure of the environment
-/datum/species/proc/handle_environment_pressure(mob/living/carbon/human/H, datum/gas_mixture/environment, seconds_per_tick)
-	var/pressure = environment.return_pressure()
+// BANDASTATION EDIT START - Pressure requires no materialized DM mixture.
+/datum/species/proc/handle_environment_pressure(mob/living/carbon/human/H, datum/gas_mixture/environment, seconds_per_tick, datum/banda_atmos_air_reference/air_reference)
+	var/list/values = air_reference?.values()
+	var/pressure = values ? values[BANDA_AIR_PRESSURE] : environment.return_pressure()
+// BANDASTATION EDIT END
 	var/adjusted_pressure = H.calculate_affecting_pressure(pressure)
 
 	// Set alerts and apply damage based on the amount of pressure
@@ -1345,7 +1350,7 @@ GLOBAL_LIST_EMPTY(features_by_species)
 /**
  *	Handles exposure to the skin of various gases.
  */
-/datum/species/proc/handle_gas_interaction(mob/living/carbon/human/human, datum/gas_mixture/environment, seconds_per_tick)
+/datum/species/proc/handle_gas_interaction(mob/living/carbon/human/human, datum/gas_mixture/environment, seconds_per_tick, datum/banda_atmos_air_reference/air_reference) // BANDASTATION EDIT - Read gas through the captured reference.
 	/// Some non-clothing items may end up in these slots, e.g. flowers worn on the head, so we should consider clothing_flags as potentially nonexistant as a var.
 	/// Otherwise we will get a very spammy runtime.
 	var/suit_flags = astype(human?.wear_suit, /obj/item/clothing)?.clothing_flags
@@ -1354,7 +1359,10 @@ GLOBAL_LIST_EMPTY(features_by_species)
 	if((suit_flags & STOPSPRESSUREDAMAGE) && (head_flags & STOPSPRESSUREDAMAGE))
 		return
 
-	var/antinoblium_moles = environment.moles[/datum/gas/antinoblium]
+	// BANDASTATION EDIT START - Keep this read after pressure damage and clothing checks.
+	var/list/values = air_reference?.values(list(/datum/gas/antinoblium))
+	var/antinoblium_moles = values ? values[BANDA_AIR_GASES] : environment.moles[/datum/gas/antinoblium]
+	// BANDASTATION EDIT END
 	if (antinoblium_moles >= MOLES_GAS_VISIBLE && SPT_PROB(1, antinoblium_moles * seconds_per_tick))
 		SSradiation.irradiate(human)
 

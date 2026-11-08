@@ -80,7 +80,9 @@
 	if(living_mob.stat == DEAD)
 		return
 	var/atom/location = living_mob.loc
-	var/datum/gas_mixture/environment = location.return_air()
-	var/areatemp = living_mob.get_temperature(environment)
+	// BANDASTATION EDIT START - Preserve material/container overrides without a gas mixture.
+	var/list/environment = location.return_air_values()
+	var/areatemp = living_mob.get_temperature(null, environment?[BANDA_AIR_TEMPERATURE])
+	// BANDASTATION EDIT END
 	if(!ISINRANGE(areatemp, min_body_temp, max_body_temp))
 		stack_trace("[living_mob] loaded on in a loc with unsafe temperature at \[[location.x], [location.y], [location.z]\] (area : [get_area(location)]): [areatemp]K. Acceptable Range: [min_body_temp]K - [max_body_temp]K,")

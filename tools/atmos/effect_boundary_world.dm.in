@@ -1,0 +1,85 @@
+// Reuse the held-mixture fire_act probe from exchange_world.dm.in across callback boundaries.
+/obj/item/wrench/banda_exchange_alias/late_failure/fire_act(temperature, volume)
+	..()
+	throw EXCEPTION("BANDA_EXPECTED_RETAINED_ALIAS_ERROR")
+
+/datum/controller/subsystem/atmos_phase_test/proc/effect_boundary_case(mode, fail = FALSE)
+	var/turf/open/left = floor_at(243, 205)
+	var/turf/open/right = floor_at(244, 205)
+	left.air.set_gas(/datum/gas/nitrogen, 100)
+	right.air.set_gas(/datum/gas/nitrogen, 10)
+	left.air.temperature = T20C
+	right.air.temperature = T20C
+	var/datum/banda_atmos_phase/world_adapter/phase
+	var/datum/gas_mixture/held = left.air
+	if(mode != "dm")
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(list(left, right))
+		phase.native(30)
+		phase.initializing = FALSE
+		held = phase.invoke(CALLBACK(src, PROC_REF(exchange_modify), left, "read"))
+	var/probe_type = fail ? /obj/item/wrench/banda_exchange_alias/late_failure : /obj/item/wrench/banda_exchange_alias
+	var/obj/item/wrench/banda_exchange_alias/probe = new probe_type(right)
+	probe.stored_air = held
+	var/caught = FALSE
+	try
+		if(phase)
+			var/list/commands = list(left.banda_atmos_id, 1, 13, 300, 0, right.banda_atmos_id, 1, 9, 700, CELL_VOLUME)
+			if(mode == "atomic")
+				var/datum/banda_atmos_safe/world_commands/world/executor = new()
+				executor.owner = phase
+				executor.run_args = list(commands)
+				phase.run_callback(executor)
+			else
+				phase.begin_effect_packet()
+				for(var/index in list(1, 6))
+					var/datum/banda_atmos_safe/world_commands/world/executor = new()
+					executor.owner = phase
+					executor.run_args = list(commands.Copy(index, index + 5))
+					phase.run_callback(executor)
+		else
+			left.temperature_expose(left.air, 300)
+			probe.fire_act(700, CELL_VOLUME)
+	catch(var/exception/error)
+		if(error.name != "BANDA_EXPECTED_RETAINED_ALIAS_ERROR")
+			throw error
+		caught = TRUE
+	phase?.finish_effect_packet()
+	var/datum/gas_mixture/air = phase ? left.banda_atmos_cell.read_air() : left.air
+	var/list/output = list("fire_calls" = probe.fire_calls, "native_n2" = air.moles[/datum/gas/nitrogen], "held_n2" = held.moles[/datum/gas/nitrogen], "caught" = caught)
+	qdel(probe)
+	qdel(phase)
+	return output
+
+/datum/controller/subsystem/atmos_phase_test/proc/retained_mixture_checks()
+	var/list/checks = list()
+	for(var/scenario in list("inherit", "replace", "delete", "close"))
+		var/datum/banda_atmos_phase/world_adapter/threaded_probe/phase = threaded_pair(243)
+		var/turf/open/left = phase.positions[1]
+		phase.begin_effect_packet()
+		var/datum/gas_mixture/held = phase.invoke(CALLBACK(src, PROC_REF(exchange_modify), left, "read"))
+		checks["retains_same_mixture_[scenario]"] = phase.effect_mixtures[left.banda_atmos_cell] == held
+		if(scenario != "delete")
+			held.moles[/datum/gas/nitrogen] += 3
+		if(scenario == "close")
+			qdel(phase)
+			checks["close_keeps_late_direct_write"] = left.air.moles[/datum/gas/nitrogen] == 103 && isnull(phase.effect_mixtures)
+			continue
+		if(scenario == "inherit")
+			left = left.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+			phase.apply_frame()
+		else if(scenario == "replace")
+			var/datum/gas_mixture/replacement = new()
+			replacement.set_gas(/datum/gas/nitrogen, 11)
+			left.replace_turf_air(replacement)
+		else
+			qdel(left.banda_atmos_cell)
+		checks["drops_old_mixture_[scenario]"] = !length(phase.effect_mixtures)
+		held.moles[/datum/gas/nitrogen] += 1000
+		phase.finish_effect_packet()
+		var/datum/gas_mixture/current = phase.ensure_binding(left).read_air()
+		var/expected = scenario == "inherit" ? 103 : (scenario == "replace" ? 11 : 100)
+		checks["stale_mixture_cannot_overwrite_[scenario]"] = current.moles[/datum/gas/nitrogen] == expected && isnull(phase.effect_mixtures)
+		qdel(phase)
+	return checks

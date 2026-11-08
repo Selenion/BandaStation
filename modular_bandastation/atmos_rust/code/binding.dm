@@ -8,7 +8,10 @@
 	var/turf/open/open = target
 	// A new or uninitialized replacement must never borrow its predecessor's mixture.
 	if(!open.air && pending_rebind && change_depth && open.banda_air_present && (open.flags_1 & INITIALIZED_1))
-		open.air = read_air()
+		open.air = reference_old_air || read_air()
+		if(owner.world_owned)
+			var/datum/banda_atmos_phase/world_adapter/phase = owner
+			phase.attach_pending_air_references(src, open.air)
 	return open.air
 
 /datum/banda_atmos_cell/proc/turf_changing(turf/source, path, list/new_baseturfs, flags, list/post_change_callbacks)
@@ -22,11 +25,13 @@
 		phase.materialize_operation_cell(src)
 		if(phase.scrubber_tile_pending)
 			phase.materialize_scrubber_tile(src)
-	var/datum/gas_mixture/working = owner.working_mixtures[src]
+	var/datum/gas_mixture/working = owner.working_mixtures[src] || owner.effect_mixtures?[src]
 	if(working)
 		// Accepted feedback precedes the replacement; only its old world effects are invalidated.
 		commit_air(working, FALSE, !owner.world_owned)
 		owner.working_mixtures -= src
+	if(owner.effect_mixtures)
+		owner.effect_mixtures -= src
 	var/inheriting = isopenturf(source) && ispath(path, /turf/open) && (flags & CHANGETURF_INHERIT_AIR)
 	if(!pending_rebind)
 		inherit_group = TRUE
@@ -39,6 +44,14 @@
 		pending_control = null
 	pending_rebind = TRUE
 	change_depth++
+	if(owner.world_owned)
+		var/datum/banda_atmos_phase/world_adapter/phase = owner
+		phase.prepare_air_references(src)
+	if(istype(reference_old_air, /datum/gas_mixture/turf))
+		// This mixture now belongs to destruction callbacks/readers, not the replacement binding.
+		var/datum/gas_mixture/turf/old = reference_old_air
+		old.banda_cell = null
+		old.banda_turf = null
 	binding_version = owner.native(20, native_id)
 	post_change_callbacks += CALLBACK(src, PROC_REF(turf_constructed), binding_version)
 	cache_current = FALSE
@@ -49,6 +62,7 @@
 /datum/banda_atmos_cell/proc/turf_constructed(version, turf/replacement)
 	if(QDELETED(src) || !owner || QDELETED(owner) || version != binding_version)
 		return
+	reference_old_air = null
 	target = replacement
 	replacement.banda_atmos_cell = src
 	if(owner.world_owned)

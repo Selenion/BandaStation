@@ -381,8 +381,11 @@
 
 		if(isturf(thing_in_range))
 			var/turf/affected_turf = thing_in_range
-			var/datum/gas_mixture/environment = affected_turf.return_air()
-			environment.temperature *= 0.9
+			// BANDASTATION EDIT START - Apply the original multiplication directly to the native mixture.
+			if(!SSair.native_atmos?.try_scale_air_temperature(affected_turf, 0.9))
+				var/datum/gas_mixture/environment = affected_turf.return_air()
+				environment.temperature *= 0.9
+			// BANDASTATION EDIT END
 
 	// Telegraph the storm in every area on the station.
 	var/list/station_levels = SSmapping.levels_by_trait(ZTRAIT_STATION)

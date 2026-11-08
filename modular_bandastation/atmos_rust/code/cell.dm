@@ -22,6 +22,8 @@
 	var/pending_control
 	var/pending_archive_cycle
 	var/pending_archive_temperature
+	/// Only a live native reference needs the old DM alias to survive destruction callbacks.
+	var/datum/gas_mixture/reference_old_air
 
 /datum/banda_atmos_cell/New(datum/banda_atmos_phase/phase, turf/cell, active, registered_id)
 	..()
@@ -46,6 +48,7 @@
 	RegisterSignal(cell, COMSIG_ATOM_AFTER_SUCCESSFUL_INITIALIZE, PROC_REF(turf_initialized))
 
 /datum/banda_atmos_cell/Destroy()
+	reference_old_air = null
 	if(target)
 		if(isopenturf(target))
 			var/turf/open/open = target
@@ -60,6 +63,8 @@
 		if(!owner?.world_owned && (target.flags_1 & INITIALIZED_1))
 			target.consider_superconductivity(TRUE)
 	owner?.uninitialized_cells.Remove(src)
+	if(owner?.effect_mixtures)
+		owner.effect_mixtures -= src
 	if(owner && !QDELETED(owner))
 		if(!owner.world_owned)
 			owner.native(6, native_id)
@@ -133,7 +138,7 @@
 
 /// Detached completed-frame snapshot. Mutating it cannot change the worker's state.
 /datum/banda_atmos_cell/proc/read_air(list/input, list/metadata)
-	var/datum/gas_mixture/working = owner.working_mixtures[src]
+	var/datum/gas_mixture/working = owner.working_mixtures[src] || owner.effect_mixtures?[src]
 	if(owner.in_safe_callback && working)
 		return working.copy()
 	if(!input)
@@ -281,6 +286,10 @@
 	callback.owner = owner
 	callback.run_args = list(src, binding_version, temperature, volume, strengthen)
 	owner.waiting += callback
+	if(owner.world_owned)
+		var/datum/banda_atmos_phase/world_adapter/phase = owner
+		if(phase.effects_ready)
+			return
 	if(!owner.running && !owner.processing && !owner.in_safe_callback)
 		owner.processing = TRUE
 		try

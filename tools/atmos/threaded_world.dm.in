@@ -17,7 +17,7 @@ var/global/banda_threaded_callback_calls = 0
 	var/fire_cycle = -1
 
 /obj/item/stack/sheet/mineral/coal/banda_threaded_probe/fire_act(exposed_temperature, exposed_volume)
-	fire_cycle = SSair.times_fired
+	fire_cycle = SSair.get_air_cycle()
 	return ..()
 
 /obj/item/wrench/banda_threaded_exposure
@@ -294,8 +294,10 @@ var/global/banda_threaded_callback_calls = 0
 	var/deadline = world.time + 20 SECONDS
 	while(phase.worker_cycle && world.time < deadline)
 		stoplag(1)
+	checks["worker_defers_atoms_until_normal_mc_phase"] = !use_worker || (SSair.native_atoms_pending && exposure_probe.exposure_calls == 0 && phase.completed_ticks == 0 && phase.effects_ready)
+	if(use_worker)
+		threaded_drain_effects(phase, deadline)
 	var/first_archive_cycle = target.archived_cycle
-	checks["worker_defers_atoms_until_normal_mc_phase"] = !use_worker || (SSair.native_atoms_pending && exposure_probe.exposure_calls == 0 && phase.completed_ticks == 1)
 	if(use_worker)
 		// Resume may come from an earlier rebuild, before the atom queue has been copied.
 		result = threaded_mc_fire(TRUE, TRUE)
@@ -306,10 +308,12 @@ var/global/banda_threaded_callback_calls = 0
 		threaded_mc_fire(FALSE)
 	while(phase.worker_cycle && world.time < deadline)
 		stoplag(1)
-	checks["mc_counts_one_fire_per_completed_job"] = phase.completed_ticks == 2 && SSair.times_fired == cycle + 2 && SSair.state == SS_IDLE
+	if(use_worker)
+		threaded_drain_effects(phase, deadline)
+	checks["mc_counts_one_fire_per_completed_job"] = phase.completed_ticks == 2 && SSair.times_fired == cycle + 2 && SSair.state == (use_worker ? SS_PAUSED : SS_IDLE)
 	checks["atom_exposure_runs_with_mc_budget"] = exposure_probe.exposure_calls > 0 && exposure_probe.last_mc_state == SS_RUNNING
 	checks["native_effect_really_burned_coal"] = !!QDELETED(coal)
-	checks["native_effect_archive_keeps_effect_cycle"] = first_archive_cycle == coal.fire_cycle
+	checks["native_effect_archive_keeps_effect_cycle"] = first_archive_cycle == coal.fire_cycle && coal.fire_cycle == cycle
 	log_world("BANDA_ATMOS_THREADED_MC: [json_encode(list("worker" = use_worker, "calculation_cycle" = cycle, "ssair_cycle" = SSair.times_fired, "completed_ticks" = phase.completed_ticks, "effect_cycle" = coal.fire_cycle, "first_archive_cycle" = first_archive_cycle, "archived_cycle" = target.archived_cycle, "coal_deleted" = !!QDELETED(coal))) ]")
 	qdel(exposure_probe)
 	qdel(phase)
@@ -330,3 +334,9 @@ var/global/banda_threaded_callback_calls = 0
 	if(result != SS_PAUSED)
 		SSair.times_fired++
 	return result
+
+/// A forced budget boundary drains the completed frame without launching a following calculation.
+/datum/controller/subsystem/atmos_phase_test/proc/threaded_drain_effects(datum/banda_atmos_phase/world_adapter/phase, deadline)
+	while(phase.effects_ready && world.time < deadline)
+		threaded_mc_fire(TRUE, TRUE)
+		stoplag(1)

@@ -194,7 +194,7 @@
 	else
 		bodytemperature = T20C
 
-/mob/living/basic/blood_worm/handle_environment(datum/gas_mixture/environment, seconds_per_tick, times_fired)
+/mob/living/basic/blood_worm/handle_environment(datum/gas_mixture/environment, seconds_per_tick, times_fired, datum/banda_atmos_air_reference/air_reference) // BANDASTATION EDIT - Preserve the existing third argument and forward native air.
 	if (host)
 		bodytemperature = T20C
 	else

@@ -1,6 +1,8 @@
 /datum/banda_atmos_phase/world_adapter
 	/// Capability of the optional scalar-reading operation in the installed DLL.
 	var/properties_ready = FALSE
+	/// Value queries leave gas in Rust; older DLLs retain the mixture access path.
+	var/value_queries_ready = FALSE
 	/// Turf to row in the scalar response, scoped to one non-sleeping machinery chunk.
 	var/list/air_readings = list()
 	/// Requested IDs in the same row order, used to detect changes to a turf's registration.
@@ -11,7 +13,7 @@
 	var/property_batches = 0
 	/// Scalar getters served without a full mixture.
 	var/property_hits = 0
-	/// Scalar getters that retained the existing mixture path.
+	/// Prefetch misses; value_queries separately counts reads served by the native value API.
 	var/property_fallbacks = 0
 	/// Capability of the optional overlay-descriptor publication operation.
 	var/visual_publication_ready = FALSE
@@ -25,6 +27,35 @@
 	var/visual_publications = 0
 	/// Repeated cold service rows whose fields and presentation already match DM.
 	var/service_publications_skipped = 0
+	/// Queries served without issuing a persistent gas-mixture datum.
+	var/value_queries = 0
+
+/** A held DM alias can contain unreported writes, so it keeps priority during migration. */
+/datum/banda_atmos_phase/world_adapter/proc/read_air_values(turf/open/target, list/gases, all_gases = FALSE)
+	SHOULD_NOT_SLEEP(TRUE)
+	if(!value_queries_ready || initializing || closed || scrubber_tile_pending || !target.banda_air_present || target.air || !(target.flags_1 & INITIALIZED_1))
+		return null
+	var/id = target.banda_atmos_id
+	if(!id || id > length(positions) || positions[id] != target)
+		return null
+	var/datum/banda_atmos_cell/cell = target.banda_atmos_cell
+	if(cell && (cell.pending_rebind || cell.cached_air || cell.readonly_air || cell.owner != src || cell.target != target))
+		return null
+	var/version = cell?.binding_version || 1
+	var/list/indices = list()
+	for(var/gas in gases)
+		var/index = banda_atmos_gases().Find(gas)
+		if(!index)
+			return null
+		indices += index - 1
+	var/list/output = list()
+	native(87, list(0, id, version), indices, all_gases, output)
+	if(length(output) < BANDA_AIR_GASES - 1 || output[1] != 1 || output[2] != 1 || output[3] != 1 || output[4] != version)
+		return null
+	if(length(output) != BANDA_AIR_GASES - 1 + output[BANDA_AIR_GAS_COUNT] * (all_gases ? 2 : 1))
+		CRASH("Invalid native air value packet")
+	value_queries++
+	return output
 
 /** Send Banda's actual overlay thresholds once; image references remain in DM. */
 /datum/banda_atmos_phase/world_adapter/proc/configure_visual_publication()

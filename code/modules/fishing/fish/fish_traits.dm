@@ -335,7 +335,10 @@ GLOBAL_LIST_INIT(spontaneous_fish_traits, populate_spontaneous_fish_traits())
 /datum/fish_trait/emulsijack/proc/on_non_stasis_life(mob/living/basic/mob, seconds_per_tick = SSMOBS_DT)
 	SIGNAL_HANDLER
 	var/turf/open/our_turf = get_turf(mob)
-	if(our_turf.return_air().return_pressure() > ONE_ATMOSPHERE * 1.5) //put a cap otherwise closed spaces may overpressurize
+	// BANDASTATION EDIT START - Keep the pressure cap without borrowing the ambient mixture.
+	var/list/environment = our_turf.return_air_values()
+	if(environment[BANDA_AIR_PRESSURE] > ONE_ATMOSPHERE * 1.5) //put a cap otherwise closed spaces may overpressurize
+	// BANDASTATION EDIT END
 		return
 
 	var/datum/gas_mixture/stench = new

@@ -34,16 +34,16 @@
 
 	var/list/active_reasons = list()
 
-	var/datum/gas_mixture/environment = void_adapted.loc.return_air()
+	var/list/environment = void_adapted.loc.return_air_values() // BANDASTATION EDIT - The intervening cold-protection getters do not mutate gas.
 	if (!isnull(environment))
 		var/vulnerable_temperature = void_adapted.get_body_temp_cold_damage_limit()
-		var/affected_temperature = environment.return_temperature()
+		var/affected_temperature = environment[BANDA_AIR_TEMPERATURE] // BANDASTATION EDIT - Native scalar observation.
 		if (ishuman(void_adapted))
 			var/mob/living/carbon/human/special_boy = void_adapted
 			var/cold_protection = special_boy.get_cold_protection(affected_temperature)
 			vulnerable_temperature *= (1 - cold_protection)
 
-			var/affected_pressure = special_boy.calculate_affecting_pressure(environment.return_pressure())
+			var/affected_pressure = special_boy.calculate_affecting_pressure(environment[BANDA_AIR_PRESSURE]) // BANDASTATION EDIT - No DM gas cache.
 			if (affected_pressure < HAZARD_LOW_PRESSURE)
 				active_reasons += "vacuum"
 

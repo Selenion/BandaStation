@@ -124,7 +124,8 @@
 /obj/docking_port/mobile/arrivals/proc/CheckTurfsPressure()
 	for(var/I in SSjob.latejoin_trackers)
 		var/turf/open/T = get_turf(I)
-		var/pressure = T.get_readonly_air().return_pressure() // BANDASTATION EDIT - Read native atmosphere through the API.
+		var/list/air_values = T.return_air_values() // BANDASTATION ADDITION - Shuttle safety reads pressure without borrowing gas.
+		var/pressure = air_values[BANDA_AIR_PRESSURE] // BANDASTATION EDIT
 		if(pressure < HAZARD_LOW_PRESSURE || pressure > HAZARD_HIGH_PRESSURE) //simple safety check
 			return TRUE
 	return FALSE

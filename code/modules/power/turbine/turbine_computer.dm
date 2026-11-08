@@ -74,7 +74,8 @@
 	//running parameters
 	.["max_rpm"] = main_control.max_allowed_rpm
 	.["max_temperature"] = main_control.max_allowed_temperature
-	.["temp"] = main_control.compressor.input_turf?.get_readonly_air().temperature || 0 // BANDASTATION EDIT - Read native atmosphere through the API.
+	var/list/air_values = main_control.compressor.input_turf?.return_air_values() // BANDASTATION ADDITION - UI needs temperature without retaining gas.
+	.["temp"] = air_values?[BANDA_AIR_TEMPERATURE] || 0 // BANDASTATION EDIT
 	.["regulator"] = main_control.compressor.intake_regulator
 
 /obj/machinery/computer/turbine_computer/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)

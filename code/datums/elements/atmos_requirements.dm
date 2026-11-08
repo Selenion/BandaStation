@@ -81,6 +81,17 @@
 	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
 		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(get_atmos_req_list), open_turf))
 	// BANDASTATION ADDITION END
+	// BANDASTATION ADDITION START - Keep pre-GC readings and archive cleanup in Rust, without a turf mixture copy.
+	var/static/list/required_gases = list(/datum/gas/oxygen, /datum/gas/pluoxium, /datum/gas/nitrogen, /datum/gas/carbon_dioxide, /datum/gas/plasma)
+	var/list/values = SSair.native_atmos?.try_atmos_requirement_values(open_turf, required_gases)
+	if(values)
+		return list(
+			"plas" = values[BANDA_AIR_GASES + 4],
+			"oxy" = values[BANDA_AIR_GASES] + (values[BANDA_AIR_GASES + 1] * PLUOXIUM_PROPORTION),
+			"n2" = values[BANDA_AIR_GASES + 2],
+			"co2" = values[BANDA_AIR_GASES + 3],
+		)
+	// BANDASTATION ADDITION END
 	var/datum/gas_mixture/environment = open_turf.return_air() // BANDASTATION EDIT
 	var/open_turf_moles = environment.moles // BANDASTATION EDIT
 	environment.assert_gases(/datum/gas/oxygen, /datum/gas/pluoxium, /datum/gas/nitrogen, /datum/gas/carbon_dioxide, /datum/gas/plasma) // BANDASTATION EDIT

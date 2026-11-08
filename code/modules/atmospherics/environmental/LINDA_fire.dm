@@ -24,19 +24,22 @@
 	if(exposed_temperature < TCMB)
 		exposed_temperature = TCMB
 		CRASH("[src].hotspot_expose() called with exposed_temperature < [TCMB]")
-	//If the air doesn't exist we just return false
-	var/cached_moles = get_readonly_air()?.moles // BANDASTATION EDIT - Gas is read from the native API.
-	if(!cached_moles)
-		return
-
-	if (cached_moles[/datum/gas/oxygen] < 0.5)
+	// BANDASTATION EDIT START - Ignition checks need five amounts, not a persistent DM gas mixture.
+	var/list/values = SSair.native_atmos?.read_air_values(src, list(/datum/gas/oxygen, /datum/gas/plasma, /datum/gas/tritium, /datum/gas/hydrogen, /datum/gas/freon))
+	var/list/cached_moles
+	if(!values)
+		cached_moles = get_readonly_air()?.moles
+		if(!cached_moles)
+			return
+	if ((values ? values[BANDA_AIR_GASES] : cached_moles[/datum/gas/oxygen]) < 0.5)
 		return
 
 	var/plas_trit_h2_threshold = (\
-		   cached_moles[/datum/gas/plasma] > 0.5\
-		|| cached_moles[/datum/gas/tritium] > 0.5\
-		|| cached_moles[/datum/gas/hydrogen] > 0.5)
-	var/freon_threshold = (cached_moles[/datum/gas/freon] > 0.5)
+		   (values ? values[BANDA_AIR_GASES + 1] : cached_moles[/datum/gas/plasma]) > 0.5\
+		|| (values ? values[BANDA_AIR_GASES + 2] : cached_moles[/datum/gas/tritium]) > 0.5\
+		|| (values ? values[BANDA_AIR_GASES + 3] : cached_moles[/datum/gas/hydrogen]) > 0.5)
+	var/freon_threshold = ((values ? values[BANDA_AIR_GASES + 4] : cached_moles[/datum/gas/freon]) > 0.5)
+	// BANDASTATION EDIT END
 	if(active_hotspot)
 		if(soh)
 			if(plas_trit_h2_threshold)
@@ -145,7 +148,7 @@
 		COOLDOWN_START(our_turf, fire_puff_cooldown, 5 SECONDS)
 
 	// Remove just_spawned protection if no longer processing the parent cell
-	just_spawned = (our_turf.current_cycle < SSair.times_fired)
+	just_spawned = (our_turf.current_cycle < SSair.get_air_cycle()) // BANDASTATION EDIT - Constructor belongs to its native effect frame.
 	update_color()
 	// BANDASTATION ADDITION START - Native presentations are already bound; gameplay constructors must not be lost during binding updates.
 	if(SSair.native_atmos && !binding)

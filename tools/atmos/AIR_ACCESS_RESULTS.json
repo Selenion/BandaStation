@@ -1,0 +1,142 @@
+{
+  "accepted": true,
+  "errors": [],
+  "summary": [
+    {
+      "scenario": "fire",
+      "mode": "legacy",
+      "frames": 40,
+      "cpu_ms": 1212.7599810596835,
+      "cpu_ms_range": [
+        1210.2406285362406,
+        1230.3056067081202
+      ],
+      "main_ms": 1190.8849810596819,
+      "worker_ms": 19.53125,
+      "other_threads_ms": 19.921875,
+      "wall_ms": 1246.778804063797,
+      "private_mean_mib": 1820.8196401604241,
+      "private_peak_mib": 1842.15625,
+      "working_set_mean_mib": 1807.959381030819,
+      "full_caches": 1024,
+      "scans": 1998848,
+      "copies": 1024,
+      "value_queries": 0,
+      "diagnostic_exclusive_ms": {
+        "publication": 471.54,
+        "input": 57.772525,
+        "effects": 79.67345,
+        "commit": 37.435900000000004,
+        "copies": 710.4425
+      }
+    },
+    {
+      "scenario": "fire",
+      "mode": "api",
+      "frames": 40,
+      "cpu_ms": 534.2211562591239,
+      "cpu_ms_range": [
+        533.3078131162999,
+        537.5009417833909
+      ],
+      "main_ms": 513.5180312591231,
+      "worker_ms": 21.09375,
+      "other_threads_ms": 21.09375000000142,
+      "wall_ms": 568.927401304245,
+      "private_mean_mib": 1800.1897872062739,
+      "private_peak_mib": 1859.25390625,
+      "working_set_mean_mib": 1787.7063046739754,
+      "full_caches": 0,
+      "scans": 0,
+      "copies": 0,
+      "value_queries": 83968,
+      "diagnostic_exclusive_ms": {
+        "publication": 423.4275,
+        "input": 55.545175,
+        "effects": 76.71975,
+        "commit": 0.7792250000000001,
+        "copies": 0.316575
+      }
+    },
+    {
+      "scenario": "pipe",
+      "mode": "legacy",
+      "frames": 40,
+      "cpu_ms": 160.9306347832245,
+      "cpu_ms_range": [
+        154.7501229926965,
+        165.91871938127696
+      ],
+      "main_ms": 156.2431347832245,
+      "worker_ms": 5.859375,
+      "other_threads_ms": 5.859375,
+      "wall_ms": 193.87935400009155,
+      "private_mean_mib": 1769.836195915344,
+      "private_peak_mib": 1863.93359375,
+      "working_set_mean_mib": 1758.0014130304219,
+      "full_caches": 1024,
+      "scans": 377423,
+      "copies": 2447,
+      "value_queries": 0,
+      "diagnostic_exclusive_ms": {
+        "devices": 3.33,
+        "commit": 12.384174999999999,
+        "publication": 33.06625,
+        "input": 15.681625,
+        "copies": 81.331,
+        "effects": 4.2751
+      }
+    },
+    {
+      "scenario": "pipe",
+      "mode": "api",
+      "frames": 40,
+      "cpu_ms": 78.60214120285534,
+      "cpu_ms_range": [
+        78.43004254946919,
+        79.47509267884172
+      ],
+      "main_ms": 73.61571767884172,
+      "worker_ms": 5.859375,
+      "other_threads_ms": 5.859375,
+      "wall_ms": 108.17922353744507,
+      "private_mean_mib": 1763.4940859002545,
+      "private_peak_mib": 1868.66015625,
+      "working_set_mean_mib": 1751.7262425436709,
+      "full_caches": 0,
+      "scans": 0,
+      "copies": 0,
+      "value_queries": 83968,
+      "diagnostic_exclusive_ms": {
+        "devices": 3.443825,
+        "commit": 0.26522500000000004,
+        "publication": 25.9879,
+        "input": 16.170225000000002,
+        "copies": 0.07759999999999999,
+        "effects": 4.3102
+      }
+    }
+  ],
+  "control": {
+    "exit_code": 0,
+    "server_pid": 19972,
+    "binary_sha256": "7ea781ee910cc45df660f9c84b77d1aa745e095a8866ea712478862d9bc6a53e",
+    "dll_sha256": "67d1fe66544d65054c2dab631cefb589510104cfb8af0ff046c5ebc2ddc22f5b",
+    "requested_sample_period_seconds": 0.01
+  },
+  "source": "tmp/atmos-api-bench-02/report.json",
+  "integration": "tmp/atmos-phase/api-values-03/report.json",
+  "scope": "Fixed finite domain, 4096 cells, 1024 scalar readers, 40 frames/case, 3 unprofiled repeats and 1 separate diagnostic per mode/scenario. MC and GC stopped, portions fixed at 128 groups; not whole-station TD, not pure DM, no players.",
+  "migration_validation": {
+    "first_stage": "accepted; tmp/atmos-phase/api-values-03/report.json",
+    "ordinary_actors": "accepted; tmp/atmos-phase/api-actors-01/report.json",
+    "breathing_reentry": {
+      "status": "accepted; live Rust reference implemented",
+      "original_inhaled_moles": 0.398,
+      "current_inhaled_moles": 0.398,
+      "data": "tmp/atmos-phase/live-reference-05/value-breath-reentrancy.json",
+      "checks": "126 API checks, 12 world scenarios, 49 graphs; no differences or runtimes",
+      "integration": "tmp/atmos-phase/live-reference-05/report.json"
+    }
+  }
+}

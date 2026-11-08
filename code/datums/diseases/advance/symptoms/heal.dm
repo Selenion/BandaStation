@@ -512,7 +512,7 @@
 // Check internals breath, environmental plasma, and plasma in bloodstream to determine the heal power
 /datum/symptom/heal/plasma/CanHeal(datum/disease/advance/our_disease)
 	var/mob/living/carbon/carbon_host = our_disease.affected_mob
-	var/datum/gas_mixture/environment
+	var/list/environment // BANDASTATION EDIT - Plasma fixation reads scalars without borrowing ambient gas.
 	. = 0
 
 	// Check internals
@@ -521,16 +521,18 @@
 	///  balanced around a tank set to 4kpa = about 0.2 healing power. maxes out at 0.75 healing power, or 15kpa.
 	var/obj/item/tank/internals/internals_tank = carbon_host.internal
 	if(internals_tank)
-		var/datum/gas_mixture/tank_contents = internals_tank.return_air()
-		if(tank_contents && round(tank_contents.return_pressure())) // make sure the tank is not empty or 0 pressure
-			if(tank_contents.moles[/datum/gas/plasma])
+		// BANDASTATION EDIT START - Keep the same pressure rounding and plasma test.
+		var/list/tank_contents = internals_tank.return_air_values(list(/datum/gas/plasma))
+		if(tank_contents && round(tank_contents[BANDA_AIR_PRESSURE])) // make sure the tank is not empty or 0 pressure
+			if(tank_contents[BANDA_AIR_GASES])
 				// higher tank distribution pressure leads to more healing, but once you get to about 15kpa you reach the max
 				. += power * min(MAX_HEAL_COEFFICIENT_INTERNALS, internals_tank.distribute_pressure * HEALING_PER_BREATH_PRESSURE)
+		// BANDASTATION EDIT END
 	else // Check environment
 		if(carbon_host.loc)
-			environment = carbon_host.loc.return_air()
-		if(environment && environment.moles[/datum/gas/plasma])
-			. += power * min(MAX_HEAL_COEFFICIENT_INTERNALS, environment.moles[/datum/gas/plasma] * HEALING_PER_MOL)
+			environment = carbon_host.loc.return_air_values(list(/datum/gas/plasma)) // BANDASTATION EDIT - Native composition read.
+		if(environment && environment[BANDA_AIR_GASES]) // BANDASTATION EDIT
+			. += power * min(MAX_HEAL_COEFFICIENT_INTERNALS, environment[BANDA_AIR_GASES] * HEALING_PER_MOL) // BANDASTATION EDIT - Retain the original coefficient.
 
 	// Check for reagents in bloodstream
 	if(carbon_host.reagents.has_reagent(/datum/reagent/toxin/plasma, needs_metabolizing = TRUE))

@@ -1,0 +1,2709 @@
+{
+  "date": "2026-11-08",
+  "status": "accepted_equal_work_regression_identified",
+  "raw_report": "tmp/atmos-fixed-cost-03/report.json",
+  "raw_report_sha256": "936ae9ac6e34af2953dbe1a5b0310987719eae705cb0a7477d3ae11a8b890be9",
+  "source_provenance": "tmp/atmos-fixed-cost-03/provenance.json",
+  "source_hashes_verified": true,
+  "harness_sha256": "74ea6f6e88c353c723b6ceab5fc086f5dc82695d0bf662ff2af72d2ab33b633d",
+  "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+  "primary_cases": 18,
+  "diagnostic_cases": 6,
+  "frames_per_case": 80,
+  "unit_tests": 22,
+  "unexpected_runtimes": 0,
+  "summary": [
+    {
+      "scenario": "fire",
+      "variant": "checkpoint",
+      "cpu_ms": 367.467417033491,
+      "cpu_ms_range": [
+        366.5450026209827,
+        379.7252699354466
+      ],
+      "main_ms": 350.475229533491,
+      "main_ms_range": [
+        349.3575026209827,
+        360.5846449354466
+      ],
+      "other_threads_ms": 17.1875,
+      "worker_ms": 17.1875,
+      "private_mean_mib": 1774.253296560541,
+      "commands": 379104,
+      "copies": 1024,
+      "scans": 0,
+      "refreshes": 0,
+      "publications": 560,
+      "commits": 80,
+      "diagnostic_exclusive_ms": {
+        "publication": 282.14375,
+        "input": 45.3340375,
+        "effects": 42.95785,
+        "copies": 0.16285,
+        "commit": 10.6560375
+      }
+    },
+    {
+      "scenario": "fire",
+      "variant": "atomic",
+      "cpu_ms": 370.0216639606012,
+      "cpu_ms_range": [
+        368.5571527139293,
+        371.4944585667382
+      ],
+      "main_ms": 351.2716639606012,
+      "main_ms_range": [
+        350.5884027139295,
+        353.52570856673753
+      ],
+      "other_threads_ms": 17.96875000000071,
+      "worker_ms": 17.96875,
+      "private_mean_mib": 1851.4932604370683,
+      "commands": 379104,
+      "copies": 1024,
+      "scans": 0,
+      "refreshes": 0,
+      "publications": 560,
+      "commits": 80,
+      "diagnostic_exclusive_ms": {
+        "publication": 281.20625,
+        "input": 44.8631875,
+        "effects": 43.6020375,
+        "copies": 0.1628875,
+        "commit": 10.4939875
+      }
+    },
+    {
+      "scenario": "fire",
+      "variant": "chunks",
+      "cpu_ms": 834.6391619732127,
+      "cpu_ms_range": [
+        831.5435905042608,
+        843.9265854809264
+      ],
+      "main_ms": 816.4750994732128,
+      "main_ms_range": [
+        813.1842155042609,
+        825.3718979809264
+      ],
+      "other_threads_ms": 18.359375,
+      "worker_ms": 18.359375,
+      "private_mean_mib": 1830.5957847773782,
+      "commands": 379104,
+      "copies": 1024,
+      "scans": 2797568,
+      "refreshes": 3972,
+      "publications": 560,
+      "commits": 4132,
+      "diagnostic_exclusive_ms": {
+        "publication": 287.645,
+        "input": 50.3754,
+        "effects": 44.047050000000006,
+        "commit": 35.1367875,
+        "copies": 527.46125
+      }
+    },
+    {
+      "scenario": "pipe",
+      "variant": "checkpoint",
+      "cpu_ms": 57.078279349174466,
+      "cpu_ms_range": [
+        55.53689644159637,
+        57.99994279715132
+      ],
+      "main_ms": 52.000154349174466,
+      "main_ms_range": [
+        50.45877144159636,
+        52.53119279715132
+      ],
+      "other_threads_ms": 5.078125,
+      "worker_ms": 5.078125,
+      "private_mean_mib": 1744.370779500514,
+      "commands": 25434,
+      "copies": 646,
+      "scans": 0,
+      "refreshes": 0,
+      "publications": 560,
+      "commits": 160,
+      "diagnostic_exclusive_ms": {
+        "devices": 3.465375,
+        "commit": 3.640075,
+        "publication": 28.4496375,
+        "input": 11.5241375,
+        "effects": 2.5779625,
+        "copies": 0.08233750000000001
+      }
+    },
+    {
+      "scenario": "pipe",
+      "variant": "atomic",
+      "cpu_ms": 57.75797411318173,
+      "cpu_ms_range": [
+        57.07528527467467,
+        63.80097305389114
+      ],
+      "main_ms": 52.09391161318208,
+      "main_ms_range": [
+        51.21591027467467,
+        58.72284805389256
+      ],
+      "other_threads_ms": 5.664062499999645,
+      "worker_ms": 5.2734375,
+      "private_mean_mib": 1793.4963617556139,
+      "commands": 25434,
+      "copies": 646,
+      "scans": 0,
+      "refreshes": 0,
+      "publications": 560,
+      "commits": 160,
+      "diagnostic_exclusive_ms": {
+        "devices": 3.5970625,
+        "commit": 3.833725,
+        "publication": 29.896725,
+        "input": 12.006625,
+        "effects": 3.0450375,
+        "copies": 0.08446250000000001
+      }
+    },
+    {
+      "scenario": "pipe",
+      "variant": "chunks",
+      "cpu_ms": 108.40940838384795,
+      "cpu_ms_range": [
+        108.22342262293247,
+        109.28361615740059
+      ],
+      "main_ms": 103.72190838384795,
+      "main_ms_range": [
+        102.55936012293212,
+        104.59611615740059
+      ],
+      "other_threads_ms": 4.6875,
+      "worker_ms": 4.6875,
+      "private_mean_mib": 1784.9271030677692,
+      "commands": 25434,
+      "copies": 4693,
+      "scans": 484711,
+      "refreshes": 1039,
+      "publications": 560,
+      "commits": 1279,
+      "diagnostic_exclusive_ms": {
+        "devices": 3.380475,
+        "commit": 9.0093875,
+        "publication": 28.2175625,
+        "input": 11.414100000000001,
+        "copies": 55.345150000000004,
+        "effects": 2.879075
+      }
+    }
+  ],
+  "cases": [
+    {
+      "case": "before/fire/atomic/1/0",
+      "variant": "checkpoint",
+      "scenario": "fire",
+      "repeat": 1,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 1024,
+      "commits": 80,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.375,
+        80,
+        1,
+        1,
+        4214.45
+      ],
+      "process": {
+        "cpu_seconds": 29.323600209678617,
+        "main_thread_cpu_seconds": 27.948600209678617,
+        "private_bytes": {
+          "mean_mib": 1733.6476005206425,
+          "peak_mib": 1737.90234375
+        },
+        "working_set_bytes": {
+          "mean_mib": 1722.1794330094704,
+          "peak_mib": 1726.20703125
+        },
+        "wall_seconds": 32.1894268989563,
+        "max_sample_gap_seconds": 0.03200387954711914
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "binary_sha256": "f1fa243c8803b43bc1d80086ed0eb439a41e8dca3a371bc80d2ec7393903f329",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-atomic-1-0.json",
+      "stage_profile": [],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "before/pipe/atomic/1/0",
+      "variant": "checkpoint",
+      "scenario": "pipe",
+      "repeat": 1,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 646,
+      "commits": 160,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.421875,
+        80,
+        1,
+        1,
+        1065.67
+      ],
+      "process": {
+        "cpu_seconds": 4.639995423772106,
+        "main_thread_cpu_seconds": 4.202495423772106,
+        "private_bytes": {
+          "mean_mib": 1739.2549842216622,
+          "peak_mib": 1739.7121759928802
+        },
+        "working_set_bytes": {
+          "mean_mib": 1727.7565575379047,
+          "peak_mib": 1728.1468570092613
+        },
+        "wall_seconds": 6.995604991912842,
+        "max_sample_gap_seconds": 0.016155004501342773
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "binary_sha256": "f1fa243c8803b43bc1d80086ed0eb439a41e8dca3a371bc80d2ec7393903f329",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-atomic-1-0.json",
+      "stage_profile": [],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "before/pipe/atomic/2/0",
+      "variant": "checkpoint",
+      "scenario": "pipe",
+      "repeat": 2,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 646,
+      "commits": 160,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.40625,
+        80,
+        1,
+        1,
+        1079.51
+      ],
+      "process": {
+        "cpu_seconds": 4.442951715327709,
+        "main_thread_cpu_seconds": 4.036701715327709,
+        "private_bytes": {
+          "mean_mib": 1744.370779500514,
+          "peak_mib": 1744.59375
+        },
+        "working_set_bytes": {
+          "mean_mib": 1732.8639463573345,
+          "peak_mib": 1733.0546875
+        },
+        "wall_seconds": 6.981553077697754,
+        "max_sample_gap_seconds": 0.031011104583740234
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "binary_sha256": "f1fa243c8803b43bc1d80086ed0eb439a41e8dca3a371bc80d2ec7393903f329",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-atomic-2-0.json",
+      "stage_profile": [],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "before/fire/atomic/2/0",
+      "variant": "checkpoint",
+      "scenario": "fire",
+      "repeat": 2,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 1024,
+      "commits": 80,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.53125,
+        80,
+        1,
+        1,
+        4202.4
+      ],
+      "process": {
+        "cpu_seconds": 30.37802159483573,
+        "main_thread_cpu_seconds": 28.84677159483573,
+        "private_bytes": {
+          "mean_mib": 1774.253296560541,
+          "peak_mib": 1777.3400266892495
+        },
+        "working_set_bytes": {
+          "mean_mib": 1762.081288940437,
+          "peak_mib": 1765.09375
+        },
+        "wall_seconds": 33.119154930114746,
+        "max_sample_gap_seconds": 0.030964136123657227
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "binary_sha256": "f1fa243c8803b43bc1d80086ed0eb439a41e8dca3a371bc80d2ec7393903f329",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-atomic-2-0.json",
+      "stage_profile": [],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "before/fire/atomic/3/0",
+      "variant": "checkpoint",
+      "scenario": "fire",
+      "repeat": 3,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 1024,
+      "commits": 80,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.35938,
+        80,
+        1,
+        1,
+        4171.46
+      ],
+      "process": {
+        "cpu_seconds": 29.39739336267928,
+        "main_thread_cpu_seconds": 28.03801836267928,
+        "private_bytes": {
+          "mean_mib": 1792.2853126592133,
+          "peak_mib": 1794.92578125
+        },
+        "working_set_bytes": {
+          "mean_mib": 1779.7626470053683,
+          "peak_mib": 1782.1484375
+        },
+        "wall_seconds": 32.22618103027344,
+        "max_sample_gap_seconds": 0.031954050064086914
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "binary_sha256": "f1fa243c8803b43bc1d80086ed0eb439a41e8dca3a371bc80d2ec7393903f329",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-atomic-3-0.json",
+      "stage_profile": [],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "before/pipe/atomic/3/0",
+      "variant": "checkpoint",
+      "scenario": "pipe",
+      "repeat": 3,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 646,
+      "commits": 160,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.40625,
+        80,
+        1,
+        1,
+        1113.76
+      ],
+      "process": {
+        "cpu_seconds": 4.566262347933957,
+        "main_thread_cpu_seconds": 4.160012347933957,
+        "private_bytes": {
+          "mean_mib": 1796.4030993697456,
+          "peak_mib": 1797.6843522572776
+        },
+        "working_set_bytes": {
+          "mean_mib": 1783.8696556986283,
+          "peak_mib": 1785.0834630418267
+        },
+        "wall_seconds": 7.065186977386475,
+        "max_sample_gap_seconds": 0.01645207405090332
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "binary_sha256": "f1fa243c8803b43bc1d80086ed0eb439a41e8dca3a371bc80d2ec7393903f329",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-atomic-3-0.json",
+      "stage_profile": [],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "before/fire/atomic/1/1",
+      "variant": "checkpoint",
+      "scenario": "fire",
+      "repeat": 1,
+      "profiled": 1,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 1024,
+      "commits": 80,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.53125,
+        80,
+        1,
+        1,
+        4221.9
+      ],
+      "process": {
+        "cpu_seconds": 39.96754502535893,
+        "main_thread_cpu_seconds": 38.42067002535893,
+        "private_bytes": {
+          "mean_mib": 1820.6207579489783,
+          "peak_mib": 1822.91015625
+        },
+        "working_set_bytes": {
+          "mean_mib": 1807.5844440676342,
+          "peak_mib": 1809.671875
+        },
+        "wall_seconds": 42.898436069488525,
+        "max_sample_gap_seconds": 0.046051979064941406
+      },
+      "exclusive_us": {
+        "publication": 22571500.0,
+        "input": 3626723,
+        "effects": 3436628,
+        "copies": 13028,
+        "commit": 852483
+      },
+      "capture_control": {
+        "exit_code": 0,
+        "binary_sha256": "f1fa243c8803b43bc1d80086ed0eb439a41e8dca3a371bc80d2ec7393903f329",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-atomic-1-1.json",
+      "stage_profile": [
+        {
+          "name": "/datum/banda_atmos_phase/proc/finish_callback",
+          "self": 0.27,
+          "total": 0.853,
+          "real": 0.847,
+          "over": 0.27,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/flush_inputs",
+          "self": 1.683,
+          "total": 3.594,
+          "real": 3.589,
+          "over": 1.683,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 1.444,
+          "total": 22.564,
+          "real": 22.554,
+          "over": 1.071,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/finish_callback",
+          "self": 0.005,
+          "total": 0.858,
+          "real": 0.849,
+          "over": 0.005,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/project_changes",
+          "self": 0.005,
+          "total": 22.572,
+          "real": 22.564,
+          "over": 0.004,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/flush_inputs",
+          "self": 0.042,
+          "total": 3.638,
+          "real": 3.619,
+          "over": 0.042,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/finish_callback",
+          "self": 0.001,
+          "total": 0.862,
+          "real": 0.857,
+          "over": 0.001,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_execute",
+          "self": 1.206,
+          "total": 2.194,
+          "real": 2.202,
+          "over": 1.206,
+          "calls": 379104
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_copy_readonly",
+          "self": 0.003,
+          "total": 0.013,
+          "real": 0.011,
+          "over": 0.003,
+          "calls": 1024
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/copy_readonly",
+          "self": 0.001,
+          "total": 0.024,
+          "real": 0.021,
+          "over": 0.001,
+          "calls": 1024
+        }
+      ],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "75d3fd6e805ee50c40d639c8c85b5f072f0246ca562d3c652a8b185f9efc73da",
+      "comparison_profile": null
+    },
+    {
+      "case": "before/pipe/atomic/1/1",
+      "variant": "checkpoint",
+      "scenario": "pipe",
+      "repeat": 1,
+      "profiled": 1,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 646,
+      "commits": 160,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.328125,
+        80,
+        1,
+        1,
+        1101.26
+      ],
+      "process": {
+        "cpu_seconds": 5.561057841368012,
+        "main_thread_cpu_seconds": 5.232932841368012,
+        "private_bytes": {
+          "mean_mib": 1824.4103830837255,
+          "peak_mib": 1824.8611228565126
+        },
+        "working_set_bytes": {
+          "mean_mib": 1811.371638163232,
+          "peak_mib": 1811.7380449272785
+        },
+        "wall_seconds": 7.98259711265564,
+        "max_sample_gap_seconds": 0.016197919845581055
+      },
+      "exclusive_us": {
+        "devices": 277230,
+        "commit": 291206,
+        "publication": 2275971,
+        "input": 921931,
+        "effects": 206237,
+        "copies": 6587
+      },
+      "capture_control": {
+        "exit_code": 0,
+        "binary_sha256": "f1fa243c8803b43bc1d80086ed0eb439a41e8dca3a371bc80d2ec7393903f329",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-atomic-1-1.json",
+      "stage_profile": [
+        {
+          "name": "/datum/banda_atmos_phase/proc/finish_callback",
+          "self": 0.103,
+          "total": 0.302,
+          "real": 0.299,
+          "over": 0.094,
+          "calls": 160
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/flush_inputs",
+          "self": 0.485,
+          "total": 0.911,
+          "real": 0.91,
+          "over": 0.418,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.38,
+          "total": 2.255,
+          "real": 2.29,
+          "over": 0.082,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/finish_callback",
+          "self": 0,
+          "total": 0.303,
+          "real": 0.3,
+          "over": 0,
+          "calls": 160
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/project_changes",
+          "self": 0.008,
+          "total": 2.269,
+          "real": 2.297,
+          "over": 0,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/flush_inputs",
+          "self": 0.014,
+          "total": 0.925,
+          "real": 0.919,
+          "over": 0.013,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/finish_callback",
+          "self": 0,
+          "total": 0.306,
+          "real": 0.302,
+          "over": 0,
+          "calls": 160
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_execute",
+          "self": 0.037,
+          "total": 0.11,
+          "real": 0.135,
+          "over": 0.017,
+          "calls": 25434
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_copy_readonly",
+          "self": 0,
+          "total": 0.001,
+          "real": 0.007,
+          "over": 0,
+          "calls": 646
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/copy_readonly",
+          "self": 0,
+          "total": 0.008,
+          "real": 0.012,
+          "over": 0,
+          "calls": 646
+        }
+      ],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "a83c536c3b270d594f81791cd545fea54e1d9d9f7fc7bfa47ccde685cb0e7581",
+      "comparison_profile": null
+    },
+    {
+      "case": "current/fire/atomic/1/0",
+      "variant": "atomic",
+      "scenario": "fire",
+      "repeat": 1,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 1024,
+      "commits": 80,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.4375,
+        80,
+        1,
+        1,
+        4155.4
+      ],
+      "process": {
+        "cpu_seconds": 29.484572217114348,
+        "main_thread_cpu_seconds": 28.047072217114362,
+        "private_bytes": {
+          "mean_mib": 1745.1506383935941,
+          "peak_mib": 1748.0390625
+        },
+        "working_set_bytes": {
+          "mean_mib": 1733.696572136522,
+          "peak_mib": 1736.48046875
+        },
+        "wall_seconds": 32.33270812034607,
+        "max_sample_gap_seconds": 0.030973196029663086
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-atomic-1-0.json",
+      "stage_profile": [],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/fire/chunks/1/0",
+      "variant": "chunks",
+      "scenario": "fire",
+      "repeat": 1,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 3972,
+      "scanned": 2797568,
+      "copies": 1024,
+      "commits": 4132,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.45312,
+        80,
+        1,
+        1,
+        4167.83
+      ],
+      "process": {
+        "cpu_seconds": 66.77113295785702,
+        "main_thread_cpu_seconds": 65.31800795785702,
+        "private_bytes": {
+          "mean_mib": 1770.568514546726,
+          "peak_mib": 1773.421875
+        },
+        "working_set_bytes": {
+          "mean_mib": 1758.7816075803999,
+          "peak_mib": 1761.43359375
+        },
+        "wall_seconds": 69.78256821632385,
+        "max_sample_gap_seconds": 0.04505300521850586
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-chunks-1-0.json",
+      "stage_profile": [],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/pipe/atomic/1/0",
+      "variant": "atomic",
+      "scenario": "pipe",
+      "repeat": 1,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 646,
+      "commits": 160,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.46875,
+        80,
+        1,
+        1,
+        1083.7
+      ],
+      "process": {
+        "cpu_seconds": 4.566022821973974,
+        "main_thread_cpu_seconds": 4.097272821973974,
+        "private_bytes": {
+          "mean_mib": 1774.7994288492343,
+          "peak_mib": 1774.995135795813
+        },
+        "working_set_bytes": {
+          "mean_mib": 1762.9958432648655,
+          "peak_mib": 1763.225987973839
+        },
+        "wall_seconds": 6.962215900421143,
+        "max_sample_gap_seconds": 0.03183293342590332
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-atomic-1-0.json",
+      "stage_profile": [],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/pipe/chunks/1/0",
+      "variant": "chunks",
+      "scenario": "pipe",
+      "repeat": 1,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 1039,
+      "scanned": 484711,
+      "copies": 4693,
+      "commits": 1279,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.4375,
+        80,
+        1,
+        1,
+        1085.5
+      ],
+      "process": {
+        "cpu_seconds": 8.657873809834598,
+        "main_thread_cpu_seconds": 8.20474880983457,
+        "private_bytes": {
+          "mean_mib": 1779.2599870314823,
+          "peak_mib": 1779.93359375
+        },
+        "working_set_bytes": {
+          "mean_mib": 1767.4078647174244,
+          "peak_mib": 1768.067422153282
+        },
+        "wall_seconds": 10.913739919662476,
+        "max_sample_gap_seconds": 0.016201019287109375
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-chunks-1-0.json",
+      "stage_profile": [],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/pipe/chunks/2/0",
+      "variant": "chunks",
+      "scenario": "pipe",
+      "repeat": 2,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 1039,
+      "scanned": 484711,
+      "copies": 4693,
+      "commits": 1279,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.359375,
+        80,
+        1,
+        1,
+        1119.11
+      ],
+      "process": {
+        "cpu_seconds": 8.742689292592047,
+        "main_thread_cpu_seconds": 8.367689292592047,
+        "private_bytes": {
+          "mean_mib": 1784.9271030677692,
+          "peak_mib": 1785.7566145306173
+        },
+        "working_set_bytes": {
+          "mean_mib": 1773.0128455701415,
+          "peak_mib": 1773.8287141004555
+        },
+        "wall_seconds": 11.128715991973877,
+        "max_sample_gap_seconds": 0.03102898597717285
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-chunks-2-0.json",
+      "stage_profile": [],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/pipe/atomic/2/0",
+      "variant": "atomic",
+      "scenario": "pipe",
+      "repeat": 2,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 646,
+      "commits": 160,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.421875,
+        80,
+        1,
+        1,
+        1114.65
+      ],
+      "process": {
+        "cpu_seconds": 4.6206379290545385,
+        "main_thread_cpu_seconds": 4.167512929054567,
+        "private_bytes": {
+          "mean_mib": 1793.4963617556139,
+          "peak_mib": 1793.8984375
+        },
+        "working_set_bytes": {
+          "mean_mib": 1781.2898105386575,
+          "peak_mib": 1781.66796875
+        },
+        "wall_seconds": 6.968149900436401,
+        "max_sample_gap_seconds": 0.016164064407348633
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-atomic-2-0.json",
+      "stage_profile": [],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/fire/chunks/2/0",
+      "variant": "chunks",
+      "scenario": "fire",
+      "repeat": 2,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 3972,
+      "scanned": 2797568,
+      "copies": 1024,
+      "commits": 4132,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.46875,
+        80,
+        1,
+        1,
+        4205.44
+      ],
+      "process": {
+        "cpu_seconds": 66.52348724034087,
+        "main_thread_cpu_seconds": 65.05473724034087,
+        "private_bytes": {
+          "mean_mib": 1830.5957847773782,
+          "peak_mib": 1833.1953125
+        },
+        "working_set_bytes": {
+          "mean_mib": 1817.6541891542677,
+          "peak_mib": 1820.1953125
+        },
+        "wall_seconds": 69.56514406204224,
+        "max_sample_gap_seconds": 0.04694795608520508
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-chunks-2-0.json",
+      "stage_profile": [],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/fire/atomic/2/0",
+      "variant": "atomic",
+      "scenario": "fire",
+      "repeat": 2,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 1024,
+      "commits": 80,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.45312,
+        80,
+        1,
+        1,
+        4156.77
+      ],
+      "process": {
+        "cpu_seconds": 29.601733116848095,
+        "main_thread_cpu_seconds": 28.101733116848095,
+        "private_bytes": {
+          "mean_mib": 1851.4932604370683,
+          "peak_mib": 1853.9375
+        },
+        "working_set_bytes": {
+          "mean_mib": 1838.2722976353493,
+          "peak_mib": 1840.265625
+        },
+        "wall_seconds": 32.68353509902954,
+        "max_sample_gap_seconds": 0.04705500602722168
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-atomic-2-0.json",
+      "stage_profile": [],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/fire/atomic/3/0",
+      "variant": "atomic",
+      "scenario": "fire",
+      "repeat": 3,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 1024,
+      "commits": 80,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.40625,
+        80,
+        1,
+        1,
+        4140.71
+      ],
+      "process": {
+        "cpu_seconds": 29.719556685339057,
+        "main_thread_cpu_seconds": 28.282056685339,
+        "private_bytes": {
+          "mean_mib": 1869.2130246101783,
+          "peak_mib": 1870.8671875
+        },
+        "working_set_bytes": {
+          "mean_mib": 1855.6471881138636,
+          "peak_mib": 1857.109375
+        },
+        "wall_seconds": 32.560662031173706,
+        "max_sample_gap_seconds": 0.046994924545288086
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-atomic-3-0.json",
+      "stage_profile": [],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/fire/chunks/3/0",
+      "variant": "chunks",
+      "scenario": "fire",
+      "repeat": 3,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 3972,
+      "scanned": 2797568,
+      "copies": 1024,
+      "commits": 4132,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.46875,
+        80,
+        1,
+        1,
+        4202.96
+      ],
+      "process": {
+        "cpu_seconds": 67.51412683847411,
+        "main_thread_cpu_seconds": 66.02975183847411,
+        "private_bytes": {
+          "mean_mib": 1886.6505222783692,
+          "peak_mib": 1889.55078125
+        },
+        "working_set_bytes": {
+          "mean_mib": 1872.852150719378,
+          "peak_mib": 1875.66796875
+        },
+        "wall_seconds": 70.52942299842834,
+        "max_sample_gap_seconds": 0.04701495170593262
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-chunks-3-0.json",
+      "stage_profile": [],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/pipe/atomic/3/0",
+      "variant": "atomic",
+      "scenario": "pipe",
+      "repeat": 3,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 646,
+      "commits": 160,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.375,
+        80,
+        1,
+        1,
+        1303.57
+      ],
+      "process": {
+        "cpu_seconds": 5.104077844311291,
+        "main_thread_cpu_seconds": 4.697827844311405,
+        "private_bytes": {
+          "mean_mib": 1891.1319891969217,
+          "peak_mib": 1892.311177956587
+        },
+        "working_set_bytes": {
+          "mean_mib": 1877.3208294061471,
+          "peak_mib": 1878.4290316242514
+        },
+        "wall_seconds": 7.494754076004028,
+        "max_sample_gap_seconds": 0.031019926071166992
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-atomic-3-0.json",
+      "stage_profile": [],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/pipe/chunks/3/0",
+      "variant": "chunks",
+      "scenario": "pipe",
+      "repeat": 3,
+      "profiled": 0,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 1039,
+      "scanned": 484711,
+      "copies": 4693,
+      "commits": 1279,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.375,
+        80,
+        1,
+        1,
+        1132.52
+      ],
+      "process": {
+        "cpu_seconds": 8.672752670707837,
+        "main_thread_cpu_seconds": 8.297752670707837,
+        "private_bytes": {
+          "mean_mib": 1892.726960159998,
+          "peak_mib": 1894.038621377231
+        },
+        "working_set_bytes": {
+          "mean_mib": 1878.8916455383526,
+          "peak_mib": 1880.1675087326594
+        },
+        "wall_seconds": 11.189302921295166,
+        "max_sample_gap_seconds": 0.0469510555267334
+      },
+      "exclusive_us": [],
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-chunks-3-0.json",
+      "stage_profile": [],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "case": "current/fire/atomic/1/1",
+      "variant": "atomic",
+      "scenario": "fire",
+      "repeat": 1,
+      "profiled": 1,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 1024,
+      "commits": 80,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.5,
+        80,
+        1,
+        1,
+        4235.61
+      ],
+      "process": {
+        "cpu_seconds": 40.135924446529884,
+        "main_thread_cpu_seconds": 38.620299446529884,
+        "private_bytes": {
+          "mean_mib": 1925.2716932321791,
+          "peak_mib": 1928.0390625
+        },
+        "working_set_bytes": {
+          "mean_mib": 1910.5739757929823,
+          "peak_mib": 1913.140625
+        },
+        "wall_seconds": 43.09404802322388,
+        "max_sample_gap_seconds": 0.061982154846191406
+      },
+      "exclusive_us": {
+        "publication": 22496500.0,
+        "input": 3589055,
+        "effects": 3488163,
+        "copies": 13031,
+        "commit": 839519
+      },
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-atomic-1-1.json",
+      "stage_profile": [
+        {
+          "name": "/datum/banda_atmos_phase/proc/finish_callback",
+          "self": 0.298,
+          "total": 0.833,
+          "real": 0.832,
+          "over": 0.298,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/flush_inputs",
+          "self": 1.678,
+          "total": 3.562,
+          "real": 3.563,
+          "over": 1.678,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 1.38,
+          "total": 22.504,
+          "real": 22.507,
+          "over": 1.034,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/finish_callback",
+          "self": 0.001,
+          "total": 0.835,
+          "real": 0.835,
+          "over": 0.001,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/project_changes",
+          "self": 0.004,
+          "total": 22.517,
+          "real": 22.515,
+          "over": 0.001,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/flush_inputs",
+          "self": 0.026,
+          "total": 3.591,
+          "real": 3.591,
+          "over": 0.026,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/finish_callback",
+          "self": 0,
+          "total": 0.838,
+          "real": 0.838,
+          "over": 0,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_execute",
+          "self": 1.11,
+          "total": 2.114,
+          "real": 2.255,
+          "over": 1.11,
+          "calls": 379104
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_copy_readonly",
+          "self": 0.001,
+          "total": 0.008,
+          "real": 0.014,
+          "over": 0.001,
+          "calls": 1024
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/copy_readonly",
+          "self": 0.001,
+          "total": 0.022,
+          "real": 0.026,
+          "over": 0.001,
+          "calls": 1024
+        }
+      ],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "75b3279c28e8f53395c0f1a0248f8457bed148002c528bb9f88337fd9cfb58d9",
+      "comparison_profile": null
+    },
+    {
+      "case": "current/fire/chunks/1/1",
+      "variant": "chunks",
+      "scenario": "fire",
+      "repeat": 1,
+      "profiled": 1,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 0,
+      "vent_transfers": 0,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "5278c36c98edfdb5bf386838adfe02a2",
+      "state_hash": "8b507eb938782261fe720f8d42680dea",
+      "port_hash": "d751713988987e9331980363e24189ce",
+      "commands": 379104,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        188416,
+        184320,
+        null,
+        null,
+        null,
+        6368
+      ],
+      "publications": 560,
+      "refreshes": 3972,
+      "scanned": 2797568,
+      "copies": 1024,
+      "commits": 4132,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        1.625,
+        80,
+        1,
+        1,
+        4771.53
+      ],
+      "process": {
+        "cpu_seconds": 86.23955365733394,
+        "main_thread_cpu_seconds": 84.614553657334,
+        "private_bytes": {
+          "mean_mib": 1946.2717780577775,
+          "peak_mib": 1948.984375
+        },
+        "working_set_bytes": {
+          "mean_mib": 1931.25500336117,
+          "peak_mib": 1933.8359375
+        },
+        "wall_seconds": 89.57798290252686,
+        "max_sample_gap_seconds": 0.06310892105102539
+      },
+      "exclusive_us": {
+        "publication": 23011600.0,
+        "input": 4030032,
+        "effects": 3523764,
+        "commit": 2810943,
+        "copies": 42196900.0
+      },
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-fire-chunks-1-1.json",
+      "stage_profile": [
+        {
+          "name": "/datum/banda_atmos_phase/proc/finish_callback",
+          "self": 0.956,
+          "total": 2.62,
+          "real": 2.639,
+          "over": 0.956,
+          "calls": 4132
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/flush_inputs",
+          "self": 1.937,
+          "total": 4.007,
+          "real": 4.002,
+          "over": 1.937,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 1.455,
+          "total": 23.008,
+          "real": 23.008,
+          "over": 1.09,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/finish_effect_packet",
+          "self": 0.149,
+          "total": 1.131,
+          "real": 1.13,
+          "over": 0.149,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/process_effect_chunk",
+          "self": 0.063,
+          "total": 57.853,
+          "real": 57.848,
+          "over": 0.063,
+          "calls": 4052
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/refresh_effect_readonly",
+          "self": 15.208,
+          "total": 42.019,
+          "real": 42.014,
+          "over": 15.208,
+          "calls": 3972
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/finish_callback",
+          "self": 0.02,
+          "total": 2.646,
+          "real": 2.661,
+          "over": 0.02,
+          "calls": 4132
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/project_changes",
+          "self": 0.008,
+          "total": 23.024,
+          "real": 23.026,
+          "over": 0.008,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/flush_inputs",
+          "self": 0.033,
+          "total": 4.04,
+          "real": 4.041,
+          "over": 0.033,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/finish_callback",
+          "self": 0.018,
+          "total": 2.748,
+          "real": 2.768,
+          "over": 0.018,
+          "calls": 4132
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/refresh_effect_readonly",
+          "self": 0.125,
+          "total": 42.317,
+          "real": 42.315,
+          "over": 0.125,
+          "calls": 3972
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/finish_effect_packet",
+          "self": 0.009,
+          "total": 1.144,
+          "real": 1.146,
+          "over": 0.009,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_execute",
+          "self": 1.15,
+          "total": 2.188,
+          "real": 2.245,
+          "over": 1.15,
+          "calls": 379104
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_copy_readonly",
+          "self": 0.004,
+          "total": 0.013,
+          "real": 0.006,
+          "over": 0.004,
+          "calls": 1024
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/copy_readonly",
+          "self": 0.002,
+          "total": 0.022,
+          "real": 0.023,
+          "over": 0.002,
+          "calls": 1024
+        }
+      ],
+      "trace_sha256": "428d371ecf0e898c2305ee62f3a1c9c54c0dd90a0379ddd1a0025b3e72f7ae62",
+      "profile_sha256": "715b313bfd36f8a2a1351f21cd85dce0484d5d47d122f2ebc8aca9ea0c55aba4",
+      "comparison_profile": {
+        "name": "/proc/banda_atmos_same_gases",
+        "self": 26.811,
+        "total": 27.331,
+        "real": 29.308,
+        "over": 26.811,
+        "calls": 8392704
+      }
+    },
+    {
+      "case": "current/pipe/atomic/1/1",
+      "variant": "atomic",
+      "scenario": "pipe",
+      "repeat": 1,
+      "profiled": 1,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 0,
+      "scanned": 0,
+      "copies": 646,
+      "commits": 160,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.375,
+        80,
+        1,
+        1,
+        1261.55
+      ],
+      "process": {
+        "cpu_seconds": 5.948403099794405,
+        "main_thread_cpu_seconds": 5.573403099794518,
+        "private_bytes": {
+          "mean_mib": 1950.4885708702748,
+          "peak_mib": 1951.205288357506
+        },
+        "working_set_bytes": {
+          "mean_mib": 1935.4754747969598,
+          "peak_mib": 1935.8011606221426
+        },
+        "wall_seconds": 8.428271055221558,
+        "max_sample_gap_seconds": 0.09400510787963867
+      },
+      "exclusive_us": {
+        "devices": 287765,
+        "commit": 306698,
+        "publication": 2391738,
+        "input": 960530,
+        "effects": 243603,
+        "copies": 6757
+      },
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-atomic-1-1.json",
+      "stage_profile": [
+        {
+          "name": "/datum/banda_atmos_phase/proc/finish_callback",
+          "self": 0.105,
+          "total": 0.316,
+          "real": 0.312,
+          "over": 0.09,
+          "calls": 160
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/flush_inputs",
+          "self": 0.497,
+          "total": 0.953,
+          "real": 0.954,
+          "over": 0.423,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.352,
+          "total": 2.37,
+          "real": 2.381,
+          "over": 0.076,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/finish_callback",
+          "self": 0,
+          "total": 0.316,
+          "real": 0.312,
+          "over": 0,
+          "calls": 160
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/project_changes",
+          "self": 0.006,
+          "total": 2.385,
+          "real": 2.391,
+          "over": 0.001,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/flush_inputs",
+          "self": 0.01,
+          "total": 0.966,
+          "real": 0.959,
+          "over": 0.007,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/finish_callback",
+          "self": 0.001,
+          "total": 0.319,
+          "real": 0.313,
+          "over": 0,
+          "calls": 160
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_execute",
+          "self": 0.044,
+          "total": 0.15,
+          "real": 0.155,
+          "over": 0.02,
+          "calls": 25434
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_copy_readonly",
+          "self": 0,
+          "total": 0.005,
+          "real": 0.001,
+          "over": 0,
+          "calls": 646
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/copy_readonly",
+          "self": 0.003,
+          "total": 0.012,
+          "real": 0.012,
+          "over": 0.003,
+          "calls": 646
+        }
+      ],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "d607f5479c4c34919e695cc252c9d40db5418620f1b8d114fae1ce06e3ec4093",
+      "comparison_profile": null
+    },
+    {
+      "case": "current/pipe/chunks/1/1",
+      "variant": "chunks",
+      "scenario": "pipe",
+      "repeat": 1,
+      "profiled": 1,
+      "frames": 80,
+      "tile_count": 4096,
+      "issued": 1024,
+      "vents": 64,
+      "vent_transfers": 5120,
+      "vent_fallbacks": 0,
+      "initial_state_hash": "0515dbc8420eae74f2b07220a3eb019e",
+      "state_hash": "39e3e6623f162da4e924f6fc2c25a1a3",
+      "port_hash": "9dec9ed8b79ed69172f4becc4532014a",
+      "commands": 25434,
+      "command_kinds": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        25434
+      ],
+      "publications": 560,
+      "refreshes": 1039,
+      "scanned": 484711,
+      "copies": 4693,
+      "commits": 1279,
+      "worker_before": [
+        0,
+        0,
+        0,
+        1,
+        -1
+      ],
+      "worker_after": [
+        0.46875,
+        80,
+        1,
+        1,
+        1135.77
+      ],
+      "process": {
+        "cpu_seconds": 10.725401896146991,
+        "main_thread_cpu_seconds": 10.256651896146991,
+        "private_bytes": {
+          "mean_mib": 1952.6576317365232,
+          "peak_mib": 1953.0148534414648
+        },
+        "working_set_bytes": {
+          "mean_mib": 1937.624177976471,
+          "peak_mib": 1937.9588143406845
+        },
+        "wall_seconds": 13.370110034942627,
+        "max_sample_gap_seconds": 0.045977115631103516
+      },
+      "exclusive_us": {
+        "devices": 270438,
+        "commit": 720751,
+        "publication": 2257405,
+        "input": 913128,
+        "copies": 4427612,
+        "effects": 230326
+      },
+      "capture_control": {
+        "exit_code": 0,
+        "server_pid": 32484,
+        "binary_sha256": "ef604abbc636bef4e7fd7b99fc2d425d5c1840d76219bfff2ac33212826b977e",
+        "dll_sha256": "2d545426c60b78353e589ea7d65d6d222e31b606b62046d6b4bfea783b6842f9",
+        "requested_sample_period_seconds": 0.01
+      },
+      "profile": "cost-pipe-chunks-1-1.json",
+      "stage_profile": [
+        {
+          "name": "/datum/banda_atmos_phase/proc/finish_callback",
+          "self": 0.222,
+          "total": 0.663,
+          "real": 0.657,
+          "over": 0.185,
+          "calls": 1279
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/flush_inputs",
+          "self": 0.501,
+          "total": 0.91,
+          "real": 0.909,
+          "over": 0.449,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/project_changes",
+          "self": 0.338,
+          "total": 2.237,
+          "real": 2.241,
+          "over": 0.064,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/finish_effect_packet",
+          "self": 0.045,
+          "total": 0.323,
+          "real": 0.327,
+          "over": 0.044,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/process_effect_chunk",
+          "self": 0.02,
+          "total": 6.796,
+          "real": 6.8,
+          "over": 0.013,
+          "calls": 1119
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/proc/refresh_effect_readonly",
+          "self": 2.35,
+          "total": 4.412,
+          "real": 4.422,
+          "over": 2.251,
+          "calls": 1039
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/finish_callback",
+          "self": 0.002,
+          "total": 0.665,
+          "real": 0.663,
+          "over": 0.002,
+          "calls": 1279
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/project_changes",
+          "self": 0.01,
+          "total": 2.263,
+          "real": 2.254,
+          "over": 0.002,
+          "calls": 560
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/flush_inputs",
+          "self": 0.006,
+          "total": 0.918,
+          "real": 0.914,
+          "over": 0.004,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/finish_callback",
+          "self": 0.002,
+          "total": 0.698,
+          "real": 0.698,
+          "over": 0.002,
+          "calls": 1279
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/refresh_effect_readonly",
+          "self": 0.027,
+          "total": 4.459,
+          "real": 4.461,
+          "over": 0.027,
+          "calls": 1039
+        },
+        {
+          "name": "/datum/banda_atmos_phase/world_adapter/cost_probe/finish_effect_packet",
+          "self": 0.003,
+          "total": 0.326,
+          "real": 0.331,
+          "over": 0.003,
+          "calls": 80
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_execute",
+          "self": 0.048,
+          "total": 0.165,
+          "real": 0.174,
+          "over": 0.028,
+          "calls": 25434
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/cost_original_copy_readonly",
+          "self": 0.008,
+          "total": 0.023,
+          "real": 0.026,
+          "over": 0.008,
+          "calls": 4693
+        },
+        {
+          "name": "/datum/banda_atmos_cell/proc/copy_readonly",
+          "self": 0.009,
+          "total": 0.077,
+          "real": 0.077,
+          "over": 0.009,
+          "calls": 4693
+        }
+      ],
+      "trace_sha256": "aa6cef05e74ad5f166a16a62cc1b2e6b8431a217f801c1e64c872dfabec71a43",
+      "profile_sha256": "1629f673f73ee055f662873f30ef6027bc4c77629ea99940432effd62a86b610",
+      "comparison_profile": {
+        "name": "/proc/banda_atmos_same_gases",
+        "self": 2.014,
+        "total": 2.098,
+        "real": 2.476,
+        "over": 1.919,
+        "calls": 1451163
+      }
+    }
+  ],
+  "limits": [
+    "Fixed quota of 128 contiguous turf command groups; not ordinary MC/TD throughput.",
+    "Master and subsystems including GC stopped. RAM is not a production-memory comparison.",
+    "Scopes are exclusive diagnostic wall intervals; profiler/probes add overhead. Primary CPU uses OS counters without proc profiling.",
+    "4096 iron floors with anchored fireproof wrenches; no mobs or destructive item feedback.",
+    "Native worker CPU counter covers calculation/publish before completion, not all thread lifetime.",
+    "Both DM builds are marked DEBUG mode by the compiler; no other build mode measured.",
+    "Primary proc profiling and scope clocks are disabled; common counters/wrappers remain.",
+    "Checkpoint full capture did not record server PID in exit.json; sampling code used the Popen server process.pid. Current full PID recorded."
+  ],
+  "production_dm_dme_hash_count_verified": 8538,
+  "production_dm_dme_hash_mismatches": [],
+  "instrumentation_sha256": {
+    "tools/profiling/atmos_cost.py": "90229b2c2db63c897126477ffc0483fced1b48b97c46c1cbaaa2e0a7894c9510",
+    "tools/profiling/atmos_cost_report.py": "9fb912a3577bd47189369124db9b0ae10a789c60299f798a0335a85b60ff0c7a",
+    "tools/profiling/atmos_cost.dm.in": "74ea6f6e88c353c723b6ceab5fc086f5dc82695d0bf662ff2af72d2ab33b633d",
+    "tools/profiling/test_atmos_cost.py": "8690608a8f9bb2e3a552a7450d0229c4b1b51b56e02daca938e3b408b1b9fa67"
+  }
+}

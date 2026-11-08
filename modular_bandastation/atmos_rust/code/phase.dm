@@ -18,6 +18,8 @@
 	var/list/cells = list()
 	var/list/waiting = list()
 	var/list/working_mixtures = list()
+	/// Issued mixtures touched by a resumable effect packet, retained until its final check.
+	var/list/effect_mixtures
 	var/list/uninitialized_cells = list()
 
 /datum/banda_atmos_phase/New(library_path)
@@ -73,6 +75,7 @@
 		qdel(cell)
 	cells.Cut()
 	working_mixtures.Cut()
+	effect_mixtures = null
 	uninitialized_cells.Cut()
 	QDEL_LIST(waiting)
 	if(native_id)
@@ -197,7 +200,7 @@
 	var/previous_safe = in_safe_callback
 	in_safe_callback = TRUE
 	try
-		callback.invoke()
+		. = callback.invoke()
 	catch(var/exception/error)
 		finish_callback(previous_safe, TRUE)
 		qdel(callback)
@@ -211,6 +214,9 @@
 	in_safe_callback = previous_safe
 	if(previous_safe)
 		return
+	if(!isnull(effect_mixtures))
+		for(var/datum/banda_atmos_cell/cell as anything in working_mixtures)
+			effect_mixtures[cell] = working_mixtures[cell]
 	// Banda DM keeps completed writes after an exception; rolling back a debit can duplicate gas
 	// that a receiver already consumed. The caller still stops the effect packet and rethrows.
 	try

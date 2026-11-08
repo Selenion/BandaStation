@@ -54,9 +54,21 @@
 				return
 
 		// Handle temperature/pressure differences between body and environment
-		var/datum/gas_mixture/environment = loc.return_air()
-		if(environment)
-			handle_environment(environment, seconds_per_tick)
+		// BANDASTATION EDIT START - Keep mixture identity across callbacks without a permanent DM gas cache.
+		var/datum/gas_mixture/environment
+		var/datum/banda_atmos_air_reference/environment_reference
+		if(SSair.native_atmos?.air_references_ready)
+			environment_reference = loc.return_air_reference()
+		else
+			environment = loc.return_air()
+		try
+			if(environment || environment_reference)
+				handle_environment(environment, seconds_per_tick, air_reference = environment_reference)
+		catch(var/exception/error)
+			qdel(environment_reference)
+			throw error
+		qdel(environment_reference)
+		// BANDASTATION EDIT END
 
 		handle_gravity(seconds_per_tick)
 
@@ -75,8 +87,10 @@
 	SEND_SIGNAL(src, COMSIG_LIVING_HANDLE_BREATHING, seconds_per_tick)
 
 // Base mob environment handler for body temperature
-/mob/living/proc/handle_environment(datum/gas_mixture/environment, seconds_per_tick)
-	var/loc_temp = get_temperature(environment)
+// BANDASTATION EDIT START - Preserve existing arguments and read the captured native mixture at use time.
+/mob/living/proc/handle_environment(datum/gas_mixture/environment, seconds_per_tick, times_fired, datum/banda_atmos_air_reference/air_reference)
+	var/loc_temp = get_temperature(environment, air_reference = air_reference)
+// BANDASTATION EDIT END
 	var/temp_delta = loc_temp - bodytemperature
 
 	if(ismovable(loc))

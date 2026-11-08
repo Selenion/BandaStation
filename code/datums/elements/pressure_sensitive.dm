@@ -44,8 +44,10 @@
 		return
 
 	var/gave_alert = FALSE
-	var/datum/gas_mixture/environment = target.loc.return_air()
-	var/pressure = target.calculate_affecting_pressure(environment.return_pressure())
+	// BANDASTATION EDIT START - This Life signal needs pressure, not a persistent gas mixture.
+	var/list/environment = target.loc.return_air_values()
+	var/pressure = target.calculate_affecting_pressure(environment[BANDA_AIR_PRESSURE])
+	// BANDASTATION EDIT END
 
 	if(pressure < min_pressure && low_pressure_damage > 0 && !HAS_TRAIT(target, TRAIT_RESISTLOWPRESSURE))
 		target.adjust_brute_loss(low_pressure_damage * seconds_per_tick)
@@ -78,8 +80,10 @@
 		return
 
 	var/atom/loc = target.loc
-	var/datum/gas_mixture/environment = loc.return_air()
-	var/pressure = target.calculate_affecting_pressure(environment.return_pressure())
+	// BANDASTATION EDIT START - Share the scalar path with the Life signal.
+	var/list/environment = loc.return_air_values()
+	var/pressure = target.calculate_affecting_pressure(environment[BANDA_AIR_PRESSURE])
+	// BANDASTATION EDIT END
 
 	if(!ISINRANGE(pressure, min_pressure, max_pressure))
 		stack_trace("[target] loaded on in a loc with unsafe pressure at \[[loc.x], [loc.y], [loc.z]\] (area : [get_area(loc)]): [pressure]kPa. Acceptable Range: [min_pressure]kPa - [max_pressure]kPa,")

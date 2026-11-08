@@ -1,0 +1,515 @@
+// Frozen original Life/environment chain before this migration; independent of the changed API.
+#define BODYTEMP_DIVISOR 16
+
+// code/modules/mob/living/life.dm
+/mob/living/proc/banda_life_original_Life(seconds_per_tick = SSMOBS_DT)
+	set waitfor = FALSE
+	SHOULD_NOT_SLEEP(TRUE)
+
+	var/signal_result = SEND_SIGNAL(src, COMSIG_LIVING_PRE_LIFE, seconds_per_tick)
+
+	if(signal_result & COMPONENT_LIVING_CANCEL_LIFE_PROCESSING) // mmm less work
+		return
+
+	if (client)
+		var/turf/T = get_turf(src)
+		if(!T)
+			move_to_error_room()
+			var/msg = " was found to have no .loc with an attached client, if the cause is unknown it would be wise to ask how this was accomplished."
+			message_admins(ADMIN_LOOKUPFLW(src) + msg)
+			send2tgs_adminless_only("Mob", key_name_and_tag(src) + msg, R_ADMIN)
+			src.log_message("was found to have no .loc with an attached client.", LOG_GAME)
+
+		// This is a temporary error tracker to make sure we've caught everything
+		else if (registered_z != T.z)
+#ifdef TESTING
+			message_admins("[ADMIN_LOOKUPFLW(src)] has somehow ended up in Z-level [T.z] despite being registered in Z-level [registered_z]. If you could ask them how that happened and notify coderbus, it would be appreciated.")
+#endif
+			log_game("Z-TRACKING: [src] has somehow ended up in Z-level [T.z] despite being registered in Z-level [registered_z].")
+			update_z(T.z)
+	else if (registered_z)
+		log_game("Z-TRACKING: [src] of type [src.type] has a Z-registration despite not having a client.")
+		update_z(null)
+
+	if(isnull(loc) || HAS_TRAIT(src, TRAIT_NO_TRANSFORM))
+		return
+
+	SEND_SIGNAL(src, COMSIG_LIVING_LIFE, seconds_per_tick)
+	if(QDELETED(src)) // signal handlers such as diseases could delete the mob
+		return
+
+	if(!HAS_TRAIT(src, TRAIT_STASIS))
+		if(stat != DEAD)
+			//Breathing, if applicable
+			handle_breathing(seconds_per_tick)
+			handle_ssd(seconds_per_tick) // BANDASTATION ADD - SSD INDICATOR
+			if(isnull(loc)) // Mice can die and become items from breathing
+				return
+
+		// Handle temperature/pressure differences between body and environment
+		var/datum/gas_mixture/environment = loc.return_air()
+		if(environment)
+			banda_life_original_environment(environment, seconds_per_tick)
+
+		handle_gravity(seconds_per_tick)
+
+	if(living_flags & QUEUE_NUTRITION_UPDATE)
+		update_nutrition()
+		living_flags &= ~QUEUE_NUTRITION_UPDATE
+
+	if(living_flags & BLOOD_UPDATE_QUEUED)
+		update_blood_effects()
+		living_flags &= ~BLOOD_UPDATE_QUEUED
+
+	if(stat != DEAD)
+		return TRUE
+
+// code/modules/mob/living/life.dm
+/mob/living/proc/banda_life_original_environment(datum/gas_mixture/environment, seconds_per_tick)
+	var/loc_temp = get_temperature(environment)
+	var/temp_delta = loc_temp - bodytemperature
+
+	if(ismovable(loc))
+		var/atom/movable/occupied_space = loc
+		temp_delta *= (1 - occupied_space.contents_thermal_insulation)
+
+	if(temp_delta < 0) // it is cold here
+		if(!on_fire) // do not reduce body temp when on fire
+			adjust_bodytemperature(max(max(temp_delta / BODYTEMP_DIVISOR, BODYTEMP_COOLING_MAX) * seconds_per_tick, temp_delta))
+	else // this is a hot place
+		adjust_bodytemperature(min(min(temp_delta / BODYTEMP_DIVISOR, BODYTEMP_HEATING_MAX) * seconds_per_tick, temp_delta))
+
+
+// code/modules/mob/living/carbon/life.dm
+/mob/living/carbon/banda_life_original_environment(datum/gas_mixture/environment, seconds_per_tick)
+	var/areatemp = get_temperature(environment)
+
+	if(stat != DEAD) // If you are dead your body does not stabilize naturally
+		banda_life_original_stabilization(environment, seconds_per_tick)
+
+	else if(!on_fire && areatemp < bodytemperature) // lowers your dead body temperature to room temperature over time
+		adjust_bodytemperature((areatemp - bodytemperature), use_insulation=FALSE, use_steps=TRUE)
+
+	if(!on_fire || areatemp > bodytemperature) // If we are not on fire or the area is hotter
+		adjust_bodytemperature((areatemp - bodytemperature), use_insulation=TRUE, use_steps=TRUE)
+
+
+// code/modules/mob/living/carbon/life.dm
+/mob/living/carbon/proc/banda_life_original_stabilization(datum/gas_mixture/environment, seconds_per_tick)
+	var/areatemp = get_temperature(environment)
+	var/body_temperature_difference = get_body_temp_normal() - bodytemperature
+	var/natural_change = 0
+
+	// We are very cold, increase body temperature
+	if(bodytemperature <= BODYTEMP_COLD_DAMAGE_LIMIT)
+		natural_change = max((body_temperature_difference * metabolism_efficiency / BODYTEMP_AUTORECOVERY_DIVISOR), \
+			BODYTEMP_AUTORECOVERY_MINIMUM)
+
+	// we are cold, reduce the minimum increment and do not jump over the difference
+	else if(bodytemperature > BODYTEMP_COLD_DAMAGE_LIMIT && bodytemperature < get_body_temp_normal())
+		natural_change = max(body_temperature_difference * metabolism_efficiency / BODYTEMP_AUTORECOVERY_DIVISOR, \
+			min(body_temperature_difference, BODYTEMP_AUTORECOVERY_MINIMUM / 4))
+
+	// We are hot, reduce the minimum increment and do not jump below the difference
+	else if(bodytemperature > get_body_temp_normal() && bodytemperature <= BODYTEMP_HEAT_DAMAGE_LIMIT)
+		natural_change = min(body_temperature_difference * metabolism_efficiency / BODYTEMP_AUTORECOVERY_DIVISOR, \
+			max(body_temperature_difference, -(BODYTEMP_AUTORECOVERY_MINIMUM / 4)))
+
+	// We are very hot, reduce the body temperature
+	else if(bodytemperature >= BODYTEMP_HEAT_DAMAGE_LIMIT)
+		natural_change = min((body_temperature_difference / BODYTEMP_AUTORECOVERY_DIVISOR), -BODYTEMP_AUTORECOVERY_MINIMUM)
+
+	var/thermal_protection = 1 - get_insulation_protection(areatemp) // invert the protection
+	if(areatemp > bodytemperature) // It is hot here
+		if(bodytemperature < get_body_temp_normal())
+			// Our bodytemp is below normal we are cold, insulation helps us retain body heat
+			// and will reduce the heat we lose to the environment
+			natural_change = (thermal_protection + 1) * natural_change
+		else
+			// Our bodytemp is above normal and sweating, insulation hinders out ability to reduce heat
+			// but will reduce the amount of heat we get from the environment
+			natural_change = (1 / (thermal_protection + 1)) * natural_change
+	else // It is cold here
+		if(!on_fire) // If on fire ignore ignore local temperature in cold areas
+			if(bodytemperature < get_body_temp_normal())
+				// Our bodytemp is below normal, insulation helps us retain body heat
+				// and will reduce the heat we lose to the environment
+				natural_change = (thermal_protection + 1) * natural_change
+			else
+				// Our bodytemp is above normal and sweating, insulation hinders out ability to reduce heat
+				// but will reduce the amount of heat we get from the environment
+				natural_change = (1 / (thermal_protection + 1)) * natural_change
+
+	// Apply the natural stabilization changes
+	adjust_bodytemperature(natural_change * seconds_per_tick)
+
+
+// code/modules/mob/living/carbon/human/life.dm
+/mob/living/carbon/human/banda_life_original_environment(datum/gas_mixture/environment, seconds_per_tick)
+	// If we are in a cryo bed do not process life functions
+	if(istype(loc, /obj/machinery/cryo_cell))
+		return
+
+	dna.species.banda_life_original_environment(src, environment, seconds_per_tick)
+
+
+// code/modules/mob/living/carbon/human/_species.dm
+/datum/species/proc/banda_life_original_environment(mob/living/carbon/human/humi, datum/gas_mixture/environment, seconds_per_tick)
+	banda_life_original_pressure(humi, environment, seconds_per_tick)
+	banda_life_original_gases(humi, environment, seconds_per_tick)
+
+
+// code/modules/mob/living/carbon/human/_species.dm
+/datum/species/proc/banda_life_original_pressure(mob/living/carbon/human/H, datum/gas_mixture/environment, seconds_per_tick)
+	var/pressure = environment.return_pressure()
+	var/adjusted_pressure = H.calculate_affecting_pressure(pressure)
+
+	// Set alerts and apply damage based on the amount of pressure
+	switch(adjusted_pressure)
+		// Very high pressure, show an alert and take damage
+		if(HAZARD_HIGH_PRESSURE to INFINITY)
+			if(HAS_TRAIT(H, TRAIT_RESISTHIGHPRESSURE))
+				H.clear_alert(ALERT_PRESSURE)
+			else
+				var/pressure_damage = min(((adjusted_pressure / HAZARD_HIGH_PRESSURE) - 1) * PRESSURE_DAMAGE_COEFFICIENT, MAX_HIGH_PRESSURE_DAMAGE) * seconds_per_tick
+				pressure_damage *= GET_PHYSIOLOGY(H, BRUTE) * GET_PHYSIOLOGY(H, PHYS_COEFF_PRESSURE)
+				H.adjust_brute_loss(pressure_damage, required_bodytype = BODYTYPE_ORGANIC)
+				H.throw_alert(ALERT_PRESSURE, /atom/movable/screen/alert/highpressure, 2)
+
+		// High pressure, show an alert
+		if(WARNING_HIGH_PRESSURE to HAZARD_HIGH_PRESSURE)
+			H.throw_alert(ALERT_PRESSURE, /atom/movable/screen/alert/highpressure, 1)
+
+		// No pressure issues here clear pressure alerts
+		if(WARNING_LOW_PRESSURE to WARNING_HIGH_PRESSURE)
+			H.clear_alert(ALERT_PRESSURE)
+			H.seconds_in_low_pressure = 0
+
+		// Low pressure here, show an alert
+		if(HAZARD_LOW_PRESSURE to WARNING_LOW_PRESSURE)
+			// We have low pressure resit trait, clear alerts
+			if(HAS_TRAIT(H, TRAIT_RESISTLOWPRESSURE))
+				H.clear_alert(ALERT_PRESSURE)
+			else
+				H.throw_alert(ALERT_PRESSURE, /atom/movable/screen/alert/lowpressure, 1)
+			H.seconds_in_low_pressure = 0
+
+		// Very low pressure, show an alert and take damage
+		else
+			// We have low pressure resit trait, clear alerts
+			if(HAS_TRAIT(H, TRAIT_RESISTLOWPRESSURE))
+				H.clear_alert(ALERT_PRESSURE)
+			else
+				var/pressure_damage = min(round(1 + (H.seconds_in_low_pressure / 80 SECONDS), 0.05) * BASE_LOW_PRESSURE_DAMAGE, MAX_LOW_PRESSURE_DAMAGE) * seconds_per_tick
+				pressure_damage *= GET_PHYSIOLOGY(H, BRUTE) * GET_PHYSIOLOGY(H, PHYS_COEFF_PRESSURE)
+				H.adjust_brute_loss(pressure_damage, required_bodytype = BODYTYPE_ORGANIC)
+				H.throw_alert(ALERT_PRESSURE, /atom/movable/screen/alert/lowpressure, 2)
+			H.seconds_in_low_pressure += seconds_per_tick
+
+
+// code/modules/mob/living/carbon/human/_species.dm
+/datum/species/proc/banda_life_original_gases(mob/living/carbon/human/human, datum/gas_mixture/environment, seconds_per_tick)
+	/// Some non-clothing items may end up in these slots, e.g. flowers worn on the head, so we should consider clothing_flags as potentially nonexistant as a var.
+	/// Otherwise we will get a very spammy runtime.
+	var/suit_flags = astype(human?.wear_suit, /obj/item/clothing)?.clothing_flags
+	var/head_flags = astype(human?.head, /obj/item/clothing)?.clothing_flags
+
+	if((suit_flags & STOPSPRESSUREDAMAGE) && (head_flags & STOPSPRESSUREDAMAGE))
+		return
+
+	var/antinoblium_moles = environment.moles[/datum/gas/antinoblium]
+	if (antinoblium_moles >= MOLES_GAS_VISIBLE && SPT_PROB(1, antinoblium_moles * seconds_per_tick))
+		SSradiation.irradiate(human)
+
+
+// code/modules/mob/living/simple_animal/simple_animal.dm
+/mob/living/simple_animal/banda_life_original_environment(datum/gas_mixture/environment, seconds_per_tick)
+	var/atom/A = loc
+	if(isturf(A))
+		var/areatemp = get_temperature(environment)
+		var/temp_delta = areatemp - bodytemperature
+		if(abs(temp_delta) > 5)
+			if(temp_delta < 0)
+				if(!on_fire)
+					adjust_bodytemperature(clamp(temp_delta * seconds_per_tick / temperature_normalization_speed, temp_delta, 0))
+			else
+				adjust_bodytemperature(clamp(temp_delta * seconds_per_tick / temperature_normalization_speed, 0, temp_delta))
+
+
+// code/modules/mob/living/carbon/alien/alien.dm
+/mob/living/carbon/alien/banda_life_original_environment(datum/gas_mixture/environment, seconds_per_tick)
+	// Run base mob body temperature proc before taking damage
+	// this balances body temp to the environment and natural stabilization
+	. = ..()
+	if(bodytemperature <= BODYTEMP_HEAT_DAMAGE_LIMIT)
+		clear_alert(ALERT_XENO_FIRE)
+		return
+
+	//Body temperature is too hot.
+	throw_alert(ALERT_XENO_FIRE, /atom/movable/screen/alert/alien_fire)
+	switch(bodytemperature)
+		if(360 to 400)
+			apply_damage(HEAT_DAMAGE_LEVEL_1 * seconds_per_tick, BURN)
+		if(400 to 460)
+			apply_damage(HEAT_DAMAGE_LEVEL_2 * seconds_per_tick, BURN)
+		if(460 to INFINITY)
+			if(on_fire)
+				apply_damage(HEAT_DAMAGE_LEVEL_3 * seconds_per_tick, BURN)
+			else
+				apply_damage(HEAT_DAMAGE_LEVEL_2 * seconds_per_tick, BURN)
+
+
+// code/modules/mob/living/basic/slime/life.dm
+/mob/living/basic/slime/banda_life_original_environment(datum/gas_mixture/environment, seconds_per_tick)
+	..()
+	if(bodytemperature <= (T0C - 40)) // stun temperature
+		apply_status_effect(/datum/status_effect/freon, SLIME_COLD)
+	else
+		remove_status_effect(/datum/status_effect/freon, SLIME_COLD)
+
+
+// code/modules/mob/living/basic/space_fauna/regal_rat/regal_rat.dm
+/mob/living/basic/regal_rat/banda_life_original_environment(datum/gas_mixture/environment)
+	. = ..()
+	if(stat == DEAD || isnull(environment) || isnull(environment.moles[/datum/gas/miasma]))
+		return
+	var/miasma_percentage = environment.moles[/datum/gas/miasma] / environment.total_moles()
+	if(miasma_percentage >= 0.25)
+		heal_bodypart_damage(1)
+
+
+// code/modules/antagonists/blood_worm/blood_worm_mob.dm
+/mob/living/basic/blood_worm/banda_life_original_environment(datum/gas_mixture/environment, seconds_per_tick, times_fired)
+	if (host)
+		bodytemperature = T20C
+	else
+		return ..()
+
+
+#undef BODYTEMP_DIVISOR
+
+// Frozen code/modules/mob/living/basic/basic.dm at HEAD before this migration.
+/mob/living/basic/banda_life_original_Life(seconds_per_tick = SSMOBS_DT)
+	. = ..()
+	if(staminaloss > 0)
+		adjust_stamina_loss(-stamina_recovery * seconds_per_tick)
+
+
+// Frozen code/modules/mob/living/basic/tree.dm at HEAD before this migration.
+/mob/living/basic/tree/banda_life_original_Life(seconds_per_tick = SSMOBS_DT)
+	// BANDASTATION ADDITION START - Borrow native atmosphere only between calculations.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(Life), seconds_per_tick))
+	// BANDASTATION ADDITION END
+	. = ..()
+	if(!.) //dead or deleted
+		return
+	if(!isopenturf(loc))
+		return
+	var/turf/open/our_turf = src.loc
+	if(!our_turf.return_air() || !our_turf.return_air().moles[/datum/gas/carbon_dioxide]) // BANDASTATION EDIT - Atmosphere API.
+		return
+	var/datum/gas_mixture/our_air = our_turf.return_air() // BANDASTATION EDIT - Atmosphere API.
+	var/co2 = our_air.moles[/datum/gas/carbon_dioxide]
+	if(co2 > 0 && SPT_PROB(13, seconds_per_tick))
+		var/amt = min(co2, 9)
+		our_air.adjust_gas(/datum/gas/carbon_dioxide, -amt)
+		our_turf.atmos_spawn_air("[GAS_O2]=[amt]")
+
+
+// Frozen code/modules/mob/living/basic/slime/life.dm at HEAD before this migration.
+/mob/living/basic/slime/proc/banda_life_original_stasis()
+	var/datum/gas_mixture/environment = loc.return_air()
+
+	var/bz_percentage = environment.moles[/datum/gas/bz] / environment.total_moles()
+
+	if(bz_percentage >= 0.05 && bodytemperature < (T0C + 100)) //Check if we should be in stasis
+		if(!has_status_effect(/datum/status_effect/grouped/stasis)) //Check if we don't have the status effect yet
+			to_chat(src, span_danger("Nerve gas in the air has put you in stasis!"))
+			apply_status_effect(/datum/status_effect/grouped/stasis, STASIS_SLIME_BZ)
+			adjust_power_level(-SLIME_MAX_POWER)
+			ai_controller?.clear_blackboard_key(BB_SLIME_RABID)
+	else if(has_status_effect(/datum/status_effect/grouped/stasis)) //Check if we still have the status effect
+		to_chat(src, span_notice("You wake up from the stasis."))
+		remove_status_effect(/datum/status_effect/grouped/stasis, STASIS_SLIME_BZ)
+
+
+// Frozen original atmos_requirements reader, including assert/GC side effects.
+/datum/element/atmos_requirements/proc/banda_life_original_requirements(turf/open/open_turf)
+	// BANDASTATION ADDITION START - assert/garbage_collect also change archived gas keys.
+	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(get_atmos_req_list), open_turf))
+	// BANDASTATION ADDITION END
+	var/datum/gas_mixture/environment = open_turf.return_air() // BANDASTATION EDIT
+	var/open_turf_moles = environment.moles // BANDASTATION EDIT
+	environment.assert_gases(/datum/gas/oxygen, /datum/gas/pluoxium, /datum/gas/nitrogen, /datum/gas/carbon_dioxide, /datum/gas/plasma) // BANDASTATION EDIT
+
+	var/list/return_gases = list()
+	return_gases["plas"] = open_turf_moles[/datum/gas/plasma]
+	return_gases["oxy"] = open_turf_moles[/datum/gas/oxygen] + (open_turf_moles[/datum/gas/pluoxium] * PLUOXIUM_PROPORTION)
+	return_gases["n2"] = open_turf_moles[/datum/gas/nitrogen]
+	return_gases["co2"] = open_turf_moles[/datum/gas/carbon_dioxide]
+
+	environment.garbage_collect() // BANDASTATION EDIT
+
+	return return_gases
+
+
+
+// Frozen code/datums/elements/pressure_sensitive.dm before the Life migration.
+/datum/element/pressure_sensitive/proc/banda_life_original_pressure_signal(mob/living/target, seconds_per_tick)
+	SIGNAL_HANDLER
+
+	if (HAS_TRAIT(target, TRAIT_STASIS))
+		return
+
+	var/gave_alert = FALSE
+	var/datum/gas_mixture/environment = target.loc.return_air()
+	var/pressure = target.calculate_affecting_pressure(environment.return_pressure())
+
+	if(pressure < min_pressure && low_pressure_damage > 0 && !HAS_TRAIT(target, TRAIT_RESISTLOWPRESSURE))
+		target.adjust_brute_loss(low_pressure_damage * seconds_per_tick)
+
+		switch(low_pressure_damage)
+			if(5 to INFINITY)
+				target.throw_alert(ALERT_PRESSURE, /atom/movable/screen/alert/lowpressure, 2)
+			if(-INFINITY to 5)
+				target.throw_alert(ALERT_PRESSURE, /atom/movable/screen/alert/lowpressure, 1)
+
+		gave_alert = TRUE
+
+	else if(pressure > max_pressure && high_pressure_damage > 0 && !HAS_TRAIT(target, TRAIT_RESISTHIGHPRESSURE))
+		target.adjust_brute_loss(high_pressure_damage * seconds_per_tick)
+
+		switch(high_pressure_damage)
+			if(5 to INFINITY)
+				target.throw_alert(ALERT_PRESSURE, /atom/movable/screen/alert/highpressure, 2)
+			if(-INFINITY to 5)
+				target.throw_alert(ALERT_PRESSURE, /atom/movable/screen/alert/highpressure, 1)
+
+		gave_alert = TRUE
+
+	if(!gave_alert)
+		target.clear_alert(ALERT_PRESSURE)
+
+
+// Frozen code/modules/antagonists/changeling/powers/void_adaption.dm before the Life migration.
+/datum/action/changeling/void_adaption/proc/banda_life_original_void_check(mob/living/void_adapted)
+	SIGNAL_HANDLER
+
+	var/list/active_reasons = list()
+
+	var/datum/gas_mixture/environment = void_adapted.loc.return_air()
+	if (!isnull(environment))
+		var/vulnerable_temperature = void_adapted.get_body_temp_cold_damage_limit()
+		var/affected_temperature = environment.return_temperature()
+		if (ishuman(void_adapted))
+			var/mob/living/carbon/human/special_boy = void_adapted
+			var/cold_protection = special_boy.get_cold_protection(affected_temperature)
+			vulnerable_temperature *= (1 - cold_protection)
+
+			var/affected_pressure = special_boy.calculate_affecting_pressure(environment.return_pressure())
+			if (affected_pressure < HAZARD_LOW_PRESSURE)
+				active_reasons += "vacuum"
+
+		if (affected_temperature < vulnerable_temperature)
+			active_reasons += "cold"
+
+	var/should_be_active = !!length(active_reasons)
+	if (currently_active == should_be_active)
+		return
+
+	if (!should_be_active)
+		on_removed_adaption(void_adapted, "РќР°С€Рё РєР»РµС‚РєРё РѕС‚РґС‹С…Р°СЋС‚ РІ Р±РµР·РѕРїР°СЃРЅРѕРј РІРѕР·РґСѓС…Рµ.")
+		return
+	var/datum/antagonist/changeling/changeling_data = IS_CHANGELING(void_adapted)
+	to_chat(void_adapted, span_changeling("РќР°С€Рё РєР»РµС‚РєРё СѓРєСЂРµРїР»СЏСЋС‚СЃСЏ РїСЂРѕС‚РёРІ [pick(active_reasons)]."))
+	changeling_data?.chem_recharge_slowdown -= recharge_slowdown
+	currently_active = TRUE
+
+
+// Frozen code/modules/fishing/fish/fish_traits.dm before the Life migration.
+/datum/fish_trait/emulsijack/proc/banda_life_original_fish_life(mob/living/basic/mob, seconds_per_tick = SSMOBS_DT)
+	SIGNAL_HANDLER
+	var/turf/open/our_turf = get_turf(mob)
+	if(our_turf.return_air().return_pressure() > ONE_ATMOSPHERE * 1.5) //put a cap otherwise closed spaces may overpressurize
+		return
+
+	var/datum/gas_mixture/stench = new
+
+	stench.set_gas(/datum/gas/miasma, MIASMA_CORPSE_MOLES * 2 * seconds_per_tick)
+	stench.temperature = mob.bodytemperature
+	our_turf.assume_air(stench)
+
+
+// Frozen plasma-fixation read path and its original coefficients.
+#define HEALING_PER_MOL 1.1
+#define HEALING_PER_BREATH_PRESSURE 0.05
+#define MAX_HEAL_COEFFICIENT_INTERNALS 0.75
+#define MAX_HEAL_COEFFICIENT_BLOODSTREAM 0.75
+/datum/symptom/heal/plasma/proc/banda_life_original_plasma_heal(datum/disease/advance/our_disease)
+	var/mob/living/carbon/carbon_host = our_disease.affected_mob
+	var/datum/gas_mixture/environment
+	. = 0
+
+	// Check internals
+	///  the amount of mols in a breath is significantly lower than in the environment so we are just going to use the tank's
+	///  distribution pressure as an abstraction rather than calculate it using the ideal gas equation.
+	///  balanced around a tank set to 4kpa = about 0.2 healing power. maxes out at 0.75 healing power, or 15kpa.
+	var/obj/item/tank/internals/internals_tank = carbon_host.internal
+	if(internals_tank)
+		var/datum/gas_mixture/tank_contents = internals_tank.return_air()
+		if(tank_contents && round(tank_contents.return_pressure())) // make sure the tank is not empty or 0 pressure
+			if(tank_contents.moles[/datum/gas/plasma])
+				// higher tank distribution pressure leads to more healing, but once you get to about 15kpa you reach the max
+				. += power * min(MAX_HEAL_COEFFICIENT_INTERNALS, internals_tank.distribute_pressure * HEALING_PER_BREATH_PRESSURE)
+	else // Check environment
+		if(carbon_host.loc)
+			environment = carbon_host.loc.return_air()
+		if(environment && environment.moles[/datum/gas/plasma])
+			. += power * min(MAX_HEAL_COEFFICIENT_INTERNALS, environment.moles[/datum/gas/plasma] * HEALING_PER_MOL)
+
+	// Check for reagents in bloodstream
+	if(carbon_host.reagents.has_reagent(/datum/reagent/toxin/plasma, needs_metabolizing = TRUE))
+		. += power * MAX_HEAL_COEFFICIENT_BLOODSTREAM //Determines how much the symptom heals if injected or ingested
+
+#undef HEALING_PER_MOL
+#undef HEALING_PER_BREATH_PRESSURE
+#undef MAX_HEAL_COEFFICIENT_INTERNALS
+#undef MAX_HEAL_COEFFICIENT_BLOODSTREAM
+
+// Frozen original void aura; the empty-space exception is checked separately.
+/datum/heretic_knowledge/ultimate/void_final/proc/banda_life_original_void_aura(mob/living/source, seconds_per_tick)
+	SIGNAL_HANDLER
+
+	for(var/atom/thing_in_range as anything in range(10, source))
+		if(iscarbon(thing_in_range))
+			var/mob/living/carbon/close_carbon = thing_in_range
+			if(close_carbon.can_block_magic())
+				continue
+			if(IS_HERETIC_OR_MONSTER(close_carbon))
+				close_carbon.apply_status_effect(/datum/status_effect/void_conduit)
+				continue
+			close_carbon.adjust_silence_up_to(2 SECONDS, 20 SECONDS)
+			close_carbon.apply_status_effect(/datum/status_effect/void_chill, 1)
+			close_carbon.adjust_eye_blur(rand(0 SECONDS, 2 SECONDS))
+			close_carbon.adjust_bodytemperature(-30 * TEMPERATURE_DAMAGE_COEFFICIENT)
+
+		if(istype(thing_in_range, /obj/machinery/door) || istype(thing_in_range, /obj/structure/door_assembly))
+			var/obj/affected_door = thing_in_range
+			affected_door.take_damage(rand(60, 80))
+
+		if(istype(thing_in_range, /obj/structure/window) || istype(thing_in_range, /obj/structure/grille))
+			var/obj/structure/affected_structure = thing_in_range
+			affected_structure.take_damage(rand(20, 40))
+
+		if(isturf(thing_in_range))
+			var/turf/affected_turf = thing_in_range
+			var/datum/gas_mixture/environment = affected_turf.return_air()
+			environment.temperature *= 0.9
+
+	// Telegraph the storm in every area on the station.
+	var/list/station_levels = SSmapping.levels_by_trait(ZTRAIT_STATION)
+	if(!storm)
+		storm = new /datum/weather/void_storm(station_levels)
+		storm.telegraph()

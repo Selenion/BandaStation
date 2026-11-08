@@ -4,10 +4,21 @@
 /// Opt in separately: ordinary native atmosphere keeps its synchronous phase.
 /datum/config_entry/flag/rust_atmos_threaded
 
+/// Preserve old configuration files while retiring the delayed-feedback experiment.
+/datum/config_entry/flag/rust_atmos_pipeline
+	deprecated_by = /datum/config_entry/flag/rust_atmos_threaded
+
+/datum/config_entry/flag/rust_atmos_pipeline/DeprecationUpdate(value)
+	return value
+
 /datum/controller/subsystem/air
 	var/datum/banda_atmos_phase/world_adapter/native_atmos
-	/// Worker exposure is drained by an ordinary MC phase before the next calculation.
+	/// Worker effects and exposure are drained by ordinary MC phases before the next calculation.
 	var/native_atoms_pending = FALSE
+
+/// MC counts launches independently of the native frame whose effects are being delivered.
+/datum/controller/subsystem/air/proc/get_air_cycle()
+	return native_atmos?.effect_cycle || times_fired
 
 /// Rust owns tile gas. DM consumers borrow only the cells they access between calculations.
 /// No DM object/reference crosses the DLL boundary. Passive cells need no binding datum.
@@ -16,10 +27,17 @@
 	var/initializing = TRUE
 	var/synchronizing = FALSE
 	var/air_cycle = 0
+	/// Scoped to one publication or effect packet, including nested synchronous gas calls.
+	var/effect_cycle = 0
 	var/threaded = FALSE
 	var/worker_cycle = 0
 	var/completed_ticks = 0
 	var/publication_pending = FALSE
+	/// Only the normal SSair worker launch enables budgeted delivery; synchronous API calls stay synchronous.
+	var/effects_ready = FALSE
+	var/list/effect_commands = list()
+	var/effect_cursor = 1
+	var/effect_chunks = 0
 	var/tick_started = 0
 	/// Wall latency, including await; TICK_USAGE_REAL cannot span a suspended proc.
 	var/last_tick_ms = 0
@@ -54,6 +72,14 @@
 		properties_ready = native(50) == 1
 	catch
 		properties_ready = FALSE
+	try
+		value_queries_ready = native(87) == 1
+	catch
+		value_queries_ready = FALSE
+	try
+		air_references_ready = native(88) == 1
+	catch
+		air_references_ready = FALSE
 	if(properties_ready)
 		try
 			configure_visual_publication()
@@ -84,11 +110,6 @@
 		operations_ready = native(82) == 1
 	catch
 		operations_ready = FALSE
-	pipelined = CONFIG_GET(flag/rust_atmos_pipeline)
-	if(pipelined && (!threaded || !operations_ready))
-		native_ready = FALSE
-		startup_error = "Pipeline atmosphere requires the worker and gas-operation protocol"
-		return
 	if(threaded)
 		try
 			native(38, 0, 0)
@@ -298,10 +319,10 @@
 		if(spot.binding?.owner == src && !spot.binding.pending_rebind)
 			import_hotspot(spot)
 
-/datum/banda_atmos_phase/world_adapter/run_tick(synchronous)
+/datum/banda_atmos_phase/world_adapter/run_tick(synchronous, budgeted = FALSE)
 	if(isnull(synchronous))
 		synchronous = !threaded
-	if((!synchronous && !threaded) || initializing || closed || running || worker_cycle || processing || in_safe_callback)
+	if((!synchronous && !threaded) || initializing || closed || running || worker_cycle || processing || in_safe_callback || effects_ready)
 		CRASH("World atmosphere phase cannot overlap itself")
 	if(length(uninitialized_cells))
 		return FALSE
@@ -342,14 +363,15 @@
 	try
 		if(!synchronous)
 			synchronize_calculation()
-		finish_publication()
+		finish_publication(budgeted)
 	catch(var/exception/publication_error)
 		// A DM effect can throw after Rust has published. Keep its gas, but let the next MC fire run.
 		if(!running)
 			worker_cycle = 0
 		throw publication_error
 	worker_cycle = 0
-	completed_ticks++
+	if(!budgeted)
+		completed_ticks++
 	return TRUE
 
 /// A result-returning API may need fresh gas before SSair resumes. Only wait for numeric work:
@@ -367,13 +389,19 @@
 	// Like Paradise, safe callbacks precede world commands; a breath can precede pressure movement.
 	project_changes()
 
-/datum/banda_atmos_phase/world_adapter/proc/finish_publication()
+/datum/banda_atmos_phase/world_adapter/proc/finish_publication(budgeted = FALSE)
 	SHOULD_NOT_SLEEP(TRUE)
 	if(!publication_pending)
 		return
 	processing = TRUE
 	try
-		apply_frame()
+		if(budgeted)
+			effect_commands = collect_effect_commands()
+			effect_cursor = 1
+			begin_effect_packet()
+			effects_ready = TRUE
+		else
+			apply_frame()
 	catch(var/exception/publication_error)
 		processing = FALSE
 		throw publication_error
@@ -407,24 +435,30 @@
 
 /datum/banda_atmos_phase/world_adapter/apply_frame()
 	SHOULD_NOT_SLEEP(TRUE)
-	if(pipelined)
-		collect_pipeline_commands()
-		return
 	while(TRUE)
-		project_changes()
-		run_waiting_callbacks()
-		project_changes()
-		var/list/commands = list()
-		native(5, commands)
+		var/list/commands = collect_effect_commands()
 		if(!length(commands))
 			break
 		var/datum/banda_atmos_safe/world_commands/world/executor = new()
 		executor.owner = src
+		executor.cycle = publication_pending ? air_cycle : SSair.get_air_cycle()
 		executor.run_args = list(commands)
 		run_callback(executor)
 	refresh_debug_overlays()
 
+/datum/banda_atmos_phase/world_adapter/proc/collect_effect_commands()
+	SHOULD_NOT_SLEEP(TRUE)
+	project_changes()
+	run_waiting_callbacks()
+	project_changes()
+	var/list/commands = list()
+	native(5, commands)
+	return commands
+
 /datum/banda_atmos_phase/world_adapter/proc/project_changes()
+	var/previous_cycle = effect_cycle
+	if(publication_pending || effects_ready)
+		effect_cycle = air_cycle
 	clear_air_readings()
 	var/list/ids = list()
 	var/changes_received = FALSE
@@ -555,8 +589,10 @@
 				if(invalidated && !QDELETED(invalidated))
 					invalidated.cache_current = FALSE
 		synchronizing = FALSE
+		effect_cycle = previous_cycle
 		throw error
 	synchronizing = FALSE
+	effect_cycle = previous_cycle
 
 /datum/banda_atmos_phase/world_adapter/borrow_air(datum/banda_atmos_cell/cell)
 	if(!in_safe_callback || running || !cell || cell.owner != src || cell.pending_rebind)
@@ -574,9 +610,11 @@
 	// Restore the completed prefix before handing air back to DM, even inside a failing callback.
 	if(in_safe_callback && !closed && !running)
 		finish_callback(FALSE)
+	if(!closed && !running)
+		finish_effect_packet()
+	effects_ready = FALSE
+	effect_commands.Cut()
 	closed = TRUE
-	deferred_commands.Cut()
-	active_commands.Cut()
 	clear_air_readings()
 	UnregisterSignal(SSdcs, COMSIG_GLOB_ATOM_AFTER_POST_INIT)
 	QDEL_LIST(debug_groups)
@@ -589,6 +627,7 @@
 		SSair.native_atmos = null
 	if(native_id && length(positions))
 		restore_dm_air()
+	detach_air_references()
 	positions.Cut()
 	dirty_gas.Cut()
 	dirty_topology.Cut()
@@ -685,18 +724,57 @@
 	air = space_gas
 	air.last_share = last_share
 
-/datum/banda_atmos_safe/world_commands/world/on_run(list/commands, start = 1)
+/// No gas copy is needed: the ordinary callback already owns these issued mixtures.
+/datum/banda_atmos_phase/world_adapter/proc/begin_effect_packet()
+	SHOULD_NOT_SLEEP(TRUE)
+	if(!isnull(effect_mixtures))
+		CRASH("Native effect packet is already active")
+	effect_mixtures = list()
+
+/// A later turf can edit an earlier turf's held list without borrowing it again.
+/datum/banda_atmos_phase/world_adapter/proc/finish_effect_packet()
+	SHOULD_NOT_SLEEP(TRUE)
+	if(isnull(effect_mixtures))
+		return
+	var/list/mixtures = effect_mixtures
+	effect_mixtures = null
+	for(var/datum/banda_atmos_cell/cell as anything in mixtures)
+		// Rebind/replacement removes the old entry; identity also guards explicit mixture replacement.
+		if(!QDELETED(cell) && cell.owner == src && cell.target && !cell.pending_rebind && cell.cached_air == mixtures[cell])
+			working_mixtures[cell] = mixtures[cell]
+	finish_callback(FALSE)
+
+/datum/banda_atmos_safe/world_commands/world
+	var/cycle = 0
+
+/datum/banda_atmos_safe/world_commands/world/invoke()
+	var/datum/banda_atmos_phase/world_adapter/phase = owner
+	var/previous_cycle = phase.effect_cycle
+	phase.effect_cycle = cycle || SSair.get_air_cycle()
+	try
+		. = ..()
+	catch(var/exception/error)
+		phase.effect_cycle = previous_cycle
+		throw error
+	phase.effect_cycle = previous_cycle
+
+/datum/banda_atmos_safe/world_commands/world/on_run(list/commands, start = 1, budgeted = FALSE)
 	var/datum/banda_atmos_phase/world_adapter/world_owner = owner
 	for(var/index = start; index <= length(commands); index += 5)
 		if(QDELETED(world_owner) || world_owner.closed)
-			return
+			return length(commands) + 1
 		var/turf/target = world_owner.positions[commands[index]]
 		var/datum/banda_atmos_cell/cell = world_owner.ensure_binding(target)
 		if(cell && !cell.pending_rebind && cell.binding_version == commands[index + 1])
 			// Borrow before skipping empty notifications so direct edits through held mixtures still commit.
 			if(cell.cached_air && isopenturf(target) && target.has_turf_air())
 				world_owner.borrow_air(cell)
-			if(commands[index + 2] == 13 && isopenturf(target) && !target._listen_lookup?[COMSIG_TURF_EXPOSE] && \
-				!(target.flags_1 & ATMOS_IS_PROCESSING_1) && !target.should_atmos_process(null, commands[index + 3]))
-				continue
-			cell.execute(commands[index + 2], commands[index + 3], commands[index + 4])
+			var/skip_exposure = commands[index + 2] == 13 && isopenturf(target) && !target._listen_lookup?[COMSIG_TURF_EXPOSE] && \
+				!(target.flags_1 & ATMOS_IS_PROCESSING_1) && !target.should_atmos_process(null, commands[index + 3])
+			if(!skip_exposure)
+				cell.execute(commands[index + 2], commands[index + 3], commands[index + 4])
+		var/next = index + 5
+		// Keep consecutive effects on one turf together, including gas-mutating fire_act.
+		if(budgeted && (next > length(commands) || commands[next] != commands[index]) && (TICK_USAGE > Master.current_ticklimit || SSair.state != SS_RUNNING))
+			return next
+	return length(commands) + 1

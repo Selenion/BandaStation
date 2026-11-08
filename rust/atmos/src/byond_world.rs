@@ -109,6 +109,94 @@ pub(super) unsafe fn dispatch(api: &Api, store: &mut Store, args: &[Value]) -> R
     };
     let opcode = api.integer(field(0)?)?;
     match (opcode, args.len()) {
+        (88, 2) => {} // Live mixture observations are optional under ABI 11.
+        (88, 4) if api.integer(field(2)?)? == 2 => {
+            api.output(field(3)?, &[store.air_reference_count() as f32])?;
+        }
+        (88, 5) if api.integer(field(2)?)? == 0 => {
+            let target = operations::target(&api.numbers(field(3)?)?)?;
+            api.output(field(4)?, &[])?;
+            let handle = store
+                .acquire_air_reference(target)
+                .map_err(|error| format!("{error:?}"))?;
+            if let Err(error) =
+                api.output(field(4)?, &[handle.slot as f32, handle.generation as f32])
+            {
+                store
+                    .release_air_reference(handle)
+                    .map_err(|error| format!("{error:?}"))?;
+                return Err(error);
+            }
+        }
+        (88, 4) if api.integer(field(2)?)? == 1 => {
+            let handle = pipes::port_handle(api, field(3)?)?;
+            store
+                .release_air_reference(handle)
+                .map_err(|error| format!("{error:?}"))?;
+        }
+        (90, 5) => {
+            let handle = pipes::port_handle(api, field(2)?)?;
+            let sample = store
+                .air_reference_sample(handle)
+                .ok_or("Stale air reference")?;
+            let (air, archive) = pipes::port_packets(&sample);
+            api.output(field(3)?, &air)?;
+            api.output(field(4)?, &archive)?;
+            return Ok(
+                if matches!(sample.boundary, crate::transport::Boundary::Space) {
+                    3.0
+                } else if sample.air.turf_heat_capacity {
+                    2.0
+                } else {
+                    1.0
+                },
+            );
+        }
+        (87, 2) => {} // Additive value-query API; existing ABI 11 DLLs retain the legacy path.
+        (87 | 89, 6) => {
+            let requests = api.numbers(field(2)?)?;
+            let width = if opcode == 87 { 3 } else { 2 };
+            if requests.len() > 256 * width || requests.len() % width != 0 {
+                return Err("Invalid air query batch".into());
+            }
+            let gases = api.numbers(field(3)?)?;
+            if gases.len() > GAS_COUNT {
+                return Err("Too many requested gases".into());
+            }
+            let gases = gases
+                .into_iter()
+                .map(|value| {
+                    let gas = integer(value)? as usize;
+                    if gas >= GAS_COUNT {
+                        return Err("Invalid query gas".into());
+                    }
+                    Ok(gas)
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            let all = api.integer(field(4)?)?;
+            if all > 1 || (all == 1 && !gases.is_empty()) {
+                return Err("Invalid air query mode".into());
+            }
+            let output = if opcode == 87 {
+                let targets = requests
+                    .chunks_exact(3)
+                    .map(operations::target)
+                    .collect::<Result<Vec<_>, _>>()?;
+                packet::air_values(store, &targets, &gases, all == 1)
+            } else {
+                let handles = requests
+                    .chunks_exact(2)
+                    .map(|values| {
+                        Ok(crate::pipenet::Handle {
+                            slot: integer(values[0])?,
+                            generation: integer(values[1])?,
+                        })
+                    })
+                    .collect::<Result<Vec<_>, String>>()?;
+                packet::reference_values(store, &handles, &gases, all == 1)
+            };
+            api.output(field(5)?, &output)?;
+        }
         (50, 2) => {} // Additive compact-property capability; ABI 11 remains compatible.
         (51, 4) => {
             let ids = api.numbers(field(2)?)?;

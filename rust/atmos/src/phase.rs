@@ -20,6 +20,8 @@ mod writes;
 use writes::{apply, drain_effects};
 #[path = "phase_operations.rs"]
 mod operations;
+#[path = "phase_references.rs"]
+mod references;
 
 #[cfg(test)]
 #[path = "phase_tests.rs"]
@@ -283,6 +285,7 @@ struct PendingWrite {
 pub struct Store {
     pub visibility: Option<crate::visibility::Visibility>,
     pub pipes: crate::pipenet::Pool,
+    references: crate::pipenet::Pool<references::AirReference>,
     operation_edits: Option<BTreeMap<crate::operations::Target, (crate::transport::Sample, bool)>>,
     /// Air edited by DM equipment before the outer safe callback decides whether to publish it.
     #[cfg(feature = "byond")]
@@ -309,6 +312,7 @@ impl Default for Store {
         Self {
             visibility: None,
             pipes: crate::pipenet::Pool::default(),
+            references: crate::pipenet::Pool::default(),
             operation_edits: None,
             #[cfg(feature = "byond")]
             scrubber_edits: Vec::new(),
@@ -502,6 +506,12 @@ impl Store {
     pub fn write(&mut self, write: Write) -> Result<(), Error> {
         if self.closed {
             return Err(Error::Closed);
+        }
+        if matches!(write, Write::ReplaceFull(..) | Write::Remove(_)) {
+            let id = write.cell_id();
+            if let Some(version) = self.published_binding_version(id) {
+                self.retire_air_references(crate::operations::Target::Cell { id, version });
+            }
         }
         if self.operation_edits.is_some() && self.intercept_operation_write(&write)? {
             return Ok(());
@@ -781,6 +791,7 @@ impl Store {
     }
 
     pub fn close(&mut self) {
+        self.references = crate::pipenet::Pool::default();
         self.operation_edits = None;
         self.visibility = None;
         self.pipes = crate::pipenet::Pool::default();

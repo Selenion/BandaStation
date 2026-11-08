@@ -534,6 +534,9 @@
 		var/offset = phase.air_reading_offset(src)
 		if(offset)
 			return phase.air_reading_packet[offset + BANDA_ATMOS_HEAT_CAPACITY]
+	var/list/values = phase?.read_air_values(src)
+	if(values)
+		return values[BANDA_AIR_HEAT_CAPACITY]
 	// BANDASTATION ADDITION END
 	. = get_readonly_air().heat_capacity() // BANDASTATION EDIT - Native gas access.
 
@@ -544,6 +547,9 @@
 		var/offset = phase.air_reading_offset(src)
 		if(offset)
 			return phase.air_reading_packet[offset + BANDA_ATMOS_TEMPERATURE]
+	var/list/values = phase?.read_air_values(src)
+	if(values)
+		return values[BANDA_AIR_TEMPERATURE]
 	// BANDASTATION ADDITION END
 	. = get_readonly_air().temperature // BANDASTATION EDIT - Native gas access.
 
@@ -551,6 +557,9 @@
 	// BANDASTATION ADDITION START - Preserve the original energy update inside a safe phase.
 	if(SSair.native_atmos && !SSair.native_atmos.in_safe_callback)
 		return SSair.native_atmos.invoke(CALLBACK(src, TYPE_PROC_REF(/turf, TakeTemperature), temp))
+	if(SSair.native_atmos?.try_change_temperature(src, temp))
+		air_update_turf(FALSE, FALSE)
+		return
 	// BANDASTATION ADDITION END
 	var/datum/gas_mixture/current_air = get_mutable_air() // BANDASTATION ADDITION
 	current_air.temperature += temp // BANDASTATION EDIT

@@ -18,6 +18,15 @@ from run import stage
 from runtime_check import validate_runtime_logs
 
 
+def original_air_consumers(output):
+    """Keep an independent pre-migration oracle rather than comparing two changed callers."""
+    revision = "c65fbacb60bddd493e079d4aa03456aae52dee64"
+    destination = output / "original-air-consumers.dm.in"
+    # A checkout must remain testable after squash/rebase or from a shallow clone.
+    shutil.copy2(ROOT / "tools/atmos/original_air_consumers.dm.in", destination)
+    return destination, dict(revision=revision, sha256=hashlib.sha256(destination.read_bytes()).hexdigest())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--byond", type=Path, required=True)
@@ -46,10 +55,11 @@ def main():
     shutil.copy2(ROOT / "_maps/map_jsons/metastation.json", output / "data/next_map.json")
     (output / "phase-cases.json").write_text(json.dumps(inputs), encoding="utf-8")
     (output / "phase-network-cases.json").write_text(json.dumps([c["input"] for c in networks]), encoding="utf-8")
+    original, original_hash = original_air_consumers(output)
     dme = ROOT / "local-atmos-phase.test.dme"
-    fixtures = ("world_network", "phase_world", "phase_network", "inherit_world", "binding_world", "deferred_world", "api_world", "properties_world", "vent_world", "scrubber_world", "contact_world", "debug_world", "exchange_world", "operations_world", "threaded_world", "feedback_world", "threaded_error_world", "teardown_world", "pipeline_world")
+    fixtures = ("world_network", "phase_world", "phase_network", "inherit_world", "binding_world", "deferred_world", "api_world", "properties_world", "values_world", "live_reference_world", "original_life_consumers", "life_world", "vent_world", "scrubber_world", "contact_world", "debug_world", "exchange_world", "operations_world", "threaded_world", "feedback_world", "threaded_error_world", "teardown_world", "completion_world", "budget_boundary_world", "cycle_world", "effect_boundary_world", "chunk_world")
     dme.write_text((ROOT / "tgstation.dme").read_text(encoding="utf-8-sig") + "\n" + "".join(
-        f'#include "tools/atmos/{fixture}.dm.in"\n' for fixture in fixtures), encoding="utf-8", newline="\n")
+        f'#include "tools/atmos/{fixture}.dm.in"\n' for fixture in fixtures) + f'\n#include "{original.as_posix()}"\n', encoding="utf-8", newline="\n")
     fixture_paths = [f"tools/atmos/{fixture}.dm.in" for fixture in fixtures]
     fixture_hashes = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in fixture_paths}
     print("Compiling native phase integration harness", flush=True)
@@ -112,7 +122,7 @@ def main():
         if value != 1:
             failures.append(dict(id=key, difference="Failed deferred initialization check"))
     api = actual["api"]
-    assert len(api) == 83, "Incomplete lazy world API/property checks"
+    assert len(api) == 245, "Incomplete lazy world API/property checks"
     for key, value in api.items():
         if value != 1:
             failures.append(dict(id=key, difference="Failed lazy world API check"))
@@ -155,15 +165,50 @@ def main():
         failures.append(dict(id="native_contact_burn", difference="Contact exposure differs from original DM", observed=contacts))
     debug = actual["debug"]
     threaded = actual["threaded"]
-    pipeline = actual["pipeline"]
-    assert len(pipeline) == 21, "Incomplete pipeline checks"
-    for key, value in pipeline.items():
+    completion = actual["completion"]
+    assert len(completion) == 11, "Incomplete worker completion checks"
+    for key, value in completion.items():
         if value != 1:
-            failures.append(dict(id=key, difference="Pipeline boundary differs"))
+            failures.append(dict(id=key, difference="Worker completion boundary differs"))
     assert len(threaded) == 31, "Incomplete threaded world checks"
     for key, value in threaded.items():
         if value != 1:
             failures.append(dict(id=key, difference="Threaded world behavior differs"))
+    budget_boundary = actual["budget_boundary"]
+    assert set(budget_boundary) == {"current", "next_mc"}
+    for state in budget_boundary.values():
+        assert state["coal_deleted"] == 1 and state["completed_ticks"] == 2, "Incomplete budget boundary diagnostic"
+    for side in ("left", "right"):
+        difference = transport.difference(budget_boundary["current"][side], budget_boundary["next_mc"][side], "budget_boundary." + side)
+        if difference:
+            failures.append(dict(id="deferred_effect_cycle", difference=difference))
+    cycles = actual["cycles"]
+    assert len(cycles) == 5, "Incomplete frame cycle checks"
+    for key, value in cycles.items():
+        if value != 1:
+            failures.append(dict(id=key, difference="Effect frame cycle differs"))
+    effect_boundary = actual["effect_boundary"]
+    assert set(effect_boundary) == {"dm", "atomic", "split"}, "Incomplete live-list boundary diagnostic"
+    assert all(s["fire_calls"] == 1 for s in effect_boundary.values())
+    effect_errors = actual["effect_errors"]
+    for label, cases in (("effect_boundary", effect_boundary), ("effect_errors", effect_errors)):
+        assert set(cases) == {"dm", "atomic", "split"}
+        assert cases["dm"]["native_n2"] == 103 and cases["dm"]["caught"] == (label == "effect_errors")
+        for mode in ("atomic", "split"):
+            if cases[mode] != cases["dm"]:
+                failures.append(dict(id=label + "_" + mode, difference="Live-list writes differ from DM", observed=cases))
+    retained = actual["retained"]
+    assert len(retained) == 11, "Incomplete retained mixture lifetime checks"
+    for key, value in retained.items():
+        if value != 1:
+            failures.append(dict(id=key, difference="Retained mixture lifetime differs"))
+    chunks = actual["chunks"]
+    assert len(chunks["checks"]) == 9, "Incomplete MC chunk checks"
+    for key, value in chunks["checks"].items():
+        if value != 1:
+            failures.append(dict(id=key, difference="MC chunk contract differs", observed=chunks))
+    if chunks["visibility"]["api_readonly"] != chunks["visibility"]["held"]:
+        failures.append(dict(id="chunk_api_reads_retained_air", difference="Read API returned a stale retained mixture", observed=chunks))
     feedback = actual["feedback"]
     threaded_errors = actual["threaded_errors"]
     assert set(threaded_errors) == {"dm", "sync", "worker"}, "Incomplete item failure comparison"
@@ -248,8 +293,8 @@ def main():
                   dll_sha256=hashlib.sha256((output / "bandastation_atmos.dll").read_bytes()).hexdigest(),
                   binary_sha256=hashlib.sha256((output / "tgstation.dmb").read_bytes()).hexdigest(), feedback=feedback, threaded_errors=threaded_errors,
                   harness_sha256=fixture_hashes["tools/atmos/phase_world.dm.in"],
-                  fixture_sha256=fixture_hashes,
-                  scenarios=len(pairs), network_scenarios=len(networks), network_ticks=sum(c["input"]["ticks"] for c in networks), checks=checks, inheritance=inheritance, bindings=binding_checks, deferred=deferred, api=api, vents=vents, scrubbers=scrubbers, contacts=contacts, debug=debug, exchange=exchange, exchange_error=exchange_error, exchange_effects=exchange_effects, exchange_spawn=exchange_spawn, threaded=threaded, pipeline=pipeline, teardown=teardown, failures=failures)
+                  fixture_sha256=fixture_hashes, original_consumers=original_hash,
+                  scenarios=len(pairs), network_scenarios=len(networks), network_ticks=sum(c["input"]["ticks"] for c in networks), checks=checks, inheritance=inheritance, bindings=binding_checks, deferred=deferred, api=api, vents=vents, scrubbers=scrubbers, contacts=contacts, debug=debug, exchange=exchange, exchange_error=exchange_error, exchange_effects=exchange_effects, exchange_spawn=exchange_spawn, threaded=threaded, completion=completion, budget_boundary=budget_boundary, cycles=cycles, effect_boundary=effect_boundary, effect_errors=effect_errors, retained=retained, chunks=chunks, teardown=teardown, failures=failures)
     (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
     print(f"Native phase: {len(pairs)} world scenarios, {len(networks)} graphs, {len(checks)} queue/lifetime checks, {len(vents) - 1} vent and {len(scrubbers) - 2 + len(scrubbers['admission'])} scrubber scenarios, {len(failures)} failures")
     for failure in failures:

@@ -97,11 +97,16 @@
 
 	. += special_moniker
 
-/mob/living/basic/regal_rat/handle_environment(datum/gas_mixture/environment)
+/mob/living/basic/regal_rat/handle_environment(datum/gas_mixture/environment, seconds_per_tick, times_fired, datum/banda_atmos_air_reference/air_reference) // BANDASTATION EDIT - Preserve missing versus present-zero gas through native reads.
 	. = ..()
-	if(stat == DEAD || isnull(environment) || isnull(environment.moles[/datum/gas/miasma]))
+	// BANDASTATION EDIT START - Retain a second live read after the parent may run callbacks.
+	if(stat == DEAD || (!environment && !air_reference))
 		return
-	var/miasma_percentage = environment.moles[/datum/gas/miasma] / environment.total_moles()
+	var/miasma = air_reference ? air_reference.gas_moles(/datum/gas/miasma) : environment.moles[/datum/gas/miasma]
+	if(isnull(miasma))
+		return
+	var/miasma_percentage = miasma / (air_reference ? air_reference.total_moles() : environment.total_moles())
+	// BANDASTATION EDIT END
 	if(miasma_percentage >= 0.25)
 		heal_bodypart_damage(1)
 

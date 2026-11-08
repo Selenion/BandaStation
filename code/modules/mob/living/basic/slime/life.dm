@@ -9,7 +9,7 @@
 
 	handle_slime_stasis()
 
-/mob/living/basic/slime/handle_environment(datum/gas_mixture/environment, seconds_per_tick)
+/mob/living/basic/slime/handle_environment(datum/gas_mixture/environment, seconds_per_tick, times_fired, datum/banda_atmos_air_reference/air_reference) // BANDASTATION EDIT - Forward the captured native air reference.
 	..()
 	if(bodytemperature <= (T0C - 40)) // stun temperature
 		apply_status_effect(/datum/status_effect/freon, SLIME_COLD)
@@ -18,9 +18,10 @@
 
 ///Handles if a slime's environment would cause it to enter stasis. Ignores TRAIT_STASIS
 /mob/living/basic/slime/proc/handle_slime_stasis()
-	var/datum/gas_mixture/environment = loc.return_air()
-
-	var/bz_percentage = environment.moles[/datum/gas/bz] / environment.total_moles()
+	// BANDASTATION EDIT START - Stasis needs two values, not a persistent ambient gas mixture.
+	var/list/environment = loc.return_air_values(list(/datum/gas/bz))
+	var/bz_percentage = environment[BANDA_AIR_GASES] / environment[BANDA_AIR_TOTAL_MOLES]
+	// BANDASTATION EDIT END
 
 	if(bz_percentage >= 0.05 && bodytemperature < (T0C + 100)) //Check if we should be in stasis
 		if(!has_status_effect(/datum/status_effect/grouped/stasis)) //Check if we don't have the status effect yet

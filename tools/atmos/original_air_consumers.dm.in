@@ -1,0 +1,122 @@
+// Independent pre-migration Banda oracle from c65fbacb60bddd493e079d4aa03456aae52dee64.
+// Source: carbon/life.dm::breathe and carbon/human/_species.dm::body_temperature_skin.
+// Only proc names changed; ordinary legacy getter behavior remains the reference.
+/mob/living/carbon/proc/banda_value_original_breathe(seconds_per_tick)
+	// BANDASTATION ADDITION START - Read the environment and remove its sample in the same safe phase.
+	if(SSair.native_atmos?.threaded && !SSair.native_atmos.in_safe_callback)
+		return SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(breathe), seconds_per_tick))
+	// BANDASTATION ADDITION END
+	var/obj/item/organ/lungs = get_organ_slot(ORGAN_SLOT_LUNGS)
+	var/is_on_internals = FALSE
+
+	if(SEND_SIGNAL(src, COMSIG_CARBON_ATTEMPT_BREATHE, seconds_per_tick) & COMSIG_CARBON_BLOCK_BREATH)
+		return
+
+	SEND_SIGNAL(src, COMSIG_CARBON_PRE_BREATHE, seconds_per_tick)
+
+	var/datum/gas_mixture/environment
+	if(loc)
+		environment = loc.return_air()
+
+	var/datum/gas_mixture/breath
+
+	if(lungs?.organ_flags & ORGAN_FAILING)
+		losebreath++
+	else if(!get_organ_slot(ORGAN_SLOT_BREATHING_TUBE))
+		if(stat == HARD_CRIT || pulledby?.grab_state >= GRAB_KILL)
+			losebreath++  //You can't breath at all when in critical or when being choked, so you're going to miss a breath
+
+		else if(stat == SOFT_CRIT)
+			losebreath += 0.25 //You're having trouble breathing in soft crit, so you'll miss a breath one in four times
+
+	//Suffocate
+	if(losebreath >= 1) //You've missed a breath, take oxy damage
+		losebreath--
+		if(isobj(loc))
+			var/obj/loc_as_obj = loc
+			loc_as_obj.handle_internal_lifeform(src,0)
+
+	else
+		//Breathe from internal
+		breath = get_breath_from_internal(BREATH_VOLUME)
+
+		if(isnull(breath)) //in case of 0 pressure internals
+
+			if(isobj(loc)) //Breathe from loc as object
+				var/obj/loc_as_obj = loc
+				breath = loc_as_obj.handle_internal_lifeform(src, BREATH_VOLUME)
+
+			else if(isturf(loc)) //Breathe from loc as turf
+				var/breath_moles = 0
+				if(environment)
+					breath_moles = environment.total_moles()*BREATH_PERCENTAGE
+
+				breath = loc.remove_air(breath_moles)
+		else //Breathe from loc as obj again
+			is_on_internals = TRUE
+
+			if(isobj(loc))
+				var/obj/loc_as_obj = loc
+				loc_as_obj.handle_internal_lifeform(src,0)
+
+	if(check_breath(breath) && is_on_internals)
+		// successful breath from internals, try to play the breathing sound
+		if(!HAS_TRAIT(src, TRAIT_DEAF) && client?.prefs?.read_preference(/datum/preference/toggle/sound_breathing))
+			breathing_loop.start()
+
+	if(breath)
+		loc.assume_air(breath)
+
+
+/datum/species/proc/banda_value_original_skin(mob/living/carbon/human/humi, seconds_per_tick)
+
+	// change the core based on the skin temp
+	var/skin_core_diff = humi.bodytemperature - humi.coretemperature
+	// change rate of slightly below area to skin change rate and still having a solid curve
+	var/skin_core_change = get_temp_change_amount(skin_core_diff, BODYTEMP_SKIN_CORE_CHANGE_RATE * seconds_per_tick)
+
+	humi.adjust_coretemperature(skin_core_change)
+
+	// get the enviroment details of where the mob is standing
+	var/datum/gas_mixture/environment = humi.loc?.return_air()
+	if(!environment) // if there is no environment (nullspace) drop out here.
+		return
+
+	// Get the temperature of the environment for area
+	var/area_temp = humi.get_temperature(environment)
+
+	// Get the insulation value based on the area's temp
+	var/thermal_protection = humi.get_insulation_protection(area_temp)
+
+	// Changes to the skin temperature based on the area
+	var/area_skin_diff = area_temp - humi.bodytemperature
+	if(!humi.on_fire || area_skin_diff > 0)
+		// change rate near full speed as area temp has large impact on the surface
+		var/area_skin_change = get_temp_change_amount(area_skin_diff, BODYTEMP_AREA_SKIN_CHANGE_RATE * seconds_per_tick)
+
+		// We need to apply the thermal protection of the clothing when applying area to surface change
+		// If the core bodytemp goes over the normal body temp you are overheating and becom sweaty
+		// This will cause the insulation value of any clothing to reduced in effect (70% normal rating)
+		// we add 10 degree over normal body temp before triggering as thick insulation raises body temp
+		if(humi.get_body_temp_normal(apply_change=FALSE) + 10 < humi.coretemperature)
+			// we are overheating and sweaty insulation is not as good reducing thermal protection
+			area_skin_change = (1 - (thermal_protection * 0.7)) * area_skin_change
+		else
+			area_skin_change = (1 - thermal_protection) * area_skin_change
+
+		humi.adjust_bodytemperature(area_skin_change)
+
+	// Core to skin temp transfer, when not on fire
+	if(!humi.on_fire)
+		// Get the changes to the skin from the core temp
+		var/core_skin_diff = humi.coretemperature - humi.bodytemperature
+		// change rate to reflect temp back to the skin at a slightly higher rate than skin to core
+		var/core_skin_change = (1 + thermal_protection) * get_temp_change_amount(core_skin_diff, BODYTEMP_CORE_SKIN_CHANGE_RATE * seconds_per_tick)
+
+		// We do not want to over shoot after using protection
+		if(core_skin_diff > 0)
+			core_skin_change = min(core_skin_change, core_skin_diff)
+		else
+			core_skin_change = max(core_skin_change, core_skin_diff)
+
+		humi.adjust_bodytemperature(core_skin_change)

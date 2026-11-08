@@ -6,7 +6,7 @@ use crate::{
     Mixture,
 };
 
-fn target(values: &[f32]) -> Result<Target, String> {
+pub(super) fn target(values: &[f32]) -> Result<Target, String> {
     if values.len() != 3 {
         return Err("Invalid operation target".into());
     }

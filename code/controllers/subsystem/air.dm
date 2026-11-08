@@ -152,7 +152,14 @@ SUBSYSTEM_DEF(air)
 		if(state != SS_RUNNING)
 			return
 
-	// BANDASTATION ADDITION START - Finish the previous worker's exposure in a normal MC context.
+	// BANDASTATION ADDITION START - Deliver the previous frame within ordinary MC budgets.
+	if(native_atmos?.effects_ready)
+		while(native_atmos?.effects_ready)
+			native_atmos.process_effect_chunk()
+			if(MC_TICK_CHECK)
+				return
+		if(!native_atmos)
+			return
 	if(native_atmos?.threaded && native_atoms_pending)
 		// A preceding rebuild can pause before this phase has copied its own currentrun.
 		var/atoms_resumed = resumed && currentpart == SSAIR_PROCESS_ATOMS
@@ -193,19 +200,12 @@ SUBSYSTEM_DEF(air)
 		if(native_atmos)
 			timer = TICK_USAGE_REAL
 			var/datum/banda_atmos_phase/world_adapter/native_owner = native_atmos
-			if(native_owner.pipelined)
-				if(native_owner.start_pipeline_tick())
-					native_atoms_pending = TRUE
-					cost_turfs = MC_AVERAGE(cost_turfs, native_owner.last_tick_ms)
-					SStgui.update_uis(SSair)
-				currentpart = SSAIR_PIPENETS
-				return
 			if(native_owner.threaded)
 				native_atoms_pending = TRUE
 				// The previous worker's wall latency is separate from this MC phase's CPU budget.
 				cost_turfs = MC_AVERAGE(cost_turfs, native_owner.last_tick_ms)
 				SStgui.update_uis(SSair)
-				INVOKE_ASYNC(native_owner, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick))
+				INVOKE_ASYNC(native_owner, TYPE_PROC_REF(/datum/banda_atmos_phase, run_tick), FALSE, TRUE)
 				return
 			native_owner.run_tick()
 			if(QDELETED(native_owner) || native_atmos != native_owner)

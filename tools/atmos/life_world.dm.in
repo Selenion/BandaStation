@@ -1,0 +1,468 @@
+// Exercise the complete environment override chain against the frozen original DM procs.
+/datum/controller/subsystem/atmos_phase_test/proc/life_world_checks()
+	var/list/checks = list()
+	var/list/cases = list(
+		/mob/living,
+		/mob/living/basic,
+		/mob/living/carbon/alien/larva,
+		/mob/living/carbon/human,
+		/mob/living/carbon/alien/adult/hunter,
+		/mob/living/simple_animal,
+		/mob/living/basic/slime,
+		/mob/living/basic/regal_rat,
+		/mob/living/basic/blood_worm,
+	)
+	var/list/results = list()
+	for(var/path in cases)
+		for(var/temperature in list(100, T20C, 900))
+			var/list/expected = life_environment_case(FALSE, path, temperature)
+			var/list/actual = life_environment_case(TRUE, path, temperature)
+			var/key = "[path]_[temperature]"
+			checks["life_environment_[key]_matches_dm"] = value_numbers_match(expected["body"], actual["body"]) && value_numbers_match(expected["air"], actual["air"])
+			checks["life_environment_[key]_has_no_cache_or_leaked_scope"] = actual["clean"]
+			results[key] = list("dm" = expected, "rust" = actual)
+	for(var/change in list("add", "replace", "inherit", "operation"))
+		var/list/expected = life_environment_case(FALSE, /mob/living/carbon/human/banda_environment_callback, 333, change)
+		var/list/actual = life_environment_case(TRUE, /mob/living/carbon/human/banda_environment_callback, 333, change)
+		checks["life_pressure_callback_[change]_keeps_live_mixture"] = value_numbers_match(expected["observed"], actual["observed"]) && value_numbers_match(expected["body"], actual["body"])
+		checks["life_pressure_callback_[change]_releases_scope"] = actual["released"]
+		results[change] = list("dm" = expected, "rust" = actual)
+	checks += life_scope_checks()
+	checks += life_gas_consumers_checks()
+	for(var/kind in list("floor", "space", "planetary"))
+		var/list/expected = life_requirements_case(FALSE, kind)
+		var/list/actual = life_requirements_case(TRUE, kind)
+		checks["life_requirements_[kind]_read_before_gc"] = value_numbers_match(expected["readings"], actual["readings"])
+		checks["life_requirements_[kind]_preserve_keys_and_archive"] = expected["keys"] == actual["keys"] && value_numbers_match(expected["air"], actual["air"])
+		checks["life_requirements_[kind]_has_no_cache"] = actual["clean"]
+	checks += life_signal_checks()
+	checks += life_heretic_checks()
+	for(var/internals in list(FALSE, TRUE))
+		var/list/expected = life_plasma_heal_case(FALSE, internals)
+		var/list/actual = life_plasma_heal_case(TRUE, internals)
+		checks["life_plasma_heal_[internals]_matches_original"] = expected["power"] == actual["power"]
+		checks["life_plasma_heal_[internals]_has_no_cache"] = actual["clean"]
+	WRITE_FILE(file("life-environment.json"), json_encode(results))
+	return checks
+
+/turf/open/floor/iron/banda_life_planetary
+	planetary_atmos = TRUE
+	initial_gas_mix = OPENTURF_DEFAULT_ATMOS
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_requirements_case(native, kind)
+	var/turf/open/target = floor_at(168, 180)
+	if(kind == "space")
+		target = target.ChangeTurf(/turf/open/space)
+	else
+		if(kind == "planetary")
+			target = target.ChangeTurf(/turf/open/floor/iron/banda_life_planetary)
+		target.air.moles.Cut()
+		target.air.moles[/datum/gas/nitrogen] = 100
+		target.air.moles[/datum/gas/oxygen] = MOLAR_ACCURACY / 2
+		target.air.moles_archive[/datum/gas/oxygen] = MOLAR_ACCURACY / 2
+	target.banda_air_requested = FALSE
+	var/datum/element/atmos_requirements/element = new
+	var/datum/banda_atmos_phase/world_adapter/phase
+	var/list/readings
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(list(target))
+		phase.native(30)
+		phase.initializing = FALSE
+		readings = element.get_atmos_req_list(target)
+	else
+		readings = element.banda_life_original_requirements(target)
+	var/clean = !native || (!target.banda_atmos_cell?.cached_air && !target.banda_atmos_cell?.readonly_air)
+	var/datum/gas_mixture/air = target.air
+	if(native)
+		var/datum/banda_atmos_cell/cell = phase.ensure_binding(target)
+		air = banda_atmos_decode_air(cell.read_packet(), cell.read_metadata(), cell.native_air_kind)
+	var/list/result = list("readings" = list(readings["plas"], readings["oxy"], readings["n2"], readings["co2"]), "keys" = json_encode(list(air.moles, air.moles_archive)), "air" = banda_atmos_full_packet(air), "clean" = clean)
+	qdel(element)
+	qdel(phase)
+	return result
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_gas_consumers_checks()
+	var/list/checks = list()
+	for(var/tree in list(FALSE, TRUE))
+		var/list/expected = life_gas_consumer_case(FALSE, tree)
+		var/list/actual = life_gas_consumer_case(TRUE, tree)
+		checks["life_gas_consumer_[tree]_matches_original"] = value_numbers_match(expected["values"], actual["values"]) && value_numbers_match(expected["body"], actual["body"])
+		checks["life_gas_consumer_[tree]_keeps_no_tile_cache"] = actual["clean"]
+		checks["life_gas_consumer_[tree]_exercised"] = tree ? actual["values"][BANDA_AIR_GASES - BANDA_AIR_TEMPERATURE + 1] > 0 : actual["body"][1]
+		WRITE_FILE(file("life-gas-consumer-[tree].json"), json_encode(list("dm" = expected, "rust" = actual)))
+	var/list/expected = life_gas_consumer_case(FALSE, TRUE, TRUE)
+	var/list/actual = life_gas_consumer_case(TRUE, TRUE, TRUE)
+	checks["life_planetary_tree_matches_original"] = value_numbers_match(expected["values"], actual["values"]) && value_numbers_match(expected["body"], actual["body"])
+	checks["life_planetary_tree_has_no_cache"] = actual["clean"]
+	checks["life_planetary_tree_exercised"] = actual["values"][BANDA_AIR_GASES - BANDA_AIR_TEMPERATURE + 1] > 0
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_gas_consumer_case(native, tree, planetary = FALSE)
+	var/turf/open/target = floor_at(167, 180)
+	if(planetary)
+		target = target.ChangeTurf(/turf/open/floor/iron/banda_life_planetary)
+	target.air.moles.Cut()
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	target.air.set_gas(tree ? /datum/gas/carbon_dioxide : /datum/gas/bz, 100)
+	target.air.temperature = T20C
+	var/path = tree ? /mob/living/basic/tree : /mob/living/basic/slime
+	var/mob/living/basic/person = new path(target)
+	person.bodytemperature = T20C
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(list(target))
+		phase.native(30)
+		phase.initializing = FALSE
+	rand_seed(29051994)
+	if(tree)
+		for(var/index in 1 to 20)
+			if(native)
+				person.Life(2)
+			else
+				person.banda_life_original_Life(2)
+	else
+		var/mob/living/basic/slime/slime = person
+		if(native)
+			slime.handle_slime_stasis()
+		else
+			slime.banda_life_original_stasis()
+	var/list/body = list(!!person.has_status_effect(/datum/status_effect/grouped/stasis), person.bodytemperature)
+	var/list/values = target.return_air_values(list(/datum/gas/oxygen, /datum/gas/carbon_dioxide, /datum/gas/bz))
+	var/clean = !native || (!target.banda_atmos_cell?.cached_air && !target.banda_atmos_cell?.readonly_air && !length(phase.air_references))
+	qdel(person)
+	qdel(phase)
+	return list("body" = body, "values" = values.Copy(BANDA_AIR_TEMPERATURE), "clean" = clean)
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_environment_case(native, path, temperature, change)
+	var/turf/open/target = floor_at(165, 180)
+	target.air.moles.Cut()
+	target.air.set_gas(/datum/gas/nitrogen, temperature == 900 ? 1000 : 100)
+	target.air.moles[/datum/gas/miasma] = 0
+	target.air.temperature = temperature
+	var/mob/living/person = new path(target)
+	person.bodytemperature = 310
+	if(istype(person, /mob/living/basic/regal_rat))
+		person.adjust_brute_loss(5)
+	if(change)
+		var/mob/living/carbon/human/banda_environment_callback/probe = person
+		probe.change = change
+		probe.set_species(/datum/species/human/banda_environment_observer)
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase
+	var/datum/banda_atmos_air_reference/reference
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(list(target))
+		phase.native(30)
+		phase.initializing = FALSE
+		reference = target.return_air_reference()
+	rand_seed(29051994)
+	if(native)
+		person.handle_environment(null, 2, air_reference = reference)
+	else
+		person.banda_life_original_environment(target.return_air(), 2)
+	var/list/body = list(person.bodytemperature, person.get_brute_loss(), person.get_fire_loss(), person.get_oxy_loss(), person.stat)
+	var/list/observed
+	if(change)
+		var/mob/living/carbon/human/banda_environment_callback/probe = person
+		observed = probe.observed
+	qdel(reference)
+	var/released = !native || (!length(phase.air_references) && !phase.air_reference_count())
+	var/clean = released && (!native || !target.banda_atmos_cell?.cached_air)
+	var/list/air = target.return_air_values(list(/datum/gas/nitrogen, /datum/gas/miasma))
+	qdel(person)
+	qdel(phase)
+	return list("body" = body, "air" = air.Copy(BANDA_AIR_TEMPERATURE), "observed" = observed, "clean" = clean, "released" = released)
+
+/mob/living/carbon/human/banda_environment_callback
+	var/change
+	var/list/observed
+
+/mob/living/carbon/human/banda_environment_callback/calculate_affecting_pressure(pressure)
+	. = ..()
+	var/turf/open/target = get_turf(src)
+	if(change == "replace" || change == "inherit")
+		target = target.ChangeTurf(/turf/open/floor/wood, flags = change == "inherit" ? CHANGETURF_INHERIT_AIR : 0)
+	if(change == "operation")
+		if(SSair.native_atmos)
+			SSair.native_atmos.invoke(CALLBACK(src, PROC_REF(adjust_environment), target))
+		else
+			target.return_air().adjust_gas(/datum/gas/nitrogen, 17)
+	else
+		target.atmos_spawn_air("[GAS_N2]=17")
+
+/mob/living/carbon/human/banda_environment_callback/proc/adjust_environment(turf/open/target)
+	if(!SSair.native_atmos.try_adjust_air_operation(target, /datum/gas/nitrogen, 17))
+		CRASH("Life fixture unexpectedly materialized the tile's gas")
+
+/datum/species/human/banda_environment_observer/handle_gas_interaction(mob/living/carbon/human/banda_environment_callback/human, datum/gas_mixture/environment, seconds_per_tick, datum/banda_atmos_air_reference/air_reference)
+	. = ..()
+	var/list/values = air_reference ? air_reference.values(list(/datum/gas/nitrogen)) : banda_atmos_value_packet(environment, list(/datum/gas/nitrogen))
+	human.observed = list(values[BANDA_AIR_TEMPERATURE], values[BANDA_AIR_TOTAL_MOLES], values[BANDA_AIR_GASES])
+
+/datum/species/human/banda_environment_observer/banda_life_original_gases(mob/living/carbon/human/banda_environment_callback/human, datum/gas_mixture/environment, seconds_per_tick)
+	. = ..()
+	human.observed = list(environment.temperature, environment.total_moles(), environment.moles[/datum/gas/nitrogen])
+
+// Run the real Life entry point; only breathing is isolated from the environment test.
+/mob/living/carbon/human/banda_environment_life/handle_breathing(seconds_per_tick)
+	return
+
+/mob/living/carbon/human/banda_environment_life/error/handle_environment(datum/gas_mixture/environment, seconds_per_tick, times_fired, datum/banda_atmos_air_reference/air_reference)
+	throw EXCEPTION("BANDA_ATMOS_EXPECTED_LIFE_ERROR")
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_scope_checks()
+	var/list/checks = list()
+	var/turf/open/target = floor_at(166, 180)
+	target.air.moles.Cut()
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	target.air.moles[/datum/gas/miasma] = 0
+	var/mob/living/carbon/human/banda_environment_life/person = new(target)
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target))
+	phase.native(30)
+	phase.initializing = FALSE
+	person.Life(2)
+	checks["life_entry_point_does_not_materialize_air"] = !target.banda_atmos_cell?.cached_air && !length(phase.air_references) && !phase.air_reference_count()
+	var/datum/banda_atmos_air_reference/reference = target.return_air_reference()
+	checks["life_gas_lookup_keeps_present_zero"] = !isnull(reference.gas_moles(/datum/gas/miasma)) && reference.gas_moles(/datum/gas/miasma) == 0
+	checks["life_gas_lookup_keeps_missing_key"] = isnull(reference.gas_moles(/datum/gas/antinoblium))
+	qdel(reference)
+	qdel(person)
+	person = new /mob/living/carbon/human/banda_environment_life/error(target)
+	var/caught = FALSE
+	try
+		person.Life(2)
+	catch(var/exception/error)
+		caught = error.name == "BANDA_ATMOS_EXPECTED_LIFE_ERROR"
+	checks["life_error_releases_reference"] = caught && !length(phase.air_references) && !phase.air_reference_count()
+	qdel(person)
+	qdel(phase)
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_signal_checks()
+	var/list/checks = list()
+	for(var/action in list("pressure", "void", "fish"))
+		for(var/moles in list(0, 100, 1000))
+			var/list/expected = life_signal_case(FALSE, action, moles)
+			var/list/actual = life_signal_case(TRUE, action, moles)
+			checks["life_signal_[action]_[moles]_matches_original"] = value_numbers_match(expected["state"], actual["state"]) && value_numbers_match(expected["air"], actual["air"])
+			checks["life_signal_[action]_[moles]_has_no_cache"] = actual["clean"]
+	for(var/kind in list("floor", "space", "planetary"))
+		var/list/expected = life_scale_case(FALSE, kind)
+		var/list/actual = life_scale_case(TRUE, kind)
+		if(kind == "space")
+			// Approved exception: the old shared singleton cools both tiles, while native empty space stays at TCMB.
+			checks["life_scale_space_original_shared_temperature_exercised"] = expected["values"][1] == TCMB * 0.9 && expected["values"][length(expected["values"])] == TCMB * 0.9
+			checks["life_scale_space_stays_canonical_on_both_tiles"] = actual["values"][1] == TCMB && actual["values"][length(actual["values"])] == TCMB
+		else
+			checks["life_scale_[kind]_matches_original"] = value_numbers_match(expected["values"], actual["values"])
+		checks["life_scale_[kind]_has_no_cache"] = actual["clean"]
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_signal_case(native, action, moles)
+	var/turf/open/target = floor_at(169, 180)
+	target.air.moles.Cut()
+	target.air.moles[/datum/gas/nitrogen] = moles
+	target.air.temperature = action == "void" && moles == 100 ? 100 : T20C
+	var/mob/living/person
+	if(action == "void")
+		person = new /mob/living/carbon/human(target)
+	else
+		person = new /mob/living/basic(target)
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(list(target))
+		phase.native(30)
+		phase.initializing = FALSE
+	var/active = FALSE
+	if(action == "pressure")
+		var/datum/element/pressure_sensitive/element = new
+		if(native)
+			element.on_life(person, 2)
+		else
+			element.banda_life_original_pressure_signal(person, 2)
+		qdel(element)
+	else if(action == "void")
+		var/datum/action/changeling/void_adaption/adaption = new
+		if(native)
+			adaption.check_environment(person)
+		else
+			adaption.banda_life_original_void_check(person)
+		active = adaption.currently_active
+		qdel(adaption)
+	else
+		var/datum/fish_trait/emulsijack/trait = new
+		if(native)
+			trait.on_non_stasis_life(person, 2)
+		else
+			trait.banda_life_original_fish_life(person, 2)
+		qdel(trait)
+	var/list/values = target.return_air_values(list(/datum/gas/miasma))
+	var/list/result = list("state" = list(person.get_brute_loss(), active), "air" = values.Copy(BANDA_AIR_TEMPERATURE), "clean" = !native || (!target.banda_atmos_cell?.cached_air && !target.banda_atmos_cell?.readonly_air))
+	qdel(person)
+	qdel(phase)
+	return result
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_scale_case(native, kind)
+	var/turf/open/target = floor_at(171, 180)
+	var/turf/open/other_space
+	var/datum/gas_mixture/shared_space
+	var/shared_temperature
+	if(kind == "space")
+		target = target.ChangeTurf(/turf/open/space)
+		other_space = floor_at(173, 180)
+		other_space = other_space.ChangeTurf(/turf/open/space)
+		shared_space = target.air
+		shared_temperature = shared_space.temperature
+	else if(kind == "planetary")
+		target = target.ChangeTurf(/turf/open/floor/iron/banda_life_planetary)
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(other_space ? list(target, other_space) : list(target))
+		phase.native(30)
+		phase.initializing = FALSE
+		phase.invoke(CALLBACK(src, PROC_REF(life_scale_callback), phase, target))
+	else
+		var/datum/gas_mixture/air = target.return_air()
+		air.temperature *= 0.9
+	var/list/values = target.return_air_values()
+	if(other_space)
+		var/list/other_values = other_space.return_air_values()
+		values += other_values[BANDA_AIR_TEMPERATURE]
+	var/list/result = list("values" = values.Copy(BANDA_AIR_TEMPERATURE), "clean" = !native || (!target.banda_atmos_cell?.cached_air && !target.banda_atmos_cell?.readonly_air))
+	if(shared_space)
+		// The DM oracle mutates the global singleton; do not contaminate later registration checks.
+		shared_space.temperature = shared_temperature
+	qdel(phase)
+	return result
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_scale_callback(datum/banda_atmos_phase/world_adapter/phase, turf/open/target)
+	if(!phase.try_scale_air_temperature(target, 0.9))
+		CRASH("Life temperature scaling unexpectedly required a DM mixture")
+	if(isspaceturf(target) && !phase.try_scale_air_temperature(target, 0.9))
+		CRASH("Repeated cooling of empty space unexpectedly required a DM mixture")
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_heretic_checks()
+	var/list/expected = life_heretic_case(FALSE)
+	var/list/actual = life_heretic_case(TRUE)
+	WRITE_FILE(file("life-heretic.json"), json_encode(list("dm" = expected, "rust" = actual)))
+	return list(
+		"life_heretic_room_cooling_matches_original" = value_numbers_match(expected["air"], actual["air"]),
+		"life_heretic_body_and_statuses_match_original" = value_numbers_match(expected["body"], actual["body"]),
+		"life_heretic_structure_damage_matches_original" = value_numbers_match(expected["structures"], actual["structures"]),
+		"life_heretic_effects_exercised" = actual["body"][1] < 310 && actual["body"][2] > 0 && actual["body"][3] > 0 && actual["structures"][1] < 200 && actual["structures"][2] < 50 && actual["structures"][3] < 50 && actual["air"][1] == T20C * 0.9,
+		"life_heretic_empty_space_stays_canonical" = actual["space"][1] == TCMB && actual["space"][2] == TCMB,
+		"life_heretic_has_no_tile_cache" = actual["clean"],
+	)
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_heretic_case(native)
+	var/list/tiles = list()
+	for(var/x in 100 to 120)
+		for(var/y in 200 to 220)
+			var/turf/open/target = floor_at(x, y)
+			target.air.set_gas(/datum/gas/nitrogen, 100)
+			target.air.temperature = T20C
+			tiles += target
+	var/turf/open/center = locate(120, 210, 1)
+	var/turf/open/room = get_step(center, WEST)
+	var/turf/open/space = get_step(center, EAST)
+	tiles -= space
+	space = space.ChangeTurf(/turf/open/space)
+	tiles += space
+	var/turf/open/distant_space = floor_at(135, 210)
+	distant_space = distant_space.ChangeTurf(/turf/open/space)
+	tiles += distant_space
+	var/datum/gas_mixture/shared_space = space.air
+	var/shared_temperature = shared_space.temperature
+	var/mob/living/basic/source = new(center)
+	var/mob/living/carbon/human/person = new(room)
+	person.bodytemperature = 310
+	var/obj/structure/door_assembly/door = new(room)
+	var/obj/structure/grille/grille = new(room)
+	var/obj/structure/window/window = new(room)
+	var/datum/heretic_knowledge/ultimate/void_final/knowledge = new
+	// Test the real aura with an already-existing storm; do not start station-wide weather in this fixture.
+	knowledge.storm = new /datum/weather/void_storm(list(1))
+	var/datum/banda_atmos_phase/world_adapter/phase
+	if(native)
+		for(var/turf/open/target as anything in tiles)
+			target.banda_air_requested = FALSE
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		for(var/index = 1, index <= length(tiles), index += 256)
+			phase.register_batch(tiles.Copy(index, min(index + 256, length(tiles) + 1)))
+		phase.native(30)
+		phase.initializing = FALSE
+	rand_seed(29051994)
+	if(native)
+		phase.invoke(CALLBACK(knowledge, TYPE_PROC_REF(/datum/heretic_knowledge/ultimate/void_final, on_life), source, 2))
+	else
+		knowledge.banda_life_original_void_aura(source, 2)
+	var/datum/status_effect/void_chill/chill = person.has_status_effect(/datum/status_effect/void_chill)
+	var/list/air_values = room.return_air_values()
+	var/list/space_values = space.return_air_values()
+	var/list/distant_values = distant_space.return_air_values()
+	var/clean = TRUE
+	if(native)
+		for(var/turf/open/target as anything in tiles)
+			if(target.banda_atmos_cell?.cached_air || target.banda_atmos_cell?.readonly_air)
+				clean = FALSE
+	var/list/result = list("air" = air_values.Copy(BANDA_AIR_TEMPERATURE), "body" = list(person.bodytemperature, chill?.stacks || 0, person.get_timed_status_effect_duration(/datum/status_effect/silenced), person.get_timed_status_effect_duration(/datum/status_effect/eye_blur)), "structures" = list(door.get_integrity(), grille.get_integrity(), window.get_integrity()), "space" = list(space_values[BANDA_AIR_TEMPERATURE], distant_values[BANDA_AIR_TEMPERATURE]), "clean" = clean)
+	shared_space.temperature = shared_temperature
+	QDEL_NULL(knowledge.storm)
+	qdel(knowledge)
+	qdel(door)
+	qdel(grille)
+	qdel(window)
+	qdel(person)
+	qdel(source)
+	qdel(phase)
+	return result
+
+/datum/controller/subsystem/atmos_phase_test/proc/life_plasma_heal_case(native, internals)
+	var/turf/open/target = floor_at(172, 180)
+	target.air.moles.Cut()
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	target.air.set_gas(/datum/gas/plasma, 0.2)
+	var/mob/living/carbon/human/person = new(target)
+	var/obj/item/tank/internals/plasma/tank
+	if(internals)
+		tank = new(person)
+		tank.distribute_pressure = 10
+		person.internal = tank
+	var/datum/disease/advance/disease = new
+	disease.affected_mob = person
+	var/datum/symptom/heal/plasma/symptom = new
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(list(target))
+		phase.native(30)
+		phase.initializing = FALSE
+	var/power = native ? symptom.CanHeal(disease) : symptom.banda_life_original_plasma_heal(disease)
+	var/list/result = list("power" = power, "clean" = !native || (!target.banda_atmos_cell?.cached_air && !target.banda_atmos_cell?.readonly_air))
+	disease.affected_mob = null
+	person.internal = null
+	qdel(tank)
+	qdel(symptom)
+	qdel(disease)
+	qdel(person)
+	qdel(phase)
+	return result

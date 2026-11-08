@@ -191,7 +191,8 @@
 	var/turf/open/open_turf = get_turf(user)
 	if (!istype(open_turf))
 		return
-	var/pressure_factor = open_turf.get_readonly_air().return_pressure() / 101.0 // BANDASTATION EDIT - Read native atmosphere through the API.
+	var/list/air_values = open_turf.return_air_values() // BANDASTATION ADDITION - Movement needs only pressure.
+	var/pressure_factor = air_values[BANDA_AIR_PRESSURE] / 101.0 // BANDASTATION EDIT - Do not retain a DM gas mixture.
 	if (pressure_factor <= 0)
 		return
 	var/made_full_rotation = set_rotor_tick(rotor_tick + distance * TURBINE_ANIMATION_TICKS_PER_TILE * pressure_factor)

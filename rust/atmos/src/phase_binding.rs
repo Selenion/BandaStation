@@ -34,6 +34,9 @@ impl Store {
         if self.closed {
             return Err(Error::Closed);
         }
+        if let Some(version) = self.published_binding_version(id) {
+            self.retire_air_references(crate::operations::Target::Cell { id, version });
+        }
         let binding = self.bindings.get_mut(&id).ok_or(Error::MissingCell)?;
         binding.version = binding
             .version

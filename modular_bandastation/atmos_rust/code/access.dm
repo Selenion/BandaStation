@@ -1,3 +1,27 @@
+/// Temporary observations share the native query layout and never escape as a live mixture.
+/atom/proc/return_air_values(list/gases)
+	var/datum/gas_mixture/mixture = return_air()
+	return banda_atmos_value_packet(mixture, gases)
+
+/proc/banda_atmos_value_packet(datum/gas_mixture/mixture, list/gases, all_gases = FALSE)
+	if(!mixture)
+		return null
+	var/list/values = list(1, 1, 1, 0, mixture.temperature, mixture.return_pressure(), mixture.volume, mixture.heat_capacity(), mixture.total_moles(), length(gases))
+	if(all_gases)
+		values[BANDA_AIR_GAS_COUNT] = length(mixture.moles)
+		var/list/catalog = banda_atmos_gases()
+		for(var/gas in mixture.moles)
+			values += catalog.Find(gas) - 1
+			values += mixture.moles[gas]
+		return values
+	for(var/gas in gases)
+		values += mixture.moles[gas] || 0
+	return values
+
+/turf/open/return_air_values(list/gases)
+	var/list/values = SSair.native_atmos?.read_air_values(src, gases)
+	return values || ..()
+
 /// Read access never creates a second authoritative atmosphere in DM.
 /turf/proc/get_readonly_air()
 	return return_air()
@@ -80,10 +104,9 @@
 	// Ordinary gas is refreshed by publication; space also has a globally shared last_share.
 	if(!cell.cache_current || cell.cache_cycle < 0 || (cell.native_air_kind == 3 && cell.cache_cycle != air_cycle))
 		cell.refresh_cache()
-	if(in_safe_callback)
-		var/datum/gas_mixture/working = working_mixtures[cell]
-		if(working)
-			cell.copy_readonly(working)
+	var/datum/gas_mixture/working = working_mixtures[cell] || effect_mixtures?[cell]
+	if(working)
+		cell.copy_readonly(working)
 	if(!cell.readonly_air)
 		cell.copy_readonly(cell.cached_air)
 	return cell.readonly_air
@@ -307,6 +330,8 @@
 		var/datum/gas_mixture/turf/old_air = cell.cached_air
 		old_air.banda_cell = null
 	phase.working_mixtures -= cell
+	if(phase.effect_mixtures)
+		phase.effect_mixtures -= cell
 	phase.native(33, cell.native_id, banda_atmos_full_packet(replacement), istype(replacement, /datum/gas_mixture/immutable/space))
 	cell.native_air_kind = phase.native(32, cell.native_id)
 	cell.cached_air = replacement

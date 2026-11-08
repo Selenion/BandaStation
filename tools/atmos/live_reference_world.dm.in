@@ -1,0 +1,133 @@
+/// Observations across real callback, replacement, error and adapter-shutdown boundaries.
+/datum/controller/subsystem/atmos_phase_test/proc/live_reference_world_checks()
+	var/list/checks = list()
+	var/turf/open/target = floor_at(170, 190)
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target))
+	phase.native(30)
+	phase.initializing = FALSE
+	checks["live_reference_capability"] = phase.air_references_ready
+	var/datum/banda_atmos_air_reference/reference = target.return_air_reference()
+	checks["live_reference_capture_has_no_vm_mixture"] = reference.owner == phase && !!reference.handle && !target.banda_atmos_cell && reference.total_moles() == 100
+	phase.invoke(CALLBACK(src, PROC_REF(live_reference_pending), target, reference, checks))
+	checks["live_reference_observes_committed_changes_without_cache"] = reference.total_moles() == 350 && !target.banda_atmos_cell.cached_air
+	qdel(reference)
+	checks["live_reference_release_cleans_both_owners"] = !length(phase.air_references) && phase.air_reference_count() == 0
+	reference = target.return_air_reference()
+	var/datum/gas_mixture/legacy = phase.invoke(CALLBACK(src, PROC_REF(live_reference_legacy), target, reference, checks))
+	checks["live_reference_retains_legacy_alias"] = reference.legacy_air == legacy && reference.total_moles() == 357
+	qdel(reference)
+	qdel(phase)
+
+	for(var/transition in list("space", "inherit", "destroy_space", "destroy_inherit"))
+		var/list/expected = live_reference_replacement(FALSE, transition)
+		var/list/actual = live_reference_replacement(TRUE, transition)
+		WRITE_FILE(file("live-reference-[transition].json"), json_encode(list("dm" = expected, "rust" = actual)))
+		checks["live_reference_[transition]_keeps_original_mixture"] = value_numbers_match(expected["values"], actual["values"]) && value_numbers_match(expected["air"], actual["air"])
+		checks["live_reference_[transition]_cleanup"] = actual["released"]
+	for(var/replacement in list(FALSE, TRUE))
+		checks["live_reference_close_[replacement]_survives"] = live_reference_close(replacement)
+	checks["live_reference_breath_error_releases_scope"] = live_reference_breath_error()
+	return checks
+
+/datum/controller/subsystem/atmos_phase_test/proc/live_reference_pending(turf/open/target, datum/banda_atmos_air_reference/reference, list/checks)
+	target.atmos_spawn_air("[GAS_N2]=250")
+	checks["live_reference_reads_pending_operations"] = reference.total_moles() == 350 && !target.banda_atmos_cell.cached_air && !target.banda_atmos_cell.readonly_air
+
+/datum/controller/subsystem/atmos_phase_test/proc/live_reference_legacy(turf/open/target, datum/banda_atmos_air_reference/reference, list/checks)
+	var/datum/gas_mixture/air = target.return_air()
+	air.moles[/datum/gas/nitrogen] += 7
+	checks["live_reference_observes_unreported_raw_alias_write"] = reference.total_moles() == 357 && reference.legacy_air == air
+	return air
+
+/datum/controller/subsystem/atmos_phase_test/proc/live_reference_replacement(native, transition)
+	var/turf/open/target = floor_at(170, 190)
+	if(transition == "destroy_space" || transition == "destroy_inherit")
+		target = target.ChangeTurf(/turf/open/floor/iron/banda_reference_destroy)
+		target.air.moles.Cut()
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	target.air.temperature = 333
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase
+	var/datum/banda_atmos_air_reference/reference
+	var/datum/gas_mixture/old_air
+	if(native)
+		phase = new("bandastation_atmos.dll")
+		SSair.native_atmos = phase
+		phase.register_batch(list(target))
+		phase.native(30)
+		phase.initializing = FALSE
+		reference = target.return_air_reference()
+	else
+		old_air = target.return_air()
+	if(transition == "space" || transition == "destroy_space")
+		target = target.ChangeTurf(/turf/open/space)
+	else
+		target = target.ChangeTurf(/turf/open/floor/wood, flags = CHANGETURF_INHERIT_AIR)
+	target.atmos_spawn_air("[GAS_N2]=17")
+	var/list/values = list(native ? reference.total_moles() : old_air.total_moles(), native ? reference.values()[BANDA_AIR_TEMPERATURE] : old_air.temperature)
+	var/list/air = banda_atmos_full_packet(target.get_readonly_air())
+	qdel(reference)
+	var/released = !native || (!length(phase.air_references) && phase.air_reference_count() == 0)
+	qdel(phase)
+	return list("values" = values, "air" = air, "released" = released)
+
+/turf/open/floor/iron/banda_reference_destroy/Destroy()
+	if(changing_turf)
+		var/datum/gas_mixture/old = return_air()
+		old.adjust_gas(/datum/gas/nitrogen, 7)
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/live_reference_close(replace)
+	var/turf/open/target = floor_at(170, 190)
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target))
+	phase.native(30)
+	phase.initializing = FALSE
+	var/datum/banda_atmos_air_reference/reference = target.return_air_reference()
+	if(replace)
+		target = target.ChangeTurf(/turf/open/space)
+	qdel(phase)
+	if(!replace)
+		target.air.adjust_gas(/datum/gas/nitrogen, 3)
+	var/matches = !reference.owner && !reference.handle && reference.legacy_air && reference.total_moles() == (replace ? 100 : 103)
+	qdel(reference)
+	return matches
+
+/mob/living/carbon/human/banda_value_breather/banda_reference_throw
+	var/throw_breath = TRUE
+
+/mob/living/carbon/human/banda_value_breather/banda_reference_throw/get_breath_from_internal(volume_needed)
+	if(throw_breath)
+		throw EXCEPTION("BANDA_ATMOS_EXPECTED_BREATH_REFERENCE_ERROR")
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/live_reference_breath_error()
+	var/turf/open/target = floor_at(170, 190)
+	target.air.set_gas(/datum/gas/oxygen, 50)
+	target.air.set_gas(/datum/gas/nitrogen, 200)
+	var/mob/living/carbon/human/banda_value_breather/banda_reference_throw/person = new(target)
+	target.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(list(target))
+	phase.native(30)
+	phase.initializing = FALSE
+	var/caught = FALSE
+	try
+		phase.invoke(CALLBACK(person, TYPE_PROC_REF(/mob/living/carbon, breathe), 2))
+	catch(var/exception/error)
+		caught = error.name == "BANDA_ATMOS_EXPECTED_BREATH_REFERENCE_ERROR"
+	var/clean = !length(phase.air_references) && phase.air_reference_count() == 0 && !phase.in_safe_callback
+	person.throw_breath = FALSE
+	phase.invoke(CALLBACK(person, TYPE_PROC_REF(/mob/living/carbon, breathe), 2))
+	clean = clean && !length(phase.air_references) && phase.air_reference_count() == 0 && !target.banda_atmos_cell.cached_air
+	qdel(person)
+	qdel(phase)
+	return caught && clean

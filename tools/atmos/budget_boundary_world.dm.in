@@ -1,0 +1,57 @@
+// Diagnostic only: model moving effects into the next ordinary SSair call.
+// This does not enable a new scheduler in the production adapter.
+/datum/banda_atmos_phase/world_adapter/threaded_probe/budget_probe
+	var/hold_effects = FALSE
+	var/list/held_commands
+
+/datum/banda_atmos_phase/world_adapter/threaded_probe/budget_probe/apply_frame()
+	if(!hold_effects || !publication_pending)
+		return ..()
+	project_changes()
+	held_commands = list()
+	native(5, held_commands)
+
+/datum/controller/subsystem/atmos_phase_test/proc/budget_boundary_case(delayed, x)
+	var/datum/banda_atmos_phase/world_adapter/threaded_probe/budget_probe/phase = threaded_pair(x, phase_type = /datum/banda_atmos_phase/world_adapter/threaded_probe/budget_probe)
+	var/turf/open/left = phase.positions[1]
+	var/turf/open/right = phase.positions[2]
+	left.heat_capacity = 1000000000
+	right.heat_capacity = 1000000000
+	phase.invoke(CALLBACK(src, PROC_REF(feedback_seed), left))
+	var/obj/item/stack/sheet/mineral/coal/coal = new(left, 1)
+	coal.anchored = TRUE
+	phase.native(29, list(left.banda_atmos_id, 700, CELL_VOLUME, FALSE, TRUE, FALSE))
+	// Process the edited tile first; an earlier neighbor must not incidentally rearchive it.
+	phase.native(18, list(right.banda_atmos_id, left.banda_atmos_id), list())
+	phase.native(30)
+	phase.hold_effects = delayed
+	SSair.times_fired++
+	var/first_cycle = SSair.times_fired
+	phase.run_tick(TRUE)
+	phase.hold_effects = FALSE
+	SSair.times_fired++
+	if(delayed)
+		var/datum/banda_atmos_safe/world_commands/world/executor = new()
+		executor.owner = phase
+		executor.cycle = first_cycle
+		executor.run_args = list(phase.held_commands)
+		phase.run_callback(executor)
+	var/effect_archive_cycle = left.archived_cycle - first_cycle
+	var/coal_deleted = !!QDELETED(coal)
+	// The same equipment write follows the coal feedback in both variants.
+	var/obj/machinery/banda_threaded_writer/writer = new(left)
+	writer.target = left
+	writer.armed = TRUE
+	phase.invoke(CALLBACK(writer, TYPE_PROC_REF(/obj/machinery/banda_threaded_writer, process_atmos)))
+	phase.run_tick(TRUE)
+	var/datum/gas_mixture/air = phase.ensure_binding(left).read_air()
+	var/list/output = list("effect_archive_cycle" = effect_archive_cycle,
+		"coal_deleted" = coal_deleted, "completed_ticks" = phase.completed_ticks,
+		"current_n2" = air.moles[/datum/gas/nitrogen], "archived_n2" = air.moles_archive[/datum/gas/nitrogen],
+		"left" = banda_atmos_full_packet(air), "right" = banda_atmos_full_packet(phase.ensure_binding(right).read_air()))
+	qdel(writer)
+	qdel(coal)
+	qdel(phase)
+	SSair.native_atoms_pending = FALSE
+	SSair.currentpart = SSAIR_PIPENETS
+	return output

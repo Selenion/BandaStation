@@ -1,0 +1,55 @@
+// Constructors and wind share the frame epoch even after MC has counted another launch.
+/obj/effect/hotspot/banda_cycle_probe/perform_exposure()
+	var/turf/open/target = loc
+	target.active_hotspot = src
+	return TRUE
+
+/obj/item/wrench/banda_cycle_creator
+	var/created_cycle = 0
+	var/created_protection = TRUE
+
+/obj/item/wrench/banda_cycle_creator/fire_act(exposed_temperature, exposed_volume)
+	created_cycle = SSair.get_air_cycle()
+	var/obj/effect/hotspot/spot = new /obj/effect/hotspot/banda_cycle_probe(loc, CELL_VOLUME, 700)
+	created_protection = spot.just_spawned
+	qdel(spot)
+
+/datum/controller/subsystem/atmos_phase_test/proc/cycle_world_checks()
+	var/list/checks = list()
+	checks["dm_cycle_uses_mc_counter"] = SSair.get_air_cycle() == SSair.times_fired
+	var/datum/banda_atmos_phase/world_adapter/phase = threaded_pair(240)
+	var/turf/open/left = phase.positions[1]
+	var/turf/open/right = phase.positions[2]
+	var/turf/open/last = floor_at(242, 200)
+	phase.register_batch(list(last))
+	SSair.times_fired++
+	var/cycle = SSair.times_fired
+	phase.run_tick(TRUE)
+	SSair.times_fired += 5
+	var/obj/item/wrench/moving = new(left)
+	moving.pressure_resistance = 0
+	moving.move_resist = 0
+	var/datum/banda_atmos_safe/world_commands/world/executor = new()
+	executor.owner = phase
+	executor.cycle = cycle
+	executor.run_args = list(list(left.banda_atmos_id, 1, 14, 100, EAST, right.banda_atmos_id, 1, 14, 100, EAST))
+	phase.run_callback(executor)
+	checks["wind_moves_once_per_source_frame"] = moving.loc == right && moving.last_high_pressure_movement_air_cycle == cycle
+	executor = new()
+	executor.owner = phase
+	executor.cycle = cycle + 1
+	executor.run_args = list(list(right.banda_atmos_id, 1, 14, 100, EAST))
+	phase.run_callback(executor)
+	checks["wind_accepts_next_frame_without_mc_change"] = moving.loc == last && moving.last_high_pressure_movement_air_cycle == cycle + 1
+	qdel(moving)
+	var/obj/item/wrench/banda_cycle_creator/creator = new(left)
+	executor = new()
+	executor.owner = phase
+	executor.cycle = cycle
+	executor.run_args = list(list(left.banda_atmos_id, 1, 9, 700, CELL_VOLUME))
+	phase.run_callback(executor)
+	checks["hotspot_constructor_keeps_source_frame"] = creator.created_cycle == cycle && !creator.created_protection
+	checks["effect_scope_does_not_replace_mc_counter"] = SSair.times_fired == cycle + 5 && SSair.get_air_cycle() == cycle + 5 && !phase.effect_cycle
+	qdel(creator)
+	qdel(phase)
+	return checks
