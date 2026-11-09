@@ -103,7 +103,7 @@ def label(case, smoke):
     return "-".join(map(str, case)) + ("-smoke" if smoke else "-run")
 
 
-def validate(rows, frames, side):
+def validate(rows, frames, side, life_variant=True):
     errors = workload_errors(rows, frames, side)
     import sys
     sys.path.insert(0, str(cost.ROOT / "tools/atmos"))
@@ -113,14 +113,14 @@ def validate(rows, frames, side):
             errors.append(dict(case=row["case"], error="Uncontrolled background subsystem work"))
         if not all(row[k] for k in ("mc_running", "gc_running", "time_track_running", "references_enabled")):
             errors.append(dict(case=row["case"], error="MC/GC/time tracking or common breathing API disabled"))
-        if bool(row["life_legacy"]) != (row["mode"] == "legacy") or row["retained_references"]:
+        if (life_variant and bool(row["life_legacy"]) != (row["mode"] == "legacy")) or row["retained_references"]:
             errors.append(dict(case=row["case"], error="Wrong Life path or retained references"))
         if (row["breathers"] != min(50, side * side // 4)
                 or len(row["reading_trace"]) != frames or len(row["breathing_trace"]) != frames
                 or len(row["life_trace"]) != frames or row["life_trace"][-1][0] != frames * row["breathers"]
                 or row["life_trace"][-1][2] != frames * row["breathers"]):
             errors.append(dict(case=row["case"], error="Incomplete Life work"))
-        if row["full_caches"] != (row["breathers"] if row["mode"] == "legacy" else 0):
+        if life_variant and row["full_caches"] != (row["breathers"] if row["mode"] == "legacy" else 0):
             errors.append(dict(case=row["case"], error="Wrong persistent cache coverage"))
     for scenario in ("fire", "pipe"):
         group = [r for r in rows if r["scenario"] == scenario]
@@ -132,7 +132,7 @@ def validate(rows, frames, side):
     return errors
 
 
-def report(folder, smoke):
+def report(folder, smoke, validator=validate):
     rows = []
     p = json.loads((folder / "provenance.json").read_text())
     pids, binaries = set(), set()
@@ -157,7 +157,7 @@ def report(folder, smoke):
         row["top_profile_self"] = sorted(profile, key=lambda v: v.get("self", 0), reverse=True)[:30]
         rows.append(row)
     assert len(binaries) == 1
-    errors = validate(rows, 4 if smoke else 40, 8 if smoke else 64)
+    errors = validator(rows, 4 if smoke else 40, 8 if smoke else 64)
     summary = []
     for scenario in ("fire", "pipe"):
         for mode in ("legacy", "api"):

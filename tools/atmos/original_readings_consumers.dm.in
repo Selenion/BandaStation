@@ -1,0 +1,236 @@
+#define ATMOZPHERE_SCAN_ENV "env"
+#define ATMOZPHERE_SCAN_CLICK "click"
+// Frozen code/game/objects/items/devices/scanners/gas_analyzer.dm
+/obj/item/analyzer/proc/banda_original_readings_collect(atom/target)
+	var/mixture = target.return_analyzable_air()
+	if(!mixture)
+		return
+
+	var/list/airs = islist(mixture) ? mixture : list(mixture)
+	var/list/new_gasmix_data = list()
+	for(var/datum/gas_mixture/air as anything in airs)
+		var/mix_name = capitalize(LOWER_TEXT(target.name))
+		if(airs.len != 1) //not a unary gas mixture
+			mix_name += " - Node [airs.Find(air)]"
+		new_gasmix_data += list(gas_mixture_parser(air, mix_name))
+	last_gasmix_data = new_gasmix_data
+	last_scanned = WEAKREF(target)
+
+/// Called when our analyzer is used on something
+
+// Frozen code/modules/modular_computers/file_system/programs/atmosscan.dm
+/datum/computer_file/program/atmosscan/proc/banda_original_readings_analyze(datum/source, atom/target)
+	var/mixture = target.return_analyzable_air()
+	if(!mixture)
+		return FALSE
+	var/list/airs = islist(mixture) ? mixture : list(mixture)
+	var/list/new_gasmix_data = list()
+	for(var/datum/gas_mixture/air as anything in airs)
+		var/mix_name = capitalize(LOWER_TEXT(target.name))
+		if(airs.len != 1) //not a unary gas mixture
+			mix_name += " - Node [airs.Find(air)]"
+		new_gasmix_data += list(gas_mixture_parser(air, mix_name))
+	last_gasmix_data = new_gasmix_data
+
+// Frozen code/modules/atmospherics/machinery/air_alarm/_air_alarm.dm
+/obj/machinery/airalarm/proc/banda_original_readings_danger(turf/location, datum/gas_mixture/environment, exposed_temperature)
+	SIGNAL_HANDLER
+	if((machine_stat & (NOPOWER|BROKEN)) || shorted)
+		return
+
+	if(!environment)
+		return
+
+	var/old_danger = danger_level
+	danger_level = AIR_ALARM_ALERT_NONE
+	var/old_area_danger = area_danger
+	area_danger = my_area.active_alarms[ALARM_ATMOS]
+
+	var/total_moles = environment.total_moles()
+	var/pressure = environment.return_pressure()
+	var/temp = environment.return_temperature()
+
+	danger_level = max(danger_level, tlv_collection["pressure"].check_value(pressure))
+	danger_level = max(danger_level, tlv_collection["temperature"].check_value(temp))
+	if(total_moles)
+		var/list/cached_gas_info = GLOB.meta_gas_info
+		for(var/datum/gas/gas_path as anything in cached_gas_info[META_GAS_ID])
+			var/moles = environment.moles[gas_path] || 0
+			danger_level = max(danger_level, tlv_collection[gas_path].check_value(pressure * moles / total_moles))
+
+	if(danger_level)
+		alarm_manager.send_alarm(ALARM_ATMOS)
+		var/is_high_pressure = tlv_collection["pressure"].hazard_max != TLV_VALUE_IGNORE && pressure >= tlv_collection["pressure"].hazard_max
+		var/is_high_temp = tlv_collection["temperature"].hazard_max != TLV_VALUE_IGNORE && temp >= tlv_collection["temperature"].hazard_max
+		var/is_low_pressure = tlv_collection["pressure"].hazard_min != TLV_VALUE_IGNORE && pressure <= tlv_collection["pressure"].hazard_min
+		var/is_low_temp = tlv_collection["temperature"].hazard_min != TLV_VALUE_IGNORE && temp <= tlv_collection["temperature"].hazard_min
+
+		if(is_low_pressure && is_low_temp)
+			warning_message = "Тревога! Низкое давление и температура."
+			return
+		if(is_low_pressure && is_high_temp)
+			warning_message = "Тревога! Низкое давление и высокая температура."
+			return
+		if(is_high_pressure && is_high_temp)
+			warning_message = "Тревога! Высокое давление и температура."
+			return
+		if(is_high_pressure && is_low_temp)
+			warning_message = "Тревога! Высокое давление и низкая температура."
+			return
+		if(is_low_pressure)
+			warning_message = "Тревога! Низкое давление."
+			return
+		if(is_high_pressure)
+			warning_message = "Тревога! Высокое давление."
+			return
+		if(is_low_temp)
+			warning_message = "Тревога! Низкая температура."
+			return
+		if(is_high_temp)
+			warning_message = "Тревога! Высокая температура."
+			return
+		else
+			warning_message = null
+
+	else
+		alarm_manager.clear_alarm(ALARM_ATMOS)
+		warning_message = null
+
+	if(old_danger != danger_level || old_area_danger != area_danger)
+		update_appearance()
+
+	selected_mode.replace(my_area, pressure)
+
+// Frozen code/modules/atmospherics/machinery/air_alarm/_air_alarm.dm
+/obj/machinery/airalarm/proc/banda_original_readings_ui(mob/user)
+	var/data = list()
+
+	data["locked"] = locked
+	data["siliconUser"] = HAS_SILICON_ACCESS(user)
+	data["emagged"] = (obj_flags & EMAGGED ? 1 : 0)
+	data["dangerLevel"] = danger_level
+	data["atmosAlarm"] = !!area_danger
+	data["fireAlarm"] = my_area.fire
+	data["faultStatus"] = my_area.fault_status
+	data["faultLocation"] = my_area.fault_location
+	data["sensor"] = !!connected_sensor
+	data["allowLinkChange"] = allow_link_change
+
+	var/datum/gas_mixture/environment = get_enviroment()
+	var/total_moles = environment.total_moles()
+	var/temp = environment.temperature
+	var/pressure = environment.return_pressure()
+
+	data["envData"] = list()
+	if(connected_sensor)
+		data["envData"] += list(list(
+			"name" = "Linked area",
+			"value" = my_area.name
+		))
+	data["envData"] += list(list(
+		"name" = "Pressure",
+		"value" = "[round(pressure, 0.01)] kPa",
+		"danger" = tlv_collection["pressure"].check_value(pressure)
+	))
+	data["envData"] += list(list(
+		"name" = "Temperature",
+		"value" = "[round(temp, 0.01)] Kelvin / [round(temp, 0.01) - T0C] Celcius",
+		"danger" = tlv_collection["temperature"].check_value(temp),
+	))
+	if(total_moles)
+		for(var/gas_path, moles in environment.moles)
+			var/portion = moles / total_moles
+			data["envData"] += list(list(
+				"name" = GLOB.meta_gas_info[META_GAS_NAME][gas_path],
+				"value" = "[round(moles, 0.01)] moles / [round(100 * portion, 0.01)] % / [round(portion * pressure, 0.01)] kPa",
+				"danger" = tlv_collection[gas_path].check_value(portion * pressure),
+			))
+
+	data["tlvSettings"] = list()
+	for(var/threshold in tlv_collection)
+		var/datum/tlv/tlv = tlv_collection[threshold]
+		var/list/singular_tlv = list()
+		if(threshold == "pressure")
+			singular_tlv["name"] = "Pressure"
+			singular_tlv["unit"] = "kPa"
+		else if (threshold == "temperature")
+			singular_tlv["name"] = "Temperature"
+			singular_tlv["unit"] = "K"
+		else
+			singular_tlv["name"] = GLOB.meta_gas_info[META_GAS_NAME][threshold]
+			singular_tlv["unit"] = "kPa"
+		singular_tlv["id"] = threshold
+		singular_tlv["warning_min"] = tlv.warning_min
+		singular_tlv["hazard_min"] = tlv.hazard_min
+		singular_tlv["warning_max"] = tlv.warning_max
+		singular_tlv["hazard_max"] = tlv.hazard_max
+		data["tlvSettings"] += list(singular_tlv)
+
+	if(!locked || HAS_SILICON_ACCESS(user))
+		data["vents"] = list()
+		for(var/obj/machinery/atmospherics/components/unary/vent_pump/vent as anything in my_area.air_vents)
+			data["vents"] += list(list(
+				"refID" = REF(vent),
+				"long_name" = sanitize(vent.name),
+				"power" = vent.on,
+				"overclock" = vent.fan_overclocked,
+				"integrity" = vent.get_integrity_percentage(),
+				"checks" = vent.pressure_checks,
+				"excheck" = vent.pressure_checks & ATMOS_EXTERNAL_BOUND,
+				"incheck" = vent.pressure_checks & ATMOS_INTERNAL_BOUND,
+				"direction" = vent.pump_direction,
+				"external" = vent.external_pressure_bound,
+				"internal" = vent.internal_pressure_bound,
+				"extdefault" = (vent.external_pressure_bound == ONE_ATMOSPHERE),
+				"intdefault" = (vent.internal_pressure_bound == 0)
+			))
+		data["scrubbers"] = list()
+		for(var/obj/machinery/atmospherics/components/unary/vent_scrubber/scrubber as anything in my_area.air_scrubbers)
+			var/list/filter_types = list()
+			var/cached_gas_info = GLOB.meta_gas_info
+			for (var/path in cached_gas_info[META_GAS_ID])
+				filter_types += list(list("gas_id" = cached_gas_info[META_GAS_ID][path], "gas_name" = cached_gas_info[META_GAS_NAME][path], "enabled" = (path in scrubber.filter_types)))
+			data["scrubbers"] += list(list(
+				"refID" = REF(scrubber),
+				"long_name" = sanitize(scrubber.name),
+				"power" = scrubber.on,
+				"scrubbing" = scrubber.scrubbing,
+				"widenet" = scrubber.widenet,
+				"filter_types" = filter_types,
+			))
+
+		data["selectedModePath"] = selected_mode.type
+		data["modes"] = list()
+		for(var/mode_path in GLOB.air_alarm_modes)
+			var/datum/air_alarm_mode/mode = GLOB.air_alarm_modes[mode_path]
+			if(!(obj_flags & EMAGGED) && mode.emag)
+				continue
+			data["modes"] += list(list(
+				"name" = mode.name,
+				"desc" = mode.desc,
+				"danger" = mode.danger,
+				"path" = mode.type
+			))
+
+		// forgive me holy father
+		data["panicSiphonPath"] = /datum/air_alarm_mode/panic_siphon
+		data["filteringPath"] = /datum/air_alarm_mode/filtering
+
+	return data
+
+// Frozen code/modules/atmospherics/machinery/air_alarm/air_alarm_circuit.dm
+/obj/item/circuit_component/air_alarm/proc/banda_original_readings_input(datum/port/input/port)
+	if(!connected_alarm || connected_alarm.locked)
+		return
+
+	var/current_option = air_alarm_options.value
+
+	var/datum/gas_mixture/environment = connected_alarm.get_enviroment()
+	pressure.set_output(round(environment.return_pressure()))
+	temperature.set_output(round(environment.temperature))
+	if(ispath(options_map[current_option]))
+		gas_amount.set_output(round(environment.moles[options_map[current_option]]))
+
+	update_received.set_output(COMPONENT_SIGNAL)
+#undef ATMOZPHERE_SCAN_ENV
+#undef ATMOZPHERE_SCAN_CLICK

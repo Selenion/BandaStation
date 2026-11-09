@@ -77,6 +77,10 @@
 	catch
 		value_queries_ready = FALSE
 	try
+		inspection_queries_ready = native(91) == 1
+	catch
+		inspection_queries_ready = FALSE
+	try
 		air_references_ready = native(88) == 1
 	catch
 		air_references_ready = FALSE

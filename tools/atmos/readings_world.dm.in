@@ -1,0 +1,238 @@
+/// Compare real observers with frozen original DM code, including native port ownership.
+/datum/controller/subsystem/atmos_phase_test/proc/readings_world_checks()
+	var/list/output = list()
+	for(var/kind in list("floor", "vacuum", "space"))
+		output += list(readings_turf_case(kind))
+	output += list(readings_port_case())
+	for(var/kind in 0 to 3)
+		output += list(readings_alarm_case(kind))
+	for(var/enabled in list(FALSE, TRUE))
+		output += list(readings_sensor_case(enabled))
+	output += list(readings_operation_case())
+	output += list(readings_mixed_case())
+	output += list(readings_null_case())
+	return output
+
+/// A blocked open turf's original conduction path emits this event with no gas argument.
+/datum/controller/subsystem/atmos_phase_test/proc/readings_null_case()
+	var/turf/open/target = floor_at(146, 170)
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	var/obj/machinery/airalarm/alarm = new(target)
+	alarm.machine_stat = 0
+	alarm.alarm_manager.clear_alarm(ALARM_ATMOS)
+	alarm.danger_level = AIR_ALARM_ALERT_NONE
+	alarm.warning_message = "unchanged"
+	target.blocks_air = TRUE
+	alarm.banda_original_readings_danger(target, null, target.temperature)
+	var/list/expected = list(alarm.danger_level, alarm.warning_message)
+	var/datum/banda_atmos_phase/world_adapter/phase = readings_phase(list(target))
+	var/before = phase.value_queries
+	phase.invoke(CALLBACK(src, PROC_REF(readings_null_expose), target))
+	var/list/record = list("id" = "null_heat_exposure", "expected" = expected, "actual" = list(alarm.danger_level, alarm.warning_message), "checks" = list(
+		"ordinary_null_must_not_poll_air" = before == phase.value_queries,
+	))
+	qdel(alarm)
+	qdel(phase)
+	return record
+
+/datum/controller/subsystem/atmos_phase_test/proc/readings_null_expose(turf/open/target)
+	target.temperature_expose(null, target.temperature)
+
+/datum/controller/subsystem/atmos_phase_test/proc/readings_phase(list/tiles)
+	for(var/turf/open/tile as anything in tiles)
+		tile.banda_air_requested = FALSE
+	var/datum/banda_atmos_phase/world_adapter/phase = new("bandastation_atmos.dll")
+	SSair.native_atmos = phase
+	phase.register_batch(tiles)
+	phase.native(30)
+	phase.initializing = FALSE
+	return phase
+
+/datum/controller/subsystem/atmos_phase_test/proc/readings_turf_case(kind)
+	var/turf/open/target = floor_at(140, 170)
+	target.air.temperature = 333
+	if(kind == "space")
+		target = target.ChangeTurf(/turf/open/space)
+	else if(kind != "vacuum")
+		target.air.moles[/datum/gas/plasma] = 2
+		target.air.moles[/datum/gas/oxygen] = 0
+		target.air.moles[/datum/gas/nitrogen] = 100
+		target.air.reaction_results[/datum/gas_reaction/standard/water_vapor] = 0
+		target.air.reaction_results[/datum/gas_reaction/standard/plasmafire] = 2
+	var/list/expected = gas_mixture_parser(target.air, "Reading")
+	var/energy = target.air.thermal_energy()
+	var/datum/banda_atmos_phase/world_adapter/phase = readings_phase(list(target))
+	var/list/reading = target.return_air_reading()
+	var/list/actual = gas_reading_parser(reading, "Reading")
+	// reference is a React key; native air has coordinate/version identity instead of a DM datum.
+	expected["reference"] = actual["reference"]
+	var/list/repeated = target.return_air_reading()
+	var/list/record = list("id" = "turf_[kind]", "expected" = expected, "actual" = actual, "checks" = list(
+		"capability" = phase.inspection_queries_ready,
+		"no_cache_or_binding" = !target.banda_atmos_cell,
+		"stable_reference" = reading["reference"] == repeated["reference"],
+		"thermal_energy" = abs(energy - reading["thermal_energy"]) < 0.001,
+		"null_parser_shape" = json_encode(gas_reading_parser(null)) == json_encode(gas_mixture_parser(null)),
+	))
+	qdel(phase)
+	return record
+
+/datum/controller/subsystem/atmos_phase_test/proc/readings_port_case()
+	var/turf/open/target = floor_at(141, 170)
+	var/obj/machinery/atmospherics/components/unary/vent_pump/vent = new(target)
+	var/datum/gas_mixture/port = vent.airs[1]
+	port.temperature = 333
+	port.moles[/datum/gas/nitrogen] = 100
+	port.moles[/datum/gas/oxygen] = 0
+	port.moles[/datum/gas/plasma] = 2
+	port.reaction_results[/datum/gas_reaction/standard/water_vapor] = 0
+	port.reaction_results[/datum/gas_reaction/standard/plasmafire] = 3
+	vent.airs += port
+	var/obj/item/analyzer/analyzer = new(target)
+	analyzer.banda_original_readings_collect(vent)
+	var/list/expected = analyzer.last_gasmix_data
+	var/datum/computer_file/program/atmosscan/program = new
+	program.banda_original_readings_analyze(null, vent)
+	var/list/program_expected = program.last_gasmix_data
+	// Restore the initial unexposed state after the old reader deliberately exposed this port.
+	port.banda_native_port = TRUE
+	var/datum/banda_atmos_phase/world_adapter/phase = readings_phase(list(target))
+	var/datum/banda_atmos_pipe_binding/binding = phase.bind_pipe_mixture(port)
+	analyzer.collect_scan_info(vent)
+	program.on_analyze(null, vent)
+	var/list/record = list("id" = "owned_port", "expected" = list(expected, program_expected), "actual" = list(analyzer.last_gasmix_data, program.last_gasmix_data), "checks" = list(
+		"native_owner_retained" = binding.native_owned && port.banda_native_port,
+		"no_dm_moles_restored" = !length(port.moles) && !length(port.moles_archive) && !length(port.reaction_results),
+		"no_turf_cache" = !target.banda_atmos_cell,
+		"alias_node_numbering" = analyzer.last_gasmix_data[1]["name"] == analyzer.last_gasmix_data[2]["name"],
+		"chat_scan_succeeds" = atmos_scan(null, vent, TRUE),
+	))
+	qdel(analyzer)
+	qdel(program)
+	qdel(phase)
+	qdel(vent)
+	return record
+
+/datum/controller/subsystem/atmos_phase_test/proc/readings_alarm_case(kind)
+	var/turf/open/target = floor_at(142, 170)
+	target.air.set_gas(/datum/gas/nitrogen, kind == 3 ? 1000 : 80)
+	target.air.set_gas(/datum/gas/oxygen, kind == 0 ? 0 : 20)
+	target.air.set_gas(/datum/gas/plasma, kind == 2 ? 10 : 0)
+	target.air.temperature = kind == 1 ? 900 : T20C
+	var/obj/machinery/airalarm/alarm = new(target)
+	alarm.machine_stat = 0
+	alarm.locked = FALSE
+	var/mob/living/person = new(target)
+	var/obj/item/circuit_component/air_alarm/circuit = new(target)
+	circuit.connected_alarm = alarm
+	var/datum/gas_mixture/oracle = target.air
+	alarm.alarm_manager.clear_alarm(ALARM_ATMOS)
+	alarm.banda_original_readings_danger(target, oracle, oracle.temperature)
+	var/list/expected_ui = alarm.banda_original_readings_ui(person)
+	circuit.banda_original_readings_input(null)
+	var/list/expected = list(alarm.danger_level, alarm.warning_message, expected_ui["envData"], circuit.pressure.value, circuit.temperature.value, circuit.gas_amount.value)
+	alarm.alarm_manager.clear_alarm(ALARM_ATMOS)
+	alarm.danger_level = AIR_ALARM_ALERT_NONE
+	var/datum/banda_atmos_phase/world_adapter/phase = readings_phase(list(target))
+	// The real Rust command must avoid a live mixture for this supported listener.
+	phase.invoke(CALLBACK(src, PROC_REF(readings_expose), phase, target))
+	var/list/actual_ui = alarm.ui_data(person)
+	circuit.input_received(null)
+	var/list/actual = list(alarm.danger_level, alarm.warning_message, actual_ui["envData"], circuit.pressure.value, circuit.temperature.value, circuit.gas_amount.value)
+	var/list/record = list("id" = "alarm_[kind]", "expected" = expected, "actual" = actual, "checks" = list(
+		"no_tile_cache" = !target.banda_atmos_cell.cached_air && !target.banda_atmos_cell.readonly_air,
+		"listener_is_numeric" = banda_atmos_temperature_only_listener(target, alarm),
+	))
+	circuit.connected_alarm = null
+	qdel(circuit)
+	qdel(person)
+	qdel(alarm)
+	qdel(phase)
+	return record
+
+/datum/controller/subsystem/atmos_phase_test/proc/readings_expose(datum/banda_atmos_phase/world_adapter/phase, turf/open/target)
+	var/datum/banda_atmos_cell/cell = phase.ensure_binding(target)
+	cell.execute(13, T20C, TRUE)
+
+/obj/machinery/air_sensor/banda_readings_probe
+	var/energy_reads = 0
+
+/obj/machinery/air_sensor/banda_readings_probe/use_energy(amount)
+	energy_reads++
+	return ..()
+
+/datum/controller/subsystem/atmos_phase_test/proc/readings_sensor_case(enabled)
+	var/turf/open/target = floor_at(143, 170)
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	var/obj/machinery/air_sensor/banda_readings_probe/sensor = new(target)
+	sensor.on = enabled
+	var/list/expected = gas_mixture_parser(sensor.return_air())
+	var/expected_energy = sensor.energy_reads
+	sensor.energy_reads = 0
+	var/datum/banda_atmos_phase/world_adapter/phase = readings_phase(list(target))
+	var/list/actual = gas_reading_parser(sensor.return_air_reading())
+	expected["reference"] = actual["reference"]
+	var/list/record = list("id" = "sensor_[enabled]", "expected" = expected, "actual" = actual, "checks" = list(
+		"energy_preserved" = sensor.energy_reads == expected_energy && sensor.energy_reads == enabled,
+		"no_turf_cache" = !target.banda_atmos_cell,
+	))
+	qdel(sensor)
+	qdel(phase)
+	return record
+
+/datum/controller/subsystem/atmos_phase_test/proc/readings_operation_case()
+	var/turf/open/target = floor_at(144, 170)
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	var/datum/banda_atmos_phase/world_adapter/phase = readings_phase(list(target))
+	var/list/checks = list()
+	phase.invoke(CALLBACK(src, PROC_REF(readings_operation), phase, target, checks))
+	var/list/record = list("id" = "pending", "expected" = 103, "actual" = target.return_air_values()[BANDA_AIR_TOTAL_MOLES], "checks" = checks)
+	qdel(phase)
+	return record
+
+/datum/controller/subsystem/atmos_phase_test/proc/readings_operation(datum/banda_atmos_phase/world_adapter/phase, turf/open/target, list/checks)
+	checks["native_adjustment"] = phase.try_adjust_air_operation(target, /datum/gas/nitrogen, 3)
+	var/list/reading = target.return_air_reading()
+	checks["pending_values_visible"] = reading["total_moles"] == 103
+	checks["no_cache"] = !target.banda_atmos_cell.cached_air && !target.banda_atmos_cell.readonly_air
+
+/datum/banda_readings_listener
+	var/turf/target
+
+/datum/banda_readings_listener/New(turf/target)
+	..()
+	src.target = target
+	RegisterSignal(target, COMSIG_TURF_EXPOSE, PROC_REF(expose))
+
+/datum/banda_readings_listener/Destroy()
+	UnregisterSignal(target, COMSIG_TURF_EXPOSE)
+	target = null
+	return ..()
+
+/datum/banda_readings_listener/proc/expose(turf/source, datum/gas_mixture/air, temperature)
+	SIGNAL_HANDLER
+	air.adjust_gas(/datum/gas/nitrogen, 17)
+
+/datum/controller/subsystem/atmos_phase_test/proc/readings_mixed_case()
+	var/turf/open/target = floor_at(145, 170)
+	target.air.set_gas(/datum/gas/nitrogen, 100)
+	var/obj/machinery/airalarm/alarm = new(target)
+	alarm.machine_stat = 0
+	alarm.UnregisterSignal(target, COMSIG_TURF_EXPOSE)
+	var/datum/banda_readings_listener/listener = new(target)
+	alarm.RegisterSignal(target, COMSIG_TURF_EXPOSE, TYPE_PROC_REF(/obj/machinery/airalarm, check_danger))
+	target.air.adjust_gas(/datum/gas/nitrogen, 17)
+	alarm.banda_original_readings_danger(target, target.air, T20C)
+	var/list/expected = list(alarm.danger_level, alarm.warning_message, 117)
+	target.air.adjust_gas(/datum/gas/nitrogen, -17)
+	alarm.alarm_manager.clear_alarm(ALARM_ATMOS)
+	var/datum/banda_atmos_phase/world_adapter/phase = readings_phase(list(target))
+	phase.invoke(CALLBACK(src, PROC_REF(readings_expose), phase, target))
+	var/list/values = target.return_air_values()
+	var/list/record = list("id" = "mixed_signal", "expected" = expected, "actual" = list(alarm.danger_level, alarm.warning_message, values[BANDA_AIR_TOTAL_MOLES]), "checks" = list(
+		"unknown_listener_uses_compatible_mixture" = !!target.banda_atmos_cell.cached_air,
+	))
+	qdel(listener)
+	qdel(alarm)
+	qdel(phase)
+	return record

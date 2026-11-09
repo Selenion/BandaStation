@@ -558,7 +558,7 @@ unsafe fn dispatch(api: &Api, args: &[Value]) -> Result<f32, String> {
         (39, 3) => {
             api.output(field(2)?, &owner.profile())?;
         }
-        (23..=37 | 40 | 50..=53 | 64..=66 | 73 | 87..=90, _) => {
+        (23..=37 | 40 | 50..=53 | 64..=66 | 73 | 87..=91, _) => {
             return world::dispatch(api, &mut store, args)
         }
         (54, 2) => pipe_direct::vent_available()?,

@@ -227,11 +227,14 @@
 
 	var/current_option = air_alarm_options.value
 
-	var/datum/gas_mixture/environment = connected_alarm.get_enviroment()
-	pressure.set_output(round(environment.return_pressure()))
-	temperature.set_output(round(environment.temperature))
+	// BANDASTATION EDIT START - Keep circuit rounding and the original selected-gas semantics.
+	var/list/environment = connected_alarm.get_environment_reading()
+	pressure.set_output(round(environment["pressure"]))
+	temperature.set_output(round(environment["temperature"]))
 	if(ispath(options_map[current_option]))
-		gas_amount.set_output(round(environment.moles[options_map[current_option]]))
+		var/list/moles = environment["moles"]
+		gas_amount.set_output(round(moles[options_map[current_option]]))
+	// BANDASTATION EDIT END
 
 	update_received.set_output(COMPONENT_SIGNAL)
 

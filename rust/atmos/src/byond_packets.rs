@@ -87,6 +87,35 @@ pub(super) fn reference_values(
     output
 }
 
+/// Inspection returns numbers only; it neither exposes VM mixtures nor consumes dirty state.
+pub(super) fn inspection_values(store: &Store, targets: &[crate::operations::Target]) -> Vec<f32> {
+    let mut output = vec![1.0, targets.len() as f32];
+    for &target in targets {
+        let version = match target {
+            crate::operations::Target::Cell { version, .. } => version,
+            crate::operations::Target::Port(handle) => handle.generation,
+        };
+        let sample = store.query_air(target);
+        append_value_row(
+            &mut output,
+            sample.map(|(air, boundary)| (air, boundary, 1.0)),
+            version,
+            &[],
+            true,
+        );
+        let count = sample.map_or(0, |(air, _)| air.results.iter().flatten().count());
+        output.push(count as f32);
+        if let Some((air, _)) = sample {
+            for (reaction, amount) in air.results.iter().enumerate() {
+                if let Some(amount) = amount {
+                    output.extend([reaction as f32, *amount]);
+                }
+            }
+        }
+    }
+    output
+}
+
 fn append_value_row(
     output: &mut Vec<f32>,
     sample: Option<(&Mixture, &Boundary, f32)>,
@@ -468,6 +497,55 @@ mod tests {
         data.clear();
         super::append_publication_visuals(&mut data, &frame, 1, &rules, true, true, None).unwrap();
         assert_eq!(data, [0.0, 777.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn inspections_preserve_zero_results_ports_and_pending_state_without_publication() {
+        use crate::{
+            cell::Cell,
+            network::Tile,
+            operations::{Operation, Target},
+            phase::Store,
+            transport::Sample,
+        };
+        let mut store = Store::default();
+        let mut air = crate::Mixture::new(333.0, CELL_VOLUME, false);
+        air.set(PLASMA, 2.0);
+        air.set(OXYGEN, -0.0);
+        air.results[0] = Some(-0.0);
+        air.results[REACTION_COUNT - 1] = Some(5.0);
+        let id = store
+            .register(
+                Cell::new(air.clone(), crate::Context::default()),
+                Tile::new([1, 1, 1], &air, false),
+            )
+            .unwrap();
+        let target = Target::Cell { id, version: 1 };
+        let port = store.pipes.register(Sample::new(air.clone())).unwrap();
+        let before = store.snapshot();
+        let data = super::inspection_values(&store, &[target, Target::Port(port)]);
+        assert_eq!(&data[..2], &[1.0, 2.0]);
+        assert_eq!(&data[2..19], &data[19..36]);
+        assert_eq!(&data[10..14], &[PLASMA as f32, 2.0, OXYGEN as f32, -0.0]);
+        assert_eq!(
+            &data[14..19],
+            &[2.0, 0.0, -0.0, (REACTION_COUNT - 1) as f32, 5.0]
+        );
+        assert_eq!(data[16].to_bits(), (-0.0_f32).to_bits());
+        assert!(std::sync::Arc::ptr_eq(&before, &store.snapshot()));
+        assert!(store.take_changes().unwrap().is_empty());
+        store.begin_operations().unwrap();
+        store
+            .operate(target, &[Operation::SetTemperature(450.0)], false)
+            .unwrap();
+        assert_eq!(super::inspection_values(&store, &[target])[4], 450.0);
+        assert_eq!(store.snapshot().cells[&id].air.temperature, 333.0);
+        store.finish_operations(false, false).unwrap();
+        store.pipes.release(port).unwrap();
+        assert_eq!(
+            &super::inspection_values(&store, &[Target::Port(port)])[2..],
+            &[0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        );
     }
 
     #[test]

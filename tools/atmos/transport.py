@@ -54,14 +54,21 @@ def cases():
     return reference, generated
 
 
-def difference(expected, actual, path=""):
+def difference(expected, actual, path="", numeric_strings=True):
     if expected is None or actual is None:
         return None if expected is actual else f"{path}: {expected} != {actual}"
+    if isinstance(expected, str) or isinstance(actual, str):
+        if not numeric_strings:
+            return None if expected == actual else f"{path}: {expected!r} != {actual!r}"
+        try:
+            float(expected), float(actual)
+        except (TypeError, ValueError):
+            return None if expected == actual else f"{path}: {expected!r} != {actual!r}"
     if isinstance(expected, dict):
         if set(expected) != set(actual):
             return f"{path}: different fields"
         for key in expected:
-            diff = difference(expected[key], actual[key], path + "." + key)
+            diff = difference(expected[key], actual[key], path + "." + key, numeric_strings)
             if diff:
                 return diff
         return None
@@ -69,7 +76,7 @@ def difference(expected, actual, path=""):
         if len(expected) != len(actual):
             return f"{path}: length {len(expected)} != {len(actual)}"
         for index, (a, b) in enumerate(zip(expected, actual)):
-            diff = difference(a, b, f"{path}[{index}]")
+            diff = difference(a, b, f"{path}[{index}]", numeric_strings)
             if diff:
                 return diff
         return None

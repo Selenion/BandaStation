@@ -13,6 +13,7 @@
 #include "code/access.dm"
 #include "code/properties.dm"
 #include "code/references.dm"
+#include "code/inspection.dm"
 #include "code/vents.dm"
 #include "code/pipes.dm"
 #include "code/operations.dm"

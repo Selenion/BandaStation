@@ -1,0 +1,51 @@
+{
+  "status": "complete",
+  "accepted": true,
+  "branch": "rust-atmos-api",
+  "baseline": "e4b067b8c39",
+  "performance_measured": true,
+  "space_exception_unchanged": "TCMB 2.7 K",
+  "new_compatibility_decision": "Explicit numeric Rust exposure; unmarked null retains the original no-air meaning",
+  "native_dll": "tmp/atmos-analysis-native-01/target/i686-pc-windows-msvc/release/bandastation_atmos.dll",
+  "rust_tests": "Full i686 release with byond,simd,worker-profile passed, including the new inspection packet test",
+  "game_run": "tmp/atmos-phase/readings-api-04",
+  "new_scenarios": 13,
+  "coverage_checks": 37,
+  "benchmark": {
+    "folder": "tmp/atmos-readings-bench-02",
+    "compiled": true,
+    "captures": 16,
+    "scope": "Alarms/analyzers only, identical production Life/worker/physics in both modes",
+    "session_id": null,
+    "status": "accepted",
+    "rejected_smoke_01": "Different generated vent names between processes; all state/work/ownership checks passed, performance discarded",
+    "short_smoke_02": false,
+    "prefix_validation": true,
+    "approved_display_policy": "Raw physical state, work and alarm flags unchanged; log formatted measurement differences under existing 2e-5 tolerance plus 0.01 display resolution. Names and units remain exact.",
+    "primary_captures": 12,
+    "profile_captures": 4,
+    "report": "tmp/atmos-readings-bench-02/report.json",
+    "report_sha256": "5ec0c8ba6bb73201e34cfaaf6a55cc78283e1b130cae949a3557ef9e0b9b65ce",
+    "runtimes": 0,
+    "calculations": 640,
+    "historical_prefix_error": "First pair paused on 0.01 kPa UI rounding; reused unchanged captures after applying the existing user-approved numerical tolerance. Historical error file is preserved, final report accepted."
+  },
+  "rejected_runs": [
+    "readings-api-01: game complete, 0 runtime, all 12 new data/coverage checks pass; old numeric-only comparison script cannot compare text labels",
+    "readings-api-02: invalid TYPE_PROC_REF in new null fixture; compiler rejected",
+    "readings-api-03: all 13 new data/coverage checks and original API pass, but test-only species reused human ID and caused runtimes for ordinary humans; fixed fixture registry isolation"
+  ],
+  "game_validation": {
+    "accepted": true,
+    "report": "tmp/atmos-phase/readings-api-04/report-revalidated.json",
+    "raw_report_preserved": true,
+    "api_checks": 245,
+    "observer_scenarios": 13,
+    "coverage_checks": 37,
+    "runtimes": 0,
+    "report_sha256": "fca04a901ba522f63043fe165f9ce49ca9604d5c262ce1aded1cfc8f83adbafa",
+    "revalidation": "Original report preserved; fixed comparator restores existing 2e-5 numeric-string tolerance. Observer labels exact; no production change after capture."
+  },
+  "results": "tools/atmos/READINGS_RESULTS.json",
+  "report": "tools/atmos/READINGS_REPORT.md"
+}

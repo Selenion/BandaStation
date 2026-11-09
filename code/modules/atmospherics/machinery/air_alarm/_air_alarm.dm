@@ -160,14 +160,18 @@ GLOBAL_LIST_EMPTY_TYPED(air_alarms, /obj/machinery/airalarm)
 
 /obj/machinery/airalarm/proc/check_enviroment()
 	var/turf/our_turf = connected_sensor ? get_turf(connected_sensor) : get_turf(src)
-	var/datum/gas_mixture/environment = our_turf.return_air()
-	if(isnull(environment))
-		return
-	check_danger(our_turf, environment, environment.temperature)
+	// BANDASTATION EDIT - The handler reads its own numeric observation.
+	check_danger(our_turf, null, null, native_reading = TRUE)
 
 /obj/machinery/airalarm/proc/get_enviroment()
 	var/turf/our_turf = connected_sensor ? get_turf(connected_sensor) : get_turf(src)
 	return our_turf.return_air()
+
+// BANDASTATION ADDITION START - Preserve linked-sensor location without calling its powered analyzer.
+/obj/machinery/airalarm/proc/get_environment_reading()
+	var/turf/our_turf = connected_sensor ? get_turf(connected_sensor) : get_turf(src)
+	return our_turf.return_air_reading()
+// BANDASTATION ADDITION END
 
 /obj/machinery/airalarm/power_change()
 	check_enviroment()
@@ -265,10 +269,11 @@ GLOBAL_LIST_EMPTY_TYPED(air_alarms, /obj/machinery/airalarm)
 	data["sensor"] = !!connected_sensor
 	data["allowLinkChange"] = allow_link_change
 
-	var/datum/gas_mixture/environment = get_enviroment()
-	var/total_moles = environment.total_moles()
-	var/temp = environment.temperature
-	var/pressure = environment.return_pressure()
+	// BANDASTATION EDIT START - Keep UI thresholds and formatting on numeric readings.
+	var/list/environment = get_environment_reading()
+	var/total_moles = environment["total_moles"]
+	var/temp = environment["temperature"]
+	var/pressure = environment["pressure"]
 
 	data["envData"] = list()
 	if(connected_sensor)
@@ -287,13 +292,15 @@ GLOBAL_LIST_EMPTY_TYPED(air_alarms, /obj/machinery/airalarm)
 		"danger" = tlv_collection["temperature"].check_value(temp),
 	))
 	if(total_moles)
-		for(var/gas_path, moles in environment.moles)
+		for(var/gas_path, moles in environment["moles"])
 			var/portion = moles / total_moles
 			data["envData"] += list(list(
 				"name" = GLOB.meta_gas_info[META_GAS_NAME][gas_path],
 				"value" = "[round(moles, 0.01)] moles / [round(100 * portion, 0.01)] % / [round(portion * pressure, 0.01)] kPa",
 				"danger" = tlv_collection[gas_path].check_value(portion * pressure),
 			))
+
+	// BANDASTATION EDIT END
 
 	data["tlvSettings"] = list()
 	for(var/threshold in tlv_collection)
@@ -575,29 +582,37 @@ GLOBAL_LIST_EMPTY_TYPED(air_alarms, /obj/machinery/airalarm)
 
 /// Check the current air and update our danger level.
 /// [/obj/machinery/airalarm/var/danger_level]
-/obj/machinery/airalarm/proc/check_danger(turf/location, datum/gas_mixture/environment, exposed_temperature)
+/obj/machinery/airalarm/proc/check_danger(turf/location, datum/gas_mixture/environment, exposed_temperature, native_keys, native_reading = FALSE) // BANDASTATION EDIT - Ordinary null exposure still means no gas observation.
 	SIGNAL_HANDLER
 	if((machine_stat & (NOPOWER|BROKEN)) || shorted)
 		return
 
-	if(!environment)
+	// BANDASTATION EDIT START - An issued signal mixture may contain earlier listeners' uncommitted writes.
+	if(!environment && !native_reading)
 		return
+	var/list/reading = environment ? banda_atmos_inspect_mixture(environment) : location.return_air_reading()
+	if(!reading)
+		return
+	// BANDASTATION EDIT END
 
 	var/old_danger = danger_level
 	danger_level = AIR_ALARM_ALERT_NONE
 	var/old_area_danger = area_danger
 	area_danger = my_area.active_alarms[ALARM_ATMOS]
 
-	var/total_moles = environment.total_moles()
-	var/pressure = environment.return_pressure()
-	var/temp = environment.return_temperature()
+	// BANDASTATION EDIT START - Read values without requesting a mutable tile cache.
+	var/total_moles = reading["total_moles"]
+	var/pressure = reading["pressure"]
+	var/temp = reading["temperature"]
+	var/list/moles_by_gas = reading["moles"]
+	// BANDASTATION EDIT END
 
 	danger_level = max(danger_level, tlv_collection["pressure"].check_value(pressure))
 	danger_level = max(danger_level, tlv_collection["temperature"].check_value(temp))
 	if(total_moles)
 		var/list/cached_gas_info = GLOB.meta_gas_info
 		for(var/datum/gas/gas_path as anything in cached_gas_info[META_GAS_ID])
-			var/moles = environment.moles[gas_path] || 0
+			var/moles = moles_by_gas[gas_path] || 0 // BANDASTATION EDIT
 			danger_level = max(danger_level, tlv_collection[gas_path].check_value(pressure * moles / total_moles))
 
 	if(danger_level)

@@ -38,17 +38,18 @@
 
 /// Updates our gasmix data if on click mode.
 /datum/computer_file/program/atmosscan/proc/on_analyze(datum/source, atom/target)
-	var/mixture = target.return_analyzable_air()
-	if(!mixture)
+	// BANDASTATION EDIT START - Match the tool analyzer without issuing live mixtures.
+	var/list/airs = target.return_analyzable_readings()
+	if(!airs)
 		return FALSE
-	var/list/airs = islist(mixture) ? mixture : list(mixture)
 	var/list/new_gasmix_data = list()
-	for(var/datum/gas_mixture/air as anything in airs)
+	for(var/list/air as anything in airs)
 		var/mix_name = capitalize(LOWER_TEXT(target.name))
 		if(airs.len != 1) //not a unary gas mixture
 			mix_name += " - Node [airs.Find(air)]"
-		new_gasmix_data += list(gas_mixture_parser(air, mix_name))
+		new_gasmix_data += list(gas_reading_parser(air, mix_name))
 	last_gasmix_data = new_gasmix_data
+	// BANDASTATION EDIT END
 
 /datum/computer_file/program/atmosscan/ui_static_data(mob/user)
 	return return_atmos_handbooks()
@@ -60,8 +61,8 @@
 	data["clickAtmozphereCompatible"] = (computer.hardware_flag & PROGRAM_PDA)
 	switch (atmozphere_mode) //Null air wont cause errors, don't worry.
 		if(ATMOZPHERE_SCAN_ENV)
-			var/datum/gas_mixture/air = turf?.return_air()
-			data["gasmixes"] = list(gas_mixture_parser(air, "Location Reading"))
+			var/list/air = turf?.return_air_reading() // BANDASTATION EDIT - Read native state without a cache.
+			data["gasmixes"] = list(gas_reading_parser(air, "Location Reading")) // BANDASTATION EDIT
 		if(ATMOZPHERE_SCAN_CLICK)
 			data["gasmixes"] = last_gasmix_data
 	return data
@@ -80,7 +81,7 @@
 			atmozphere_mode = ATMOZPHERE_SCAN_CLICK
 			RegisterSignal(computer, COMSIG_ITEM_ATTACK_SELF_SECONDARY, PROC_REF(turf_analyze))
 			var/turf/turf = get_turf(computer)
-			last_gasmix_data = list(gas_mixture_parser(turf?.return_air(), "Location Reading"))
+			last_gasmix_data = list(gas_reading_parser(turf?.return_air_reading(), "Location Reading")) // BANDASTATION EDIT - Native observation.
 			return TRUE
 
 #undef ATMOZPHERE_SCAN_ENV

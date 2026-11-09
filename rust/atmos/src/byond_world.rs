@@ -152,6 +152,18 @@ pub(super) unsafe fn dispatch(api: &Api, store: &mut Store, args: &[Value]) -> R
                 },
             );
         }
+        (91, 2) => {} // Additive inspection API; older DLLs retain the mixture-reading path.
+        (91, 4) => {
+            let requests = api.numbers(field(2)?)?;
+            if requests.len() > 256 * 3 || requests.len() % 3 != 0 {
+                return Err("Invalid inspection batch".into());
+            }
+            let targets = requests
+                .chunks_exact(3)
+                .map(operations::target)
+                .collect::<Result<Vec<_>, _>>()?;
+            api.output(field(3)?, &packet::inspection_values(store, &targets))?;
+        }
         (87, 2) => {} // Additive value-query API; existing ABI 11 DLLs retain the legacy path.
         (87 | 89, 6) => {
             let requests = api.numbers(field(2)?)?;

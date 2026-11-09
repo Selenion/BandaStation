@@ -1,0 +1,51 @@
+// Only included by the frozen A/B fixture. Both modes use identical production Life and gas physics.
+/datum/controller/subsystem/atmos_cost/proc/create_readers(list/targets, mode)
+	var/list/alarms = list()
+	for(var/index = 1, index <= length(targets), index += 64)
+		var/turf/open/target = targets[index]
+		var/obj/machinery/airalarm/alarm = new(target)
+		alarm.machine_stat = 0
+		alarm.locked = FALSE
+		if(mode == "legacy")
+			alarm.UnregisterSignal(target, COMSIG_TURF_EXPOSE)
+			alarm.RegisterSignal(target, COMSIG_TURF_EXPOSE, TYPE_PROC_REF(/obj/machinery/airalarm, banda_original_readings_danger))
+		alarms += alarm
+	return alarms
+
+/datum/controller/subsystem/atmos_cost/proc/poll_readers(list/alarms, list/pumps, obj/item/analyzer/analyzer, mob/user, mode)
+	var/list/values = list()
+	for(var/obj/machinery/airalarm/alarm as anything in alarms)
+		var/turf/open/target = get_turf(alarm)
+		var/list/ui
+		if(mode == "legacy")
+			var/datum/gas_mixture/air = alarm.get_enviroment()
+			alarm.banda_original_readings_danger(target, air, air.temperature)
+			ui = alarm.banda_original_readings_ui(user)
+			analyzer.banda_original_readings_collect(target)
+		else
+			alarm.check_enviroment()
+			ui = alarm.ui_data(user)
+			analyzer.collect_scan_info(target)
+		strip_reading_identity(analyzer.last_gasmix_data)
+		values += list(list(alarm.danger_level, alarm.warning_message, ui["envData"], analyzer.last_gasmix_data))
+	for(var/index in 1 to min(16, length(pumps)))
+		if(mode == "legacy")
+			analyzer.banda_original_readings_collect(pumps[index])
+		else
+			analyzer.collect_scan_info(pumps[index])
+		strip_reading_identity(analyzer.last_gasmix_data)
+		values += list(analyzer.last_gasmix_data)
+	return values
+
+/// Only UI identity changes from a DM datum to coordinate/version; all displayed contents must match.
+/datum/controller/subsystem/atmos_cost/proc/strip_reading_identity(list/rows)
+	for(var/list/row as anything in rows)
+		row["reference"] = null
+
+/datum/controller/subsystem/atmos_cost/proc/scanned_port_owners(list/pumps)
+	var/owned = 0
+	for(var/index in 1 to min(16, length(pumps)))
+		var/obj/machinery/atmospherics/components/unary/vent_pump/pump = pumps[index]
+		if(pump.airs[1].banda_pipe_binding?.native_owned && pump.airs[1].banda_native_port)
+			owned++
+	return owned

@@ -174,7 +174,7 @@
 
 /obj/item/analyzer/interact_with_atom(atom/interacting_with, mob/living/user, list/modifiers)
 	if(!HAS_TRAIT(interacting_with, TRAIT_COMBAT_MODE_SKIP_INTERACTION) && can_see(user, interacting_with, ranged_scan_distance))
-		scan_atom(interacting_with.return_analyzable_air() ? interacting_with : get_turf(interacting_with), user)
+		scan_atom(interacting_with.return_analyzable_readings() ? interacting_with : get_turf(interacting_with), user) // BANDASTATION EDIT - Probe without exposing native ports.
 	return NONE // Non-blocking
 
 /obj/item/analyzer/proc/scan_atom(atom/target, mob/living/user)
@@ -185,19 +185,20 @@
 	collect_scan_info(target)
 
 /obj/item/analyzer/proc/collect_scan_info(atom/target)
-	var/mixture = target.return_analyzable_air()
-	if(!mixture)
+	// BANDASTATION EDIT START - Read numeric observations without a live gas-mixture alias.
+	var/list/airs = target.return_analyzable_readings()
+	if(!airs)
 		return
 
-	var/list/airs = islist(mixture) ? mixture : list(mixture)
 	var/list/new_gasmix_data = list()
-	for(var/datum/gas_mixture/air as anything in airs)
+	for(var/list/air as anything in airs)
 		var/mix_name = capitalize(LOWER_TEXT(target.name))
 		if(airs.len != 1) //not a unary gas mixture
 			mix_name += " - Node [airs.Find(air)]"
-		new_gasmix_data += list(gas_mixture_parser(air, mix_name))
+		new_gasmix_data += list(gas_reading_parser(air, mix_name))
 	last_gasmix_data = new_gasmix_data
 	last_scanned = WEAKREF(target)
+	// BANDASTATION EDIT END
 
 /// Called when our analyzer is used on something
 /obj/item/analyzer/proc/on_analyze(datum/source, atom/target)
@@ -211,8 +212,9 @@
  * Also used in other chat-based gas scans.
  */
 /proc/atmos_scan(mob/user, atom/target, silent=FALSE)
-	var/mixture = target.return_analyzable_air()
-	if(!mixture)
+	// BANDASTATION EDIT START - Keep chat formatting while reading scalar packets.
+	var/list/airs = target.return_analyzable_readings()
+	if(!airs)
 		return FALSE
 
 	var/icon = target
@@ -222,26 +224,25 @@
 		user.visible_message(span_notice("[user] uses the analyzer on [icon2html(icon, viewers(user))] [target]."), span_notice("You use the analyzer on [icon2html(icon, user)] [target]."))
 	message += span_boldnotice("Results of analysis of [icon2html(icon, user)] [target].")
 
-	var/list/airs = islist(mixture) ? mixture : list(mixture)
-	for(var/datum/gas_mixture/air as anything in airs)
+	for(var/list/air as anything in airs)
 		var/mix_name = capitalize(LOWER_TEXT(target.name))
 		if(airs.len > 1) //not a unary gas mixture
 			var/mix_number = airs.Find(air)
 			message += span_boldnotice("Node [mix_number]")
 			mix_name += " - Node [mix_number]"
 
-		var/total_moles = air.total_moles()
-		var/pressure = air.return_pressure()
-		var/volume = air.return_volume() //could just do mixture.volume... but safety, I guess?
-		var/temperature = air.return_temperature()
-		var/heat_capacity = air.heat_capacity()
-		var/thermal_energy = air.thermal_energy()
+		var/total_moles = air["total_moles"]
+		var/pressure = air["pressure"]
+		var/volume = air["volume"] //could just do mixture.volume... but safety, I guess?
+		var/temperature = air["temperature"]
+		var/heat_capacity = air["heat_capacity"]
+		var/thermal_energy = air["thermal_energy"]
 
 		if(total_moles > 0)
 			message += span_notice("Moles: [round(total_moles, 0.01)] mol")
 
 			var/list/cached_gas_name = GAS_META[META_GAS_NAME]
-			for(var/id, amount in air.moles)
+			for(var/id, amount in air["moles"])
 				var/gas_concentration = amount / total_moles
 				message += span_notice("[cached_gas_name[id]]: [round(amount, 0.01)] mol ([round(gas_concentration*100, 0.01)] %)")
 			message += span_notice("Temperature: [round(temperature - T0C,0.01)] &deg;C ([round(temperature, 0.01)] K)")
@@ -256,6 +257,7 @@
 	// we let the join apply newlines so we do need handholding
 	to_chat(user, boxed_message(jointext(message, "\n")), type = MESSAGE_TYPE_INFO)
 	return TRUE
+	// BANDASTATION EDIT END
 
 /obj/item/analyzer/ranged
 	desc = "A hand-held long-range environmental scanner which reports current gas levels."

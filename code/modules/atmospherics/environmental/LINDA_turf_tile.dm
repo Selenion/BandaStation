@@ -176,9 +176,11 @@
 /turf/temperature_expose(datum/gas_mixture/air, exposed_temperature)
 	atmos_expose(air, exposed_temperature)
 
-/turf/open/temperature_expose(datum/gas_mixture/air, exposed_temperature, native_keys) // BANDASTATION EDIT - Compact exposure for a scrubber-only listener.
+/turf/open/temperature_expose(datum/gas_mixture/air, exposed_temperature, native_keys, native_reading = FALSE) // BANDASTATION EDIT - Explicit numeric exposure retains the meaning of an ordinary null mixture.
 	// BANDASTATION EDIT START - Keep the regular signal arguments for other listeners.
-	if(isnull(native_keys))
+	if(native_reading)
+		SEND_SIGNAL(src, COMSIG_TURF_EXPOSE, air, exposed_temperature, native_keys, TRUE)
+	else if(isnull(native_keys))
 		SEND_SIGNAL(src, COMSIG_TURF_EXPOSE, air, exposed_temperature)
 	else
 		SEND_SIGNAL(src, COMSIG_TURF_EXPOSE, air, exposed_temperature, native_keys)

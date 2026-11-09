@@ -201,6 +201,13 @@
 	if(!SSair.native_atmos.try_adjust_air_operation(target, /datum/gas/nitrogen, 17))
 		CRASH("Life fixture unexpectedly materialized the tile's gas")
 
+// The registry is keyed by species ID; inheriting human's ID would replace ordinary humans in this fixture.
+/datum/species/human/banda_environment_observer
+	id = "banda_environment_observer"
+
+/datum/species/human/banda_environment_observer/check_roundstart_eligible()
+	return FALSE
+
 /datum/species/human/banda_environment_observer/handle_gas_interaction(mob/living/carbon/human/banda_environment_callback/human, datum/gas_mixture/environment, seconds_per_tick, datum/banda_atmos_air_reference/air_reference)
 	. = ..()
 	var/list/values = air_reference ? air_reference.values(list(/datum/gas/nitrogen)) : banda_atmos_value_packet(environment, list(/datum/gas/nitrogen))

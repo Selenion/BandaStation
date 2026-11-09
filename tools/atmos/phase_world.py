@@ -57,7 +57,7 @@ def main():
     (output / "phase-network-cases.json").write_text(json.dumps([c["input"] for c in networks]), encoding="utf-8")
     original, original_hash = original_air_consumers(output)
     dme = ROOT / "local-atmos-phase.test.dme"
-    fixtures = ("world_network", "phase_world", "phase_network", "inherit_world", "binding_world", "deferred_world", "api_world", "properties_world", "values_world", "live_reference_world", "original_life_consumers", "life_world", "vent_world", "scrubber_world", "contact_world", "debug_world", "exchange_world", "operations_world", "threaded_world", "feedback_world", "threaded_error_world", "teardown_world", "completion_world", "budget_boundary_world", "cycle_world", "effect_boundary_world", "chunk_world")
+    fixtures = ("world_network", "phase_world", "phase_network", "inherit_world", "binding_world", "deferred_world", "api_world", "properties_world", "values_world", "live_reference_world", "original_life_consumers", "life_world", "original_readings_consumers", "readings_world", "vent_world", "scrubber_world", "contact_world", "debug_world", "exchange_world", "operations_world", "threaded_world", "feedback_world", "threaded_error_world", "teardown_world", "completion_world", "budget_boundary_world", "cycle_world", "effect_boundary_world", "chunk_world")
     dme.write_text((ROOT / "tgstation.dme").read_text(encoding="utf-8-sig") + "\n" + "".join(
         f'#include "tools/atmos/{fixture}.dm.in"\n' for fixture in fixtures) + f'\n#include "{original.as_posix()}"\n', encoding="utf-8", newline="\n")
     fixture_paths = [f"tools/atmos/{fixture}.dm.in" for fixture in fixtures]
@@ -121,6 +121,17 @@ def main():
     for key, value in deferred.items():
         if value != 1:
             failures.append(dict(id=key, difference="Failed deferred initialization check"))
+    readings = actual["readings"]
+    assert {r["id"] for r in readings} == {"turf_floor", "turf_vacuum", "turf_space", "owned_port", "alarm_0", "alarm_1", "alarm_2", "alarm_3", "sensor_0", "sensor_1", "pending", "mixed_signal", "null_heat_exposure"}
+    assert len(readings) == 13
+    for row in readings:
+        assert row["checks"], "Reading scenario omitted its coverage checks"
+        for key, value in row["checks"].items():
+            if value != 1:
+                failures.append(dict(id=row["id"] + ":" + key, difference="Failed observer coverage check"))
+        delta = transport.difference(row["expected"], row["actual"], numeric_strings=False)
+        if delta:
+            failures.append(dict(id=row["id"], difference=delta, expected=row["expected"], actual=row["actual"]))
     api = actual["api"]
     assert len(api) == 245, "Incomplete lazy world API/property checks"
     for key, value in api.items():
@@ -294,7 +305,7 @@ def main():
                   binary_sha256=hashlib.sha256((output / "tgstation.dmb").read_bytes()).hexdigest(), feedback=feedback, threaded_errors=threaded_errors,
                   harness_sha256=fixture_hashes["tools/atmos/phase_world.dm.in"],
                   fixture_sha256=fixture_hashes, original_consumers=original_hash,
-                  scenarios=len(pairs), network_scenarios=len(networks), network_ticks=sum(c["input"]["ticks"] for c in networks), checks=checks, inheritance=inheritance, bindings=binding_checks, deferred=deferred, api=api, vents=vents, scrubbers=scrubbers, contacts=contacts, debug=debug, exchange=exchange, exchange_error=exchange_error, exchange_effects=exchange_effects, exchange_spawn=exchange_spawn, threaded=threaded, completion=completion, budget_boundary=budget_boundary, cycles=cycles, effect_boundary=effect_boundary, effect_errors=effect_errors, retained=retained, chunks=chunks, teardown=teardown, failures=failures)
+                  scenarios=len(pairs), network_scenarios=len(networks), network_ticks=sum(c["input"]["ticks"] for c in networks), checks=checks, inheritance=inheritance, bindings=binding_checks, deferred=deferred, api=api, readings=readings, vents=vents, scrubbers=scrubbers, contacts=contacts, debug=debug, exchange=exchange, exchange_error=exchange_error, exchange_effects=exchange_effects, exchange_spawn=exchange_spawn, threaded=threaded, completion=completion, budget_boundary=budget_boundary, cycles=cycles, effect_boundary=effect_boundary, effect_errors=effect_errors, retained=retained, chunks=chunks, teardown=teardown, failures=failures)
     (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
     print(f"Native phase: {len(pairs)} world scenarios, {len(networks)} graphs, {len(checks)} queue/lifetime checks, {len(vents) - 1} vent and {len(scrubbers) - 2 + len(scrubbers['admission'])} scrubber scenarios, {len(failures)} failures")
     for failure in failures:

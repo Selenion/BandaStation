@@ -386,7 +386,7 @@
 					open.temperature_expose(null, first)
 					return
 			if(second && owner.world_owned && listeners && !cached_air && !readonly_air && !pending_rebind && banda_atmos_temperature_only_exposure(open, listeners))
-				open.temperature_expose(null, first)
+				open.temperature_expose(null, first, native_reading = TRUE)
 				return
 			// shortcut: turf.should_atmos_process ignores air; revisit if a gas-dependent turf override is added.
 			var/needs_air = second && open && (!owner.world_owned || listeners || open.should_atmos_process(null, first))
@@ -410,6 +410,9 @@
 
 /proc/banda_atmos_temperature_only_listener(turf/open/target, datum/listener)
 	var/callback = listener._signal_procs?[target]?[COMSIG_TURF_EXPOSE]
+	// This handler reads its own numeric snapshot; mixed unknown listeners still receive the live mixture.
+	if(callback == TYPE_PROC_REF(/obj/machinery/airalarm, check_danger) && istype(listener, /obj/machinery/airalarm))
+		return SSair.native_atmos?.inspection_queries_ready
 	if(callback == TYPE_PROC_REF(/obj/structure/plasticflaps, check_melt))
 		return istype(listener, /obj/structure/plasticflaps)
 	if(callback != TYPE_PROC_REF(/atom, check_atmos_process))

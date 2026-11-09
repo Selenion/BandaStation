@@ -31,7 +31,7 @@
 	var/value_queries = 0
 
 /** A held DM alias can contain unreported writes, so it keeps priority during migration. */
-/datum/banda_atmos_phase/world_adapter/proc/read_air_values(turf/open/target, list/gases, all_gases = FALSE)
+/datum/banda_atmos_phase/world_adapter/proc/read_air_values(turf/open/target, list/gases, all_gases = FALSE, inspection = FALSE)
 	SHOULD_NOT_SLEEP(TRUE)
 	if(!value_queries_ready || initializing || closed || scrubber_tile_pending || !target.banda_air_present || target.air || !(target.flags_1 & INITIALIZED_1))
 		return null
@@ -49,10 +49,18 @@
 			return null
 		indices += index - 1
 	var/list/output = list()
-	native(87, list(0, id, version), indices, all_gases, output)
+	if(inspection)
+		if(!inspection_queries_ready)
+			return null
+		native(91, list(0, id, version), output)
+	else
+		native(87, list(0, id, version), indices, all_gases, output)
 	if(length(output) < BANDA_AIR_GASES - 1 || output[1] != 1 || output[2] != 1 || output[3] != 1 || output[4] != version)
 		return null
-	if(length(output) != BANDA_AIR_GASES - 1 + output[BANDA_AIR_GAS_COUNT] * (all_gases ? 2 : 1))
+	var/expected = BANDA_AIR_GASES - 1 + output[BANDA_AIR_GAS_COUNT] * (all_gases ? 2 : 1)
+	if(inspection)
+		expected += 1 + output[expected + 1] * 2
+	if(length(output) != expected)
 		CRASH("Invalid native air value packet")
 	value_queries++
 	return output
